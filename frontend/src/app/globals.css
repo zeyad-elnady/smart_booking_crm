@@ -1,0 +1,296 @@
+@import "tailwindcss";
+
+:root {
+  --foreground-rgb: 0, 0, 0;
+  --background-start-rgb: 214, 219, 241;
+  --background-end-rgb: 255, 255, 255;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --foreground-rgb: 255, 255, 255;
+    --background-start-rgb: 0, 0, 0;
+    --background-end-rgb: 0, 0, 0;
+  }
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  color: rgb(var(--foreground-rgb));
+  background: linear-gradient(
+      to bottom,
+      transparent,
+      rgb(var(--background-end-rgb))
+    )
+    rgb(var(--background-start-rgb));
+  font-family: Arial, Helvetica, sans-serif;
+  overflow-x: hidden;
+  will-change: scroll-position;
+}
+
+/* Glassmorphism Styles - Optimized */
+.glass {
+  background: rgba(255, 255, 255, 0.15);
+  border-radius: 16px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.25);
+  transition: border 0.4s ease;
+  will-change: transform;
+}
+
+@supports (backdrop-filter: blur(16px)) {
+  .glass {
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+  }
+}
+
+.glass:hover {
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.glass-dark {
+  background: rgba(17, 25, 40, 0.8);
+  border-radius: 16px;
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+  transition: border 0.4s ease;
+}
+
+@supports (backdrop-filter: blur(16px)) {
+  .glass-dark {
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+  }
+}
+
+.glass-dark:hover {
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.glass-card {
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 16px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.15);
+  transition: transform 0.4s ease;
+  will-change: transform;
+}
+
+@supports (backdrop-filter: blur(16px)) {
+  .glass-card {
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+  }
+}
+
+.glass-card:hover {
+  transform: translateY(-8px);
+}
+
+.gradient-bg {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+}
+
+.gradient-bg-alt {
+  background: linear-gradient(135deg, #43cea2 0%, #185a9d 100%);
+}
+
+.gradient-text {
+  background-clip: text;
+  -webkit-background-clip: text;
+  color: transparent;
+  background-image: linear-gradient(45deg, #6a11cb 0%, #2575fc 100%);
+}
+
+/* Darker gradient text for better visibility on light backgrounds */
+.gradient-text-dark {
+  background-clip: text;
+  -webkit-background-clip: text;
+  color: transparent;
+  background-image: linear-gradient(45deg, #3a026e 0%, #083b8c 100%);
+  font-weight: 700;
+}
+
+/* Solid color alternative for when gradient text appears blurry */
+.solid-text {
+  color: #3a026e;
+  font-weight: 700;
+}
+
+@media (min-width: 768px) {
+  .gradient-text:hover {
+    background-image: linear-gradient(45deg, #8a43e8 0%, #4d95ff 100%);
+    text-shadow: 0 0 25px rgba(106, 17, 203, 0.5);
+  }
+}
+
+.floating {
+  animation: float 10s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion) {
+  .floating {
+    animation: none;
+  }
+}
+
+.glow {
+  box-shadow: 0 0 15px rgba(82, 109, 255, 0.5);
+}
+
+@media (min-width: 768px) {
+  .glow:hover {
+    box-shadow: 0 0 30px rgba(82, 109, 255, 0.8);
+  }
+}
+
+/* Animations - simplified for performance */
+@keyframes float {
+  0%, 100% {
+    transform: translateY(0px);
+  }
+  50% {
+    transform: translateY(-10px);
+  }
+}
+
+@keyframes pulse {
+  0%, 100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  50% {
+    transform: scale(1.03);
+    opacity: 0.8;
+  }
+}
+
+@keyframes shimmer {
+  0% {
+    background-position: -400px 0;
+  }
+  100% {
+    background-position: 400px 0;
+  }
+}
+
+/* Animation delays */
+.animation-delay-1000 {
+  animation-delay: 1000ms;
+}
+
+.animation-delay-2000 {
+  animation-delay: 2000ms;
+}
+
+.animation-delay-3000 {
+  animation-delay: 3000ms;
+}
+
+.animation-delay-4000 {
+  animation-delay: 4000ms;
+}
+
+/* Scrollbar styling */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.3);
+}
+
+/* Improve selection styling */
+::selection {
+  background: rgba(106, 17, 203, 0.3);
+  color: white;
+}
+
+/* Enhanced Visuals */
+.text-shadow {
+  text-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+}
+
+.text-shadow-light {
+  text-shadow: 0 2px 10px rgba(255, 255, 255, 0.2);
+}
+
+.text-gradient {
+  background-clip: text;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+/* Premium Button Styles - simplified */
+.btn-premium {
+  position: relative;
+  overflow: hidden;
+}
+
+@media (min-width: 768px) {
+  .btn-premium:before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(
+      120deg,
+      transparent,
+      rgba(255, 255, 255, 0.2),
+      transparent
+    );
+    transform: translateX(-100%);
+    transition: transform 0.6s ease;
+  }
+  
+  .btn-premium:hover:before {
+    transform: translateX(100%);
+  }
+}
+
+/* Navbar specific styles */
+.navbar-glass {
+  background: rgba(10, 12, 38, 0.85);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: none;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+  transition: all 0.3s ease;
+}
+
+/* For browsers that don't support backdrop-filter */
+@supports not (backdrop-filter: blur(10px)) {
+  .navbar-glass {
+    background: rgba(8, 10, 32, 0.95);
+  }
+}
+
+/* Fix for potential white borders in some browsers */
+.no-white-borders {
+  background-clip: padding-box;
+  -webkit-background-clip: padding-box;
+}
