@@ -89,22 +89,29 @@ export default function AppointmentForm({ isOpen, onClose, onSubmit, initialData
             <label htmlFor="customer" className="block text-sm font-medium text-gray-700">
               Customer
             </label>
-            <select
-              id="customer"
-              name="customer"
-              value={formData.customer}
-              onChange={(e) => setFormData({ ...formData, customer: e.target.value })}
-              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
-              required
-              disabled={loading}
-            >
-              <option value="">Select a customer</option>
-              {customers.map((customer) => (
-                <option key={customer._id} value={customer._id}>
-                  {customer.firstName} {customer.lastName}
-                </option>
-              ))}
-            </select>
+            <div className="relative">
+              <select
+                id="customer"
+                name="customer"
+                value={formData.customer}
+                onChange={(e) => setFormData({ ...formData, customer: e.target.value })}
+                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm appearance-none pr-8"
+                required
+                disabled={loading}
+              >
+                <option value="">Select a customer</option>
+                {customers.map((customer) => (
+                  <option key={customer._id} value={customer._id}>
+                    {customer.firstName} {customer.lastName} ({customer.email || 'No email'})
+                  </option>
+                ))}
+              </select>
+              <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-500" style={{top: '0.25rem'}}>
+                <svg className="h-4 w-4 fill-current" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20">
+                  <path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z" />
+                </svg>
+              </div>
+            </div>
             {loading && customers.length === 0 && (
               <p className="mt-1 text-sm text-gray-500">Loading customers...</p>
             )}

@@ -10,7 +10,6 @@ const navigation = [
   { name: 'Customers', href: '/dashboard/customers' },
   { name: 'Services', href: '/dashboard/services' },
   { name: 'Settings', href: '/dashboard/settings' },
-  { name: 'Diagnostics', href: '/diagnostic' },
 ]
 
 export default function Navigation() {

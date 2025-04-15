@@ -29,29 +29,43 @@ const dashboardRoutes = require('./routes/dashboardRoutes');
 
 const app = express();
 
-// Simplified CORS setup - allow all origins for local development
-app.use(cors());
+// Enhanced CORS setup for local development across different URLs
+app.use(cors({
+  origin: true, // Allow any origin
+  credentials: true, // Allow cookies to be sent
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization']
+}));
+
+// Allow pre-flight requests for all routes
+app.options('*', cors());
 
 // Parse JSON bodies
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// Request logging middleware
+// Request logging middleware - DISABLED TO FIX INFINITE LOOP
+// app.use((req, res, next) => {
+//   console.log(`${new Date().toISOString()} - ${req.method} ${req.originalUrl}`);
+//   console.log('Headers:', JSON.stringify(req.headers));
+//   if (req.body && Object.keys(req.body).length > 0) {
+//     const sanitizedBody = { ...req.body };
+//     if (sanitizedBody.password) sanitizedBody.password = '[REDACTED]';
+//     console.log('Body:', JSON.stringify(sanitizedBody));
+//   }
+//   next();
+// });
+
+// Simple request logger that doesn't output to console
 app.use((req, res, next) => {
-  console.log(`${new Date().toISOString()} - ${req.method} ${req.originalUrl}`);
-  console.log('Headers:', JSON.stringify(req.headers));
-  if (req.body && Object.keys(req.body).length > 0) {
-    const sanitizedBody = { ...req.body };
-    if (sanitizedBody.password) sanitizedBody.password = '[REDACTED]';
-    console.log('Body:', JSON.stringify(sanitizedBody));
-  }
+  // Skip logging but keep middleware
   next();
 });
 
-// Logging in development mode
-if (process.env.NODE_ENV === 'development') {
-  app.use(morgan('dev'));
-}
+// Logging in development mode - DISABLED TO FIX INFINITE LOOP
+// if (process.env.NODE_ENV === 'development') {
+//   app.use(morgan('dev'));
+// }
 
 // Health check route for API connectivity testing
 app.get('/', (req, res) => {
@@ -203,9 +217,10 @@ const setupPeriodicSync = () => {
 
 // Start server
 const PORT = process.env.PORT || 5000;
-app.listen(PORT, () => {
+const HOST = process.env.HOST || '0.0.0.0'; // Listen on all network interfaces
+app.listen(PORT, HOST, () => {
   console.log(`Server running in ${process.env.NODE_ENV} mode on port ${PORT}`);
-  console.log(`API available at http://localhost:${PORT}`);
+  console.log(`API available at http://localhost:${PORT} and http://<your-ip-address>:${PORT}`);
   
   // Set up periodic database sync
   setupPeriodicSync();
@@ -222,6 +237,6 @@ app.listen(PORT, () => {
   // Log startup message for debugging
   console.log('==========================================================');
   console.log('Server started successfully with CORS enabled for all origins');
-  console.log('Database mode: ' + (localDataService.isMongoConnected() ? 'MongoDB' : 'Local Storage'));
+  console.log('The server is accessible from any device on your network');
   console.log('==========================================================');
 }); 

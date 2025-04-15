@@ -1,12 +1,36 @@
 import axios from 'axios';
 
+// Determine the correct hostname for API calls
+const getApiHost = () => {
+  // Check for explicit API host environment variable
+  if (typeof process !== 'undefined' && process.env.NEXT_PUBLIC_API_HOST) {
+    return process.env.NEXT_PUBLIC_API_HOST;
+  }
+  
+  // Use the same hostname as the browser, but with port 5000
+  if (typeof window !== 'undefined') {
+    // For development on localhost, use explicit localhost
+    if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
+      return 'localhost:5000';
+    }
+    
+    // For any other hostname, use that with port 5000
+    return `${window.location.hostname}:5000`;
+  }
+  
+  // Fallback for server-side rendering
+  return 'localhost:5000';
+};
+
+// Use the dynamic hostname for API configuration
+const API_HOST = getApiHost();
+
 // Create an instance of axios with default config
 const API = axios.create({
-  baseURL: 'http://localhost:5000/api',
+  baseURL: `http://${API_HOST}/api`,
   headers: {
     'Content-Type': 'application/json',
   },
-  // Add timeout but remove withCredentials which could cause CORS issues
   timeout: 10000, // 10 seconds timeout
 });
 
@@ -17,86 +41,76 @@ console.log('API configured with baseURL:', API.defaults.baseURL);
 if (typeof window !== 'undefined') {
   console.log('Running in browser environment');
   console.log('Window location:', window.location.origin);
-  // Check if we're running in development or production
-  const isDev = process.env.NODE_ENV === 'development';
-  console.log('Environment:', isDev ? 'development' : 'production');
-  
-  // Check for any custom API URL from environment variables
-  if (process.env.NEXT_PUBLIC_API_URL) {
-    console.log('Environment API URL:', process.env.NEXT_PUBLIC_API_URL);
-  }
+  console.log('Using API host:', API_HOST);
 }
 
 // Try to ping the API on startup
 const pingAPI = async () => {
   try {
     console.log('Attempting to connect to API server...');
-    // Log the full URL we're connecting to
-    const baseUrl = 'http://localhost:5000';
+    const baseUrl = `http://${API_HOST}`;
     console.log('Connecting to:', baseUrl);
     
-    // First try a basic fetch with detailed error reporting
-    const response = await fetch(baseUrl, { 
-      mode: 'cors',
-      credentials: 'omit',  // Avoid CORS issues
-      // Add a shorter timeout for faster feedback
-      signal: AbortSignal.timeout(5000)
-    });
-    
-    console.log('API server connection response:', {
-      ok: response.ok,
-      status: response.status,
-      statusText: response.statusText
-    });
-    
-    if (response.ok) {
-      console.log('API server connection: SUCCESS');
-      // Try to get and log the response body for further diagnostics
-      try {
-        const data = await response.text();
-        console.log('API server response body:', data.substring(0, 100) + (data.length > 100 ? '...' : ''));
-        
-        // Now test the appointments endpoint
-        console.log('Testing appointments endpoint...');
-        const appointmentsResponse = await fetch(`${baseUrl}/api/appointments/recent`, {
-          mode: 'cors',
-          credentials: 'omit',
-          signal: AbortSignal.timeout(5000)
-        });
-        
-        console.log('Appointments endpoint response:', {
-          ok: appointmentsResponse.ok,
-          status: appointmentsResponse.status,
-          statusText: appointmentsResponse.statusText
-        });
-        
-        if (appointmentsResponse.ok) {
-          const appointmentsData = await appointmentsResponse.json();
-          console.log('Appointments endpoint data:', appointmentsData);
-          console.log('API connectivity test COMPLETE - All endpoints working properly');
-        } else {
-          console.error('Appointments endpoint test FAILED');
-        }
-      } catch (bodyError) {
-        console.log('Could not read response body:', bodyError.message);
+    // First try the dynamic host
+    try {
+      const response = await fetch(baseUrl, { 
+        mode: 'cors',
+        credentials: 'omit',
+        signal: AbortSignal.timeout(3000)
+      });
+      
+      if (response.ok) {
+        console.log('API server connection: SUCCESS');
+        return; // Success, exit the function
       }
-    } else {
-      console.error('API server connection FAILED with status:', response.status, response.statusText);
+    } catch (initialError) {
+      console.log('Initial connection attempt failed, trying fallback options...');
     }
+    
+    // If dynamic host fails, try explicit localhost
+    try {
+      const localhostUrl = 'http://localhost:5000';
+      console.log('Trying localhost fallback:', localhostUrl);
+      
+      const localhostResponse = await fetch(localhostUrl, {
+        mode: 'cors',
+        credentials: 'omit',
+        signal: AbortSignal.timeout(3000)
+      });
+      
+      if (localhostResponse.ok) {
+        console.log('API server connection via localhost: SUCCESS');
+        return;
+      }
+    } catch (localhostError) {
+      console.log('Localhost fallback failed:', localhostError.message);
+    }
+    
+    // If everything fails, try IP address 127.0.0.1
+    try {
+      const loopbackUrl = 'http://127.0.0.1:5000';
+      console.log('Trying IP fallback:', loopbackUrl);
+      
+      const ipResponse = await fetch(loopbackUrl, {
+        mode: 'cors',
+        credentials: 'omit',
+        signal: AbortSignal.timeout(3000)
+      });
+      
+      if (ipResponse.ok) {
+        console.log('API server connection via IP: SUCCESS');
+        return;
+      }
+    } catch (ipError) {
+      console.log('IP fallback failed:', ipError.message);
+    }
+    
+    // If we get here, all attempts failed
+    console.error('All API connection attempts failed');
+    console.log('Please ensure the backend server is running on port 5000');
   } catch (error) {
     console.error('API server connection FAILED:', error.message);
-    
-    // More detailed diagnostics based on error type
-    if (error.name === 'AbortError') {
-      console.error('Connection timed out after 5 seconds');
-    } else if (error.message.includes('Failed to fetch')) {
-      console.error('Network error - server may be down or CORS issue');
-    } else if (error.message.includes('NetworkError')) {
-      console.error('Network error - check if server is running');
-    }
-    
     console.log('Please ensure the backend server is running on port 5000');
-    console.log('Check terminal for backend server logs or errors');
   }
 };
 
@@ -110,7 +124,7 @@ export const testAPIConnection = async (): Promise<{
   details?: any;
 }> => {
   try {
-    const baseUrl = API.defaults.baseURL.replace('/api', '');
+    const baseUrl = `http://${API_HOST}`;
     console.log('Testing API connection to:', baseUrl);
     
     // Test main endpoint
@@ -331,191 +345,144 @@ export const serviceAPI = {
 export const customerAPI = {
   getCustomers: async () => {
     try {
-      // First check if we have stored mock customers in localStorage
-      const storedMockCustomers = localStorage.getItem('mockCustomers');
-      if (storedMockCustomers) {
-        console.log('Using stored mock customers from localStorage');
-        return JSON.parse(storedMockCustomers);
-      }
-      
-      const response = await API.get<Customer[]>('/customers');
-      return response.data;
+      console.log(`Fetching customers from ${API.defaults.baseURL}/customers`)
+      const response = await API.get('/customers')
+      return response.data
     } catch (error) {
-      console.error('Error fetching customers:', error);
-      // Return mock data if API fails
-      const storedMockCustomers = localStorage.getItem('mockCustomers');
-      if (storedMockCustomers) {
-        return JSON.parse(storedMockCustomers);
+      console.error('Error fetching customers:', error)
+      
+      // If API call fails, try to get from localStorage
+      const mockCustomers = localStorage.getItem('mockCustomers')
+      if (mockCustomers) {
+        console.log('Using mock customer data from localStorage')
+        return JSON.parse(mockCustomers)
       }
       
-      // Fallback mock data
-      const defaultMockCustomers = [
-        { 
-          _id: '1', 
-          firstName: 'John',
-          lastName: 'Doe',
-          email: 'john@example.com',
-          phone: '555-123-4567',
-          notes: 'Mock customer data (server unavailable)'
-        },
-        { 
-          _id: '2', 
-          firstName: 'Jane',
-          lastName: 'Smith',
-          email: 'jane@example.com',
-          phone: '555-987-6543',
-          notes: 'Mock customer data (server unavailable)'
-        }
-      ];
-      
-      // Store default mocks in localStorage
-      localStorage.setItem('mockCustomers', JSON.stringify(defaultMockCustomers));
-      return defaultMockCustomers;
+      throw error
     }
   },
-
-  getCustomerById: async (id: string) => {
-    const response = await API.get<Customer>(`/customers/${id}`);
-    return response.data;
-  },
-
-  createCustomer: async (customerData: CustomerData) => {
+  
+  getCustomerById: async (id) => {
     try {
-      // For development, enable an option to use mock data only
-      const useMockDataOnly = false; // Set to false to use the real backend API
-      
-      if (useMockDataOnly) {
-        console.log('Using mock data mode for customer creation');
-        // Create a mock customer with unique ID
-        const mockCustomer: Customer = {
-          _id: 'mock_' + Date.now(),
-          firstName: customerData.firstName,
-          lastName: customerData.lastName,
-          email: customerData.email,
-          phone: customerData.phone,
-          notes: customerData.notes || '',
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString()
-        };
-        
-        // Persist the mock customer in localStorage
-        const existingMockCustomers = localStorage.getItem('mockCustomers');
-        const mockCustomers = existingMockCustomers 
-          ? [...JSON.parse(existingMockCustomers), mockCustomer] 
-          : [mockCustomer];
-        
-        localStorage.setItem('mockCustomers', JSON.stringify(mockCustomers));
-        
-        // Update dashboard stats to reflect new customer count
-        try {
-          const dashboardStats = localStorage.getItem('mockDashboardStats');
-          if (dashboardStats) {
-            const stats = JSON.parse(dashboardStats);
-            stats.totalCustomers = (stats.totalCustomers || 0) + 1;
-            localStorage.setItem('mockDashboardStats', JSON.stringify(stats));
-          }
-        } catch (e) {
-          console.error('Error updating dashboard stats:', e);
-        }
-        
-        // Simulate network delay
-        await new Promise(resolve => setTimeout(resolve, 500));
-        console.log('Mock customer created and saved:', mockCustomer);
-        return mockCustomer;
-      }
-      
-      // If not using mock data, proceed with normal flow
-      // First, test if the server is accessible
-      try {
-        const pingResponse = await fetch('http://localhost:5000', {
-          mode: 'cors',
-          credentials: 'omit',
-          // Add a small timeout to detect slow responses
-          signal: AbortSignal.timeout(3000)
-        });
-        if (!pingResponse.ok) {
-          console.error('Backend server responded with error:', pingResponse.status);
-          throw new Error(`Backend server error: ${pingResponse.status}`);
-        }
-      } catch (error) {
-        console.error('Cannot connect to backend server:', error.message);
-        // Fall back to mock data in development mode
-        if (process.env.NODE_ENV !== 'production') {
-          console.log('Falling back to mock data due to server connection issue');
-          return {
-            _id: 'mock_' + Date.now(),
-            firstName: customerData.firstName,
-            lastName: customerData.lastName,
-            email: customerData.email,
-            phone: customerData.phone,
-            notes: customerData.notes || '',
-            createdAt: new Date().toISOString(),
-            updatedAt: new Date().toISOString()
-          };
-        }
-        throw new Error('Cannot connect to server. Please make sure the backend is running.');
-      }
-      
-      // Add retry logic for the actual API call
-      let retries = 2;
-      let lastError = null;
-      
-      while (retries >= 0) {
-        try {
-          console.log(`Attempting to create customer${retries < 2 ? ` (retry ${2-retries}/2)` : ''}`);
-          const response = await API.post<Customer>('/customers', customerData, {
-            timeout: 5000 // Reduce timeout for faster failure detection
-          });
-          return response.data;
-        } catch (err) {
-          lastError = err;
-          if (err.response) {
-            // If we got a response, no need to retry
-            throw err;
-          }
-          if (retries <= 0) break;
-          retries--;
-          // Wait before retrying
-          await new Promise(resolve => setTimeout(resolve, 1000));
-        }
-      }
-      
-      // If we got here, all retries failed
-      console.error('Customer creation failed after retries:', lastError);
-      
-      // Generate mock customer for development/testing
-      if (process.env.NODE_ENV !== 'production') {
-        console.log('Generating mock customer response for development');
-        return {
-          _id: 'mock_' + Date.now(),
-          firstName: customerData.firstName,
-          lastName: customerData.lastName,
-          email: customerData.email,
-          phone: customerData.phone,
-          notes: customerData.notes || '',
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString()
-        };
-      }
-      
-      throw lastError || new Error('Failed to create customer after multiple attempts');
+      console.log(`Fetching customer with ID ${id} from ${API.defaults.baseURL}/customers/${id}`)
+      const response = await API.get(`/customers/${id}`)
+      return response.data
     } catch (error) {
-      console.error('Customer creation error:', error);
+      console.error(`Error fetching customer ${id}:`, error)
       
-      // Handle specific error cases
-      if (error.code === 'ECONNABORTED') {
-        throw new Error('Connection timeout. Server may be down or overloaded.');
-      } else if (error.message.includes('Network Error') || error.message.includes('connect') || error.message.includes('ECONNREFUSED')) {
-        throw new Error('Network error. Please check if backend server is running.');
+      // If API call fails, try to get from localStorage
+      const mockCustomers = localStorage.getItem('mockCustomers')
+      if (mockCustomers) {
+        console.log('Using mock customer data from localStorage')
+        const customers = JSON.parse(mockCustomers)
+        const customer = customers.find(c => c._id === id)
+        if (customer) {
+          return customer
+        }
       }
       
-      throw error; // Re-throw for handling in the component
+      throw error
     }
   },
-
-  updateCustomer: async (id: string, customerData: Partial<CustomerData>) => {
-    const response = await API.put<Customer>(`/customers/${id}`, customerData);
-    return response.data;
+  
+  createCustomer: async (data) => {
+    try {
+      const response = await API.post('/customers', data)
+      
+      // Update local storage
+      try {
+        const mockCustomers = localStorage.getItem('mockCustomers')
+        if (mockCustomers) {
+          const customers = JSON.parse(mockCustomers)
+          customers.push({
+            ...response.data,
+            _id: response.data._id || `mock_${Date.now()}`,
+            createdAt: new Date().toISOString()
+          })
+          localStorage.setItem('mockCustomers', JSON.stringify(customers))
+        }
+      } catch (e) {
+        console.error('Error updating local storage:', e)
+      }
+      
+      return response.data
+    } catch (error) {
+      console.error('Error creating customer:', error)
+      
+      // If API call fails, save to localStorage
+      try {
+        const newCustomer = {
+          ...data,
+          _id: `mock_${Date.now()}`,
+          createdAt: new Date().toISOString()
+        }
+        
+        const mockCustomers = localStorage.getItem('mockCustomers')
+        if (mockCustomers) {
+          const customers = JSON.parse(mockCustomers)
+          customers.push(newCustomer)
+          localStorage.setItem('mockCustomers', JSON.stringify(customers))
+        } else {
+          localStorage.setItem('mockCustomers', JSON.stringify([newCustomer]))
+        }
+        
+        return newCustomer
+      } catch (e) {
+        console.error('Error saving to localStorage:', e)
+        throw error
+      }
+    }
+  },
+  
+  updateCustomer: async (id, data) => {
+    try {
+      const response = await API.put(`/customers/${id}`, data)
+      
+      // Update local storage
+      try {
+        const mockCustomers = localStorage.getItem('mockCustomers')
+        if (mockCustomers) {
+          const customers = JSON.parse(mockCustomers)
+          const index = customers.findIndex(c => c._id === id)
+          if (index !== -1) {
+            customers[index] = { 
+              ...customers[index],
+              ...data,
+              updatedAt: new Date().toISOString()
+            }
+            localStorage.setItem('mockCustomers', JSON.stringify(customers))
+          }
+        }
+      } catch (e) {
+        console.error('Error updating local storage:', e)
+      }
+      
+      return response.data
+    } catch (error) {
+      console.error(`Error updating customer ${id}:`, error)
+      
+      // If API call fails, update localStorage
+      try {
+        const mockCustomers = localStorage.getItem('mockCustomers')
+        if (mockCustomers) {
+          const customers = JSON.parse(mockCustomers)
+          const index = customers.findIndex(c => c._id === id)
+          if (index !== -1) {
+            customers[index] = { 
+              ...customers[index],
+              ...data,
+              updatedAt: new Date().toISOString()
+            }
+            localStorage.setItem('mockCustomers', JSON.stringify(customers))
+            return customers[index]
+          }
+        }
+        throw new Error('Customer not found in mock data')
+      } catch (e) {
+        console.error('Error updating localStorage:', e)
+        throw error
+      }
+    }
   },
 
   deleteCustomer: async (id: string) => {
@@ -629,7 +596,7 @@ export const authAPI = {
     try {
       // First, test if the server is accessible
       try {
-        const pingResponse = await fetch('http://localhost:5000');
+        const pingResponse = await fetch(`http://${API_HOST}`);
         if (!pingResponse.ok) {
           console.error('Backend server responded with error:', pingResponse.status);
           throw new Error(`Backend server error: ${pingResponse.status}`);
@@ -828,4 +795,6 @@ export const dashboardAPI = {
       };
     }
   }
-}; 
+};
+
+export default API; 

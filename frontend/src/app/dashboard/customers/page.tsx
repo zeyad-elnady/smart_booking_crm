@@ -5,8 +5,10 @@ import { PlusIcon, MagnifyingGlassIcon } from '@heroicons/react/24/outline'
 import Link from 'next/link'
 import { customerAPI, Customer } from '@/services/api'
 import { format } from 'date-fns'
+import { useRouter } from 'next/navigation'
 
 export default function Customers() {
+  const router = useRouter()
   const [customers, setCustomers] = useState<Customer[]>([])
   const [searchTerm, setSearchTerm] = useState('')
   const [loading, setLoading] = useState(true)
@@ -15,7 +17,9 @@ export default function Customers() {
   async function fetchCustomers() {
     try {
       setLoading(true)
+      console.log('Fetching customers from API...')
       const data = await customerAPI.getCustomers()
+      console.log('Received customers data:', data)
       setCustomers(data)
       
       // Check if we're using mock data by looking for mock_ in ID
@@ -46,8 +50,8 @@ export default function Customers() {
       const shouldRefresh = localStorage.getItem('customerListShouldRefresh')
       if (shouldRefresh === 'true') {
         console.log('Refresh flag detected, refreshing customers')
-        fetchCustomers()
         localStorage.removeItem('customerListShouldRefresh')
+        fetchCustomers()
       }
     }
     
@@ -60,6 +64,18 @@ export default function Customers() {
       clearInterval(intervalId)
     }
   }, [])
+  
+  // Handle manual refresh button click
+  const handleRefresh = () => {
+    console.log('Manual refresh requested')
+    fetchCustomers()
+  }
+  
+  // Handle edit customer click
+  const handleEditClick = (customerId) => {
+    console.log('Navigating to edit customer', customerId)
+    router.push(`/dashboard/customers/edit/${customerId}`)
+  }
   
   const filteredCustomers = customers.filter(customer => 
     `${customer.firstName} ${customer.lastName}`.toLowerCase().includes(searchTerm.toLowerCase()) || 
@@ -140,12 +156,12 @@ export default function Customers() {
                       <div>{customer.phone}</div>
                       <div>{customer.createdAt ? `Added: ${new Date(customer.createdAt).toLocaleDateString()}` : ''}</div>
                     </div>
-                    <Link
-                      href={`/dashboard/customers/edit/${customer._id}`}
-                      className="text-indigo-300 hover:text-indigo-100 transition-colors"
+                    <button
+                      onClick={() => handleEditClick(customer._id)}
+                      className="text-indigo-300 hover:text-indigo-100 transition-colors px-3 py-1 rounded hover:bg-indigo-900/30"
                     >
                       Edit
-                    </Link>
+                    </button>
                   </div>
                 </div>
               </li>
@@ -160,7 +176,7 @@ export default function Customers() {
       
       <div className="flex justify-center">
         <button 
-          onClick={() => fetchCustomers()} 
+          onClick={handleRefresh} 
           className="px-4 py-2 text-sm bg-indigo-600 hover:bg-indigo-700 text-white rounded-md"
         >
           Refresh Customer List

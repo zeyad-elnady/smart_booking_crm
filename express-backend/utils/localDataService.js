@@ -394,7 +394,9 @@ const writeLocalData = (data) => {
     // Compress and write to file
     fs.writeFileSync(LOCAL_DATA_FILE, compressData(encryptedData));
     
-    // Create a backup copy
+    // Create a backup copy - TEMPORARILY DISABLED to prevent nodemon restart loop
+    // Uncomment this in production, but for development it causes nodemon to restart in a loop
+    /*
     const backupFileName = `backup-${new Date().toISOString().replace(/:/g, '-')}.json`;
     fs.writeFileSync(
       path.join(DATA_DIR, backupFileName),
@@ -403,6 +405,7 @@ const writeLocalData = (data) => {
     
     // Clean up old backups
     rotateBackups();
+    */
   } catch (error) {
     console.error('Error writing local data:', error);
     

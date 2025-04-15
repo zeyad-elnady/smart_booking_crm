@@ -1,13 +1,17 @@
 'use client'
 
-import { useState, useRef, useEffect } from 'react'
-import Link from 'next/link'
+import { useState, useEffect, useRef } from 'react'
+import { useRouter } from 'next/navigation'
 import { ArrowLeftIcon, ChevronDownIcon } from '@heroicons/react/24/outline'
 import { customerAPI } from '@/services/api'
-import { useRouter } from 'next/navigation'
+import React from 'react'
 
-export default function AddCustomer() {
+export default function EditCustomer({ params }) {
+  // Unwrap params using React.use()
+  const unwrappedParams = React.use(params)
+  const { id } = unwrappedParams
   const router = useRouter()
+  
   const [formData, setFormData] = useState({
     firstName: '',
     lastName: '',
@@ -16,11 +20,50 @@ export default function AddCustomer() {
     phoneNumber: '',
     notes: ''
   })
-  const [loading, setLoading] = useState(false)
+  const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
+  const [submitLoading, setSubmitLoading] = useState(false)
   const [dropdownOpen, setDropdownOpen] = useState(false)
   const dropdownRef = useRef<HTMLDivElement>(null)
 
+  // Fetch customer data on load
+  useEffect(() => {
+    async function fetchCustomerData() {
+      try {
+        setLoading(true)
+        const customer = await customerAPI.getCustomerById(id)
+        console.log('Fetched customer:', customer)
+        
+        // Split phone number into country code and main number
+        let phoneCountryCode = ''
+        let phoneNumber = customer.phone || ''
+        
+        const countryCodePattern = /^(\+\d+)/
+        const match = customer.phone ? customer.phone.match(countryCodePattern) : null
+        if (match && match[1]) {
+          phoneCountryCode = match[1]
+          phoneNumber = customer.phone.replace(match[1], '')
+        }
+        
+        setFormData({
+          firstName: customer.firstName || '',
+          lastName: customer.lastName || '',
+          email: customer.email || '',
+          phoneCountryCode,
+          phoneNumber,
+          notes: customer.notes || ''
+        })
+      } catch (error) {
+        console.error('Error fetching customer:', error)
+        setError('Failed to load customer data. Please try again.')
+      } finally {
+        setLoading(false)
+      }
+    }
+    
+    fetchCustomerData()
+  }, [id])
+  
   // Close dropdown when clicking outside
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
@@ -50,7 +93,7 @@ export default function AddCustomer() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    setLoading(true)
+    setSubmitLoading(true)
     setError('') // Clear previous errors
     
     try {
@@ -66,41 +109,22 @@ export default function AddCustomer() {
         notes: formData.notes
       }
       
-      console.log('Submitting customer data:', customerData)
-      // Save the customer data using the API
-      const result = await customerAPI.createCustomer(customerData)
-      console.log('Customer created successfully:', result)
+      console.log('Updating customer data:', customerData)
       
-      // Force refresh dashboard stats before redirecting
-      try {
-        // Get current customer count
-        const storedMockCustomers = localStorage.getItem('mockCustomers');
-        if (storedMockCustomers) {
-          const customers = JSON.parse(storedMockCustomers);
-          
-          // Update dashboard stats
-          const storedMockStats = localStorage.getItem('mockDashboardStats');
-          if (storedMockStats) {
-            const stats = JSON.parse(storedMockStats);
-            stats.totalCustomers = customers.length;
-            localStorage.setItem('mockDashboardStats', JSON.stringify(stats));
-            console.log('Updated dashboard stats before redirect:', stats);
-          }
-        }
-      } catch (e) {
-        console.error('Error updating dashboard stats:', e);
-      }
+      // Update the customer data using the API
+      const result = await customerAPI.updateCustomer(id, customerData)
+      console.log('Customer updated successfully:', result)
       
       // Set a flag to force refresh on dashboard
-      localStorage.setItem('forceRefreshDashboard', 'true');
+      localStorage.setItem('forceRefreshDashboard', 'true')
       
       // Set flag to refresh customer list
-      localStorage.setItem('customerListShouldRefresh', 'true');
+      localStorage.setItem('customerListShouldRefresh', 'true')
       
       // Redirect to the customers list
       router.push('/dashboard/customers')
     } catch (err: any) {
-      console.error('Error creating customer:', err)
+      console.error('Error updating customer:', err)
       
       // Display more specific error messages based on the error type
       if (err.response?.data?.message) {
@@ -111,10 +135,10 @@ export default function AddCustomer() {
         setError(err.message)
       } else {
         // Fallback error message
-        setError('Failed to create customer. Please try again later.')
+        setError('Failed to update customer. Please try again later.')
       }
-      
-      setLoading(false)
+    } finally {
+      setSubmitLoading(false)
     }
   }
 
@@ -134,11 +158,6 @@ export default function AddCustomer() {
     { code: '+61', label: 'Australia (+61)' },
   ]
 
-  // Get the selected country label
-  const selectedCountryLabel = formData.phoneCountryCode 
-    ? countryCodes.find(c => c.code === formData.phoneCountryCode)?.label 
-    : 'Select Code';
-
   return (
     <div className="min-h-[calc(100vh-4rem)] bg-gradient-to-br from-gray-900 via-purple-900/30 to-gray-900 p-0 relative">
       {/* Decorative elements */}
@@ -146,7 +165,7 @@ export default function AddCustomer() {
       <div className="absolute bottom-0 left-0 w-1/2 h-1/2 bg-purple-500/10 rounded-full blur-3xl"></div>
       
       {/* Main content */}
-      <div className="p-6">
+      <div className="p-4 md:p-6 h-full">
         <button 
           onClick={() => router.push('/dashboard/customers')}
           className="flex items-center text-gray-300 hover:text-white mb-4 transition-colors"
@@ -155,51 +174,28 @@ export default function AddCustomer() {
           <span>Back to customers</span>
         </button>
       
-        {/* Main content */}
-        <div className="grid grid-cols-1 lg:grid-cols-[1fr,2fr] gap-8 max-w-7xl mx-auto">
-          {/* Left side - Info panel */}
-          <div className="hidden lg:block">
-            <div className="sticky top-6 bg-gray-900/40 backdrop-blur-md rounded-2xl p-6 border border-white/10 shadow-xl">
-              <h2 className="text-xl font-bold text-white mb-4">Add a New Customer</h2>
-              <p className="text-gray-300 mb-6">Create a new customer profile by filling out their details in the form.</p>
-              
-              <div className="space-y-6">
-                <div className="border-l-2 border-indigo-500 pl-4">
-                  <h3 className="text-white font-medium">Personal Information</h3>
-                  <p className="text-gray-400 text-sm">Basic details like name, email, and phone number.</p>
-                </div>
-                
-                <div className="border-l-2 border-purple-500 pl-4">
-                  <h3 className="text-white font-medium">Contact Details</h3>
-                  <p className="text-gray-400 text-sm">How to reach your customer for appointments and updates.</p>
-                </div>
-                
-                <div className="border-l-2 border-pink-500 pl-4">
-                  <h3 className="text-white font-medium">Additional Notes</h3>
-                  <p className="text-gray-400 text-sm">Special preferences, health concerns, or other important details.</p>
-                </div>
-              </div>
-              
-              <div className="mt-8 p-4 bg-indigo-500/10 rounded-xl border border-indigo-500/20">
-                <p className="text-sm text-gray-300">Tip: Complete customer profiles help you provide more personalized service and improve customer satisfaction.</p>
-              </div>
+        {/* Form container taking full width */}
+        <div className="form-container bg-gray-900/60 backdrop-blur-md rounded-2xl p-6 md:p-8 border border-white/10 shadow-2xl w-full">
+          <h1 className="text-3xl font-bold mb-8 bg-gradient-to-r from-indigo-400 via-purple-400 to-pink-400 bg-clip-text text-transparent">
+            Edit Customer
+          </h1>
+
+          {error && (
+            <div className="mb-6 p-4 bg-red-500/10 backdrop-blur-sm border border-red-500/20 rounded-lg">
+              <p className="text-red-400">{error}</p>
             </div>
-          </div>
-          
-          {/* Right side - Form */}
-          <div className="form-container bg-gray-900/60 backdrop-blur-md rounded-2xl p-8 border border-white/10 shadow-2xl">
-            <h1 className="text-3xl font-bold mb-8 bg-gradient-to-r from-indigo-400 via-purple-400 to-pink-400 bg-clip-text text-transparent">
-              Add New Customer
-            </h1>
+          )}
 
-            {error && (
-              <div className="mb-6 p-4 bg-red-500/10 backdrop-blur-sm border border-red-500/20 rounded-lg">
-                <p className="text-red-400">{error}</p>
+          {loading ? (
+            <div className="flex justify-center items-center h-64">
+              <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-current border-r-transparent align-[-0.125em] motion-reduce:animate-[spin_1.5s_linear_infinite]" role="status">
+                <span className="!absolute !-m-px !h-px !w-px !overflow-hidden !whitespace-nowrap !border-0 !p-0 ![clip:rect(0,0,0,0)]">Loading...</span>
               </div>
-            )}
-
-            <form onSubmit={handleSubmit} className="space-y-8">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <p className="ml-3 text-sm text-white/70">Loading customer data...</p>
+            </div>
+          ) : (
+            <form onSubmit={handleSubmit} className="space-y-8 w-full">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 w-full">
                 <div>
                   <label htmlFor="firstName" className="block mb-2 text-sm font-medium text-gray-300">
                     First Name <span className="text-pink-500">*</span>
@@ -211,7 +207,7 @@ export default function AddCustomer() {
                     value={formData.firstName}
                     onChange={handleChange}
                     required
-                    disabled={loading}
+                    disabled={submitLoading}
                     className="w-full rounded-lg border border-white/10 bg-gray-900 px-4 py-2.5 text-gray-100 shadow-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20"
                     placeholder="First name"
                   />
@@ -228,7 +224,7 @@ export default function AddCustomer() {
                     value={formData.lastName}
                     onChange={handleChange}
                     required
-                    disabled={loading}
+                    disabled={submitLoading}
                     className="w-full rounded-lg border border-white/10 bg-gray-900 px-4 py-2.5 text-gray-100 shadow-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20"
                     placeholder="Last name"
                   />
@@ -245,7 +241,7 @@ export default function AddCustomer() {
                     value={formData.email}
                     onChange={handleChange}
                     required
-                    disabled={loading}
+                    disabled={submitLoading}
                     className="w-full rounded-lg border border-white/10 bg-gray-900 px-4 py-2.5 text-gray-100 shadow-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20"
                     placeholder="example@email.com"
                   />
@@ -260,7 +256,7 @@ export default function AddCustomer() {
                       <button
                         type="button"
                         onClick={() => setDropdownOpen(!dropdownOpen)}
-                        disabled={loading}
+                        disabled={submitLoading}
                         className="w-full flex items-center justify-between rounded-lg border border-white/10 bg-gray-900 px-3 py-2.5 text-gray-100 shadow-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20"
                       >
                         <span className="truncate">
@@ -293,7 +289,7 @@ export default function AddCustomer() {
                         value={formData.phoneNumber}
                         onChange={handleChange}
                         required
-                        disabled={loading}
+                        disabled={submitLoading}
                         className="w-full rounded-lg border border-white/10 bg-gray-900 px-4 py-2.5 text-gray-100 shadow-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20"
                         placeholder="123-456-7890"
                       />
@@ -312,7 +308,7 @@ export default function AddCustomer() {
                   rows={4}
                   value={formData.notes}
                   onChange={handleChange}
-                  disabled={loading}
+                  disabled={submitLoading}
                   className="w-full rounded-lg border border-white/10 bg-gray-900 px-4 py-2.5 text-gray-100 shadow-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20"
                   placeholder="Any additional information about the customer..."
                 />
@@ -321,14 +317,14 @@ export default function AddCustomer() {
               <div className="pt-4">
                 <button
                   type="submit"
-                  disabled={loading}
+                  disabled={submitLoading}
                   className="w-full py-3 px-4 rounded-lg font-medium transition-all duration-300 bg-purple-800/80 backdrop-blur-sm hover:bg-purple-900/90 focus:outline-none focus:ring-2 focus:ring-purple-500/50 focus:ring-offset-2 shadow-lg border border-purple-600/20 text-white"
                 >
-                  {loading ? 'Saving...' : 'Save Customer'}
+                  {submitLoading ? 'Saving...' : 'Update Customer'}
                 </button>
               </div>
             </form>
-          </div>
+          )}
         </div>
       </div>
 
