@@ -3,9 +3,14 @@
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { ChevronLeft, Clock, DollarSign, CalendarDays, Palette, ArrowLeftIcon } from 'lucide-react'
+import { ChevronLeft } from 'lucide-react'
+import { Clock } from 'lucide-react'
+import { DollarSign } from 'lucide-react'
+import { CalendarDays } from 'lucide-react'
+import { Palette } from 'lucide-react'
+import { ArrowLeft } from 'lucide-react'
 import { toast } from 'react-hot-toast'
-import { servicesAPI } from '@/services/api'
+import { serviceAPI } from '@/services/api'
 import { useTheme } from '@/components/ThemeProvider'
 
 export default function AddService() {
@@ -71,7 +76,7 @@ export default function AddService() {
         .filter(([_, isAvailable]) => isAvailable)
         .map(([day]) => day)
 
-      await servicesAPI.createService({
+      await serviceAPI.createService({
         name,
         description,
         duration: parseInt(duration, 10),
@@ -105,15 +110,19 @@ export default function AddService() {
       <div className="mb-6 flex items-center">
         <button
           onClick={() => router.back()}
-          className="mr-4 rounded-full p-2 transition hover:bg-white/10"
+          className={`mr-4 rounded-full p-2 transition ${darkMode ? 'hover:bg-white/10' : 'hover:bg-gray-200'}`}
         >
-          <ArrowLeftIcon className="h-6 w-6" />
+          <ArrowLeft className={`h-6 w-6 ${darkMode ? 'text-white' : 'text-gray-800'}`} />
         </button>
-        <h1 className="text-2xl font-bold">Add Service</h1>
+        <h1 className={`text-2xl font-bold ${darkMode ? 'text-white' : 'text-gray-800'}`}>Add Service</h1>
       </div>
 
       <div className="flex flex-col lg:flex-row lg:space-x-6">
-        <div className="lg:w-2/3 mb-6 lg:mb-0 rounded-xl backdrop-blur-md border border-white/10 p-6 bg-gray-800/30">
+        <div className={`lg:w-2/3 mb-6 lg:mb-0 rounded-xl backdrop-blur-md border p-6 ${
+          darkMode 
+            ? 'border-white/10 bg-gray-800/30' 
+            : 'border-gray-200 bg-white shadow-sm'
+        }`}>
           <form onSubmit={handleSubmit} className="space-y-6">
             {/* Service Name */}
             <div className="mb-6">
@@ -254,19 +263,31 @@ export default function AddService() {
         </div>
 
         <div className="lg:w-1/3 space-y-6">
-          <div className="rounded-xl backdrop-blur-md border border-white/10 p-6 bg-blue-900/30">
+          <div className={`rounded-xl backdrop-blur-md border p-6 ${
+            darkMode 
+              ? 'border-white/10 bg-blue-900/30 text-white' 
+              : 'border-blue-200 bg-blue-50 text-blue-900 shadow-sm'
+          }`}>
             <h2 className="text-xl font-bold mb-4">Service Management</h2>
-            <p>Add new services to your business offerings. Complete all required fields for optimal service presentation.</p>
+            <p className={darkMode ? 'text-blue-100' : 'text-blue-800'}>Add new services to your business offerings. Complete all required fields for optimal service presentation.</p>
           </div>
 
-          <div className="rounded-xl backdrop-blur-md border border-white/10 p-6 bg-purple-900/30">
+          <div className={`rounded-xl backdrop-blur-md border p-6 ${
+            darkMode 
+              ? 'border-white/10 bg-purple-900/30 text-white' 
+              : 'border-purple-200 bg-purple-50 text-purple-900 shadow-sm'
+          }`}>
             <h2 className="text-xl font-bold mb-4">Pricing & Duration</h2>
-            <p>Set competitive prices and realistic service durations to manage customer expectations and scheduling.</p>
+            <p className={darkMode ? 'text-purple-100' : 'text-purple-800'}>Set competitive prices and realistic service durations to manage customer expectations and scheduling.</p>
           </div>
           
-          <div className="rounded-xl backdrop-blur-md border border-white/10 p-6 bg-emerald-900/30">
+          <div className={`rounded-xl backdrop-blur-md border p-6 ${
+            darkMode 
+              ? 'border-white/10 bg-emerald-900/30 text-white' 
+              : 'border-emerald-200 bg-emerald-50 text-emerald-900 shadow-sm'
+          }`}>
             <h2 className="text-xl font-bold mb-4">Service Description</h2>
-            <p>Provide clear descriptions of your services to help customers understand what they're booking.</p>
+            <p className={darkMode ? 'text-emerald-100' : 'text-emerald-800'}>Provide clear descriptions of your services to help customers understand what they're booking.</p>
           </div>
         </div>
       </div>

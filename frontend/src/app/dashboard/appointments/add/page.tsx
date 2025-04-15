@@ -10,6 +10,7 @@ import { toast } from 'react-hot-toast'
 import { fetchCustomers } from '@/services/customerService'
 import { fetchServices } from '@/services/serviceService'
 import { createAppointment } from '@/services/appointmentService'
+import { useTheme } from '@/components/ThemeProvider'
 
 // Custom style to fix dropdown behavior
 const customStyles = `
@@ -114,6 +115,7 @@ export default function AddAppointment() {
     notes: '',
   })
   const [formErrors, setFormErrors] = useState<any>({})
+  const { darkMode } = useTheme()
 
   const selectRef = useRef<HTMLSelectElement>(null);
 
@@ -238,19 +240,23 @@ export default function AddAppointment() {
       <div className="mb-6 flex items-center">
         <button
           onClick={() => router.back()}
-          className="mr-4 rounded-full p-2 transition hover:bg-white/10"
+          className={`mr-4 rounded-full p-2 transition ${darkMode ? 'hover:bg-white/10' : 'hover:bg-gray-200'}`}
         >
-          <ArrowLeftIcon className="h-6 w-6" />
+          <ArrowLeftIcon className={`h-6 w-6 ${darkMode ? 'text-white' : 'text-gray-800'}`} />
         </button>
-        <h1 className="text-2xl font-bold">Schedule New Appointment</h1>
+        <h1 className={`text-2xl font-bold ${darkMode ? 'text-white' : 'text-gray-800'}`}>Schedule New Appointment</h1>
       </div>
 
       <div className="flex flex-col lg:flex-row lg:space-x-6">
-        <div className="lg:w-2/3 mb-6 lg:mb-0 rounded-xl backdrop-blur-md border border-white/10 p-6 bg-gray-800/30">
+        <div className={`lg:w-2/3 mb-6 lg:mb-0 rounded-xl backdrop-blur-md border p-6 ${
+          darkMode 
+            ? 'border-white/10 bg-gray-800/30' 
+            : 'border-gray-200 bg-white shadow-sm'
+        }`}>
           <form onSubmit={handleSubmit} className="space-y-6">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div>
-                <label htmlFor="customer" className="block mb-2 text-sm font-medium">
+                <label htmlFor="customer" className={`block mb-2 text-sm font-medium ${darkMode ? 'text-gray-200' : 'text-gray-700'}`}>
                   Customer <span className="text-pink-500">*</span>
                 </label>
                 <CustomDropdown
@@ -265,7 +271,7 @@ export default function AddAppointment() {
               </div>
 
               <div>
-                <label htmlFor="service" className="block mb-2 text-sm font-medium">
+                <label htmlFor="service" className={`block mb-2 text-sm font-medium ${darkMode ? 'text-gray-200' : 'text-gray-700'}`}>
                   Service <span className="text-pink-500">*</span>
                 </label>
                 <CustomDropdown
@@ -280,7 +286,7 @@ export default function AddAppointment() {
               </div>
 
               <div>
-                <label htmlFor="date" className="block mb-2 text-sm font-medium">
+                <label htmlFor="date" className={`block mb-2 text-sm font-medium ${darkMode ? 'text-gray-200' : 'text-gray-700'}`}>
                   Date <span className="text-pink-500">*</span>
                 </label>
                 <div className="relative">
@@ -291,7 +297,11 @@ export default function AddAppointment() {
                     value={formData.date}
                     onChange={handleChange}
                     required
-                    className="w-full rounded-lg border border-white/10 bg-gray-900/60 px-4 py-2.5 text-gray-100 shadow-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20"
+                    className={`w-full rounded-lg border px-4 py-2.5 shadow-sm ${
+                      darkMode 
+                        ? 'border-white/10 bg-gray-900/60 text-gray-100 focus:border-indigo-500' 
+                        : 'border-gray-300 bg-white text-gray-900 focus:border-indigo-500'
+                    } focus:ring-2 focus:ring-indigo-500/20`}
                   />
                 </div>
                 {formErrors.date && (
@@ -300,7 +310,7 @@ export default function AddAppointment() {
               </div>
 
               <div>
-                <label htmlFor="time" className="block mb-2 text-sm font-medium">
+                <label htmlFor="time" className={`block mb-2 text-sm font-medium ${darkMode ? 'text-gray-200' : 'text-gray-700'}`}>
                   Time <span className="text-pink-500">*</span>
                 </label>
                 <div className="relative">
@@ -311,7 +321,11 @@ export default function AddAppointment() {
                     value={formData.time}
                     onChange={handleChange}
                     required
-                    className="w-full rounded-lg border border-white/10 bg-gray-900/60 px-4 py-2.5 text-gray-100 shadow-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20"
+                    className={`w-full rounded-lg border px-4 py-2.5 shadow-sm ${
+                      darkMode 
+                        ? 'border-white/10 bg-gray-900/60 text-gray-100 focus:border-indigo-500' 
+                        : 'border-gray-300 bg-white text-gray-900 focus:border-indigo-500'
+                    } focus:ring-2 focus:ring-indigo-500/20`}
                   />
                 </div>
                 {formErrors.time && (
@@ -320,7 +334,7 @@ export default function AddAppointment() {
               </div>
 
               <div>
-                <label htmlFor="duration" className="block mb-2 text-sm font-medium">
+                <label htmlFor="duration" className={`block mb-2 text-sm font-medium ${darkMode ? 'text-gray-200' : 'text-gray-700'}`}>
                   Duration (minutes) <span className="text-pink-500">*</span>
                 </label>
                 <div className="relative">
@@ -334,7 +348,11 @@ export default function AddAppointment() {
                     value={formData.duration}
                     onChange={handleChange}
                     required
-                    className="w-full rounded-lg border border-white/10 bg-gray-900/60 px-4 py-2.5 text-gray-100 shadow-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20"
+                    className={`w-full rounded-lg border px-4 py-2.5 shadow-sm ${
+                      darkMode 
+                        ? 'border-white/10 bg-gray-900/60 text-gray-100 focus:border-indigo-500' 
+                        : 'border-gray-300 bg-white text-gray-900 focus:border-indigo-500'
+                    } focus:ring-2 focus:ring-indigo-500/20`}
                   />
                 </div>
                 {formErrors.duration && (
@@ -343,7 +361,7 @@ export default function AddAppointment() {
               </div>
 
               <div>
-                <label htmlFor="status" className="block mb-2 text-sm font-medium">
+                <label htmlFor="status" className={`block mb-2 text-sm font-medium ${darkMode ? 'text-gray-200' : 'text-gray-700'}`}>
                   Status <span className="text-pink-500">*</span>
                 </label>
                 <CustomDropdown
@@ -359,7 +377,7 @@ export default function AddAppointment() {
             </div>
 
             <div>
-              <label htmlFor="notes" className="block mb-2 text-sm font-medium">
+              <label htmlFor="notes" className={`block mb-2 text-sm font-medium ${darkMode ? 'text-gray-200' : 'text-gray-700'}`}>
                 Notes
               </label>
               <textarea
@@ -368,7 +386,11 @@ export default function AddAppointment() {
                 value={formData.notes}
                 onChange={handleChange}
                 rows={4}
-                className="w-full rounded-lg border border-white/10 bg-gray-900/60 px-4 py-2.5 text-gray-100 shadow-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20"
+                className={`w-full rounded-lg border px-4 py-2.5 shadow-sm ${
+                  darkMode 
+                    ? 'border-white/10 bg-gray-900/60 text-gray-100 focus:border-indigo-500' 
+                    : 'border-gray-300 bg-white text-gray-900 focus:border-indigo-500'
+                } focus:ring-2 focus:ring-indigo-500/20`}
                 placeholder="Add any notes about this appointment"
               ></textarea>
             </div>
@@ -377,7 +399,11 @@ export default function AddAppointment() {
               <button
                 type="submit"
                 disabled={loading}
-                className="w-full py-3 px-4 rounded-lg font-medium transition-all duration-300 bg-purple-800/80 backdrop-blur-sm hover:bg-purple-900/90 focus:outline-none focus:ring-2 focus:ring-purple-500/50 focus:ring-offset-2 shadow-lg border border-purple-600/20 text-white"
+                className={`w-full py-3 px-4 rounded-lg font-medium transition-all duration-300 ${
+                  darkMode
+                    ? 'bg-purple-800/80 backdrop-blur-sm hover:bg-purple-900/90 border-purple-600/20'
+                    : 'bg-purple-600 hover:bg-purple-700 border-purple-500/20'
+                } focus:outline-none focus:ring-2 focus:ring-purple-500/50 focus:ring-offset-2 shadow-lg border text-white`}
               >
                 {loading ? 'Creating...' : 'Schedule Appointment'}
               </button>
@@ -386,27 +412,47 @@ export default function AddAppointment() {
         </div>
 
         <div className="lg:w-1/3 space-y-6">
-          <div className="rounded-xl backdrop-blur-md border border-white/10 p-6 bg-blue-900/30">
+          <div className={`rounded-xl backdrop-blur-md border p-6 ${
+            darkMode 
+              ? 'border-white/10 bg-blue-900/30 text-white' 
+              : 'border-blue-200 bg-blue-50 text-blue-900 shadow-sm'
+          }`}>
             <h2 className="text-xl font-bold mb-4">Appointment Management</h2>
-            <p>Schedule appointments for your customers by selecting a service, date, and time. All required fields are marked with an asterisk (*).</p>
+            <p className={darkMode ? 'text-blue-100' : 'text-blue-800'}>Schedule appointments for your customers by selecting a service, date, and time. All required fields are marked with an asterisk (*).</p>
           </div>
 
-          <div className="rounded-xl backdrop-blur-md border border-white/10 p-6 bg-purple-900/30">
+          <div className={`rounded-xl backdrop-blur-md border p-6 ${
+            darkMode 
+              ? 'border-white/10 bg-purple-900/30 text-white' 
+              : 'border-purple-200 bg-purple-50 text-purple-900 shadow-sm'
+          }`}>
             <h2 className="text-xl font-bold mb-4">Customer & Service</h2>
-            <p>Choose a customer and service for this appointment. Need to create a new customer or service first?</p>
+            <p className={darkMode ? 'text-purple-100' : 'text-purple-800'}>Choose a customer and service for this appointment. Need to create a new customer or service first?</p>
             <div className="mt-4 flex space-x-3">
-              <Link href="/dashboard/customers/add" className="text-sm px-3 py-2 bg-gray-800/50 hover:bg-gray-800 rounded-lg text-gray-200 transition-colors">
+              <Link href="/dashboard/customers/add" className={`text-sm px-3 py-2 rounded-lg transition-colors ${
+                darkMode
+                  ? 'bg-gray-800/50 hover:bg-gray-800 text-gray-200'
+                  : 'bg-gray-200/70 hover:bg-gray-300 text-gray-700'
+              }`}>
                 Add Customer
               </Link>
-              <Link href="/dashboard/services/add" className="text-sm px-3 py-2 bg-gray-800/50 hover:bg-gray-800 rounded-lg text-gray-200 transition-colors">
+              <Link href="/dashboard/services/add" className={`text-sm px-3 py-2 rounded-lg transition-colors ${
+                darkMode
+                  ? 'bg-gray-800/50 hover:bg-gray-800 text-gray-200'
+                  : 'bg-gray-200/70 hover:bg-gray-300 text-gray-700'
+              }`}>
                 Add Service
               </Link>
             </div>
           </div>
           
-          <div className="rounded-xl backdrop-blur-md border border-white/10 p-6 bg-emerald-900/30">
+          <div className={`rounded-xl backdrop-blur-md border p-6 ${
+            darkMode 
+              ? 'border-white/10 bg-emerald-900/30 text-white' 
+              : 'border-emerald-200 bg-emerald-50 text-emerald-900 shadow-sm'
+          }`}>
             <h2 className="text-xl font-bold mb-4">Date & Time</h2>
-            <p>Select an appropriate date and time for the appointment. You can adjust the duration based on the service requirements.</p>
+            <p className={darkMode ? 'text-emerald-100' : 'text-emerald-800'}>Select an appropriate date and time for the appointment. You can adjust the duration based on the service requirements.</p>
           </div>
         </div>
       </div>
@@ -414,86 +460,14 @@ export default function AddAppointment() {
       <style jsx global>{`
         input[type="date"]::-webkit-calendar-picker-indicator,
         input[type="time"]::-webkit-calendar-picker-indicator {
-          filter: invert(0.8);
+          filter: invert(${darkMode ? 0.8 : 0.3});
         }
         
         /* Fix color scheme for date/time inputs */
         input[type="date"],
         input[type="time"],
         input[type="number"] {
-          color-scheme: dark;
-        }
-
-        /* Light theme styles for appointment form */
-        .light-theme input[type="date"]::-webkit-calendar-picker-indicator,
-        .light-theme input[type="time"]::-webkit-calendar-picker-indicator {
-          filter: invert(0.5) !important;
-        }
-        
-        .light-theme input[type="date"],
-        .light-theme input[type="time"],
-        .light-theme input[type="number"] {
-          color-scheme: light;
-          background-color: white !important;
-          border: 1px solid #e2e8f0 !important;
-          color: #1e293b !important;
-        }
-        
-        .light-theme .rounded-lg.border.border-white\/10.bg-gray-900\/60 {
-          background-color: white !important;
-          border: 1px solid #e2e8f0 !important;
-          color: #1e293b !important;
-        }
-        
-        .light-theme label.block.mb-2.text-sm.font-medium {
-          color: #475569 !important;
-        }
-        
-        .light-theme .rounded-xl.backdrop-blur-md.border.border-white\/10.p-6.bg-blue-900\/30 {
-          background-color: rgba(219, 234, 254, 0.4) !important;
-          border: 1px solid rgba(59, 130, 246, 0.2) !important;
-        }
-        
-        .light-theme .rounded-xl.backdrop-blur-md.border.border-white\/10.p-6.bg-purple-900\/30 {
-          background-color: rgba(237, 233, 254, 0.4) !important;
-          border: 1px solid rgba(139, 92, 246, 0.2) !important;
-        }
-        
-        .light-theme .rounded-xl.backdrop-blur-md.border.border-white\/10.p-6.bg-emerald-900\/30 {
-          background-color: rgba(209, 250, 229, 0.4) !important;
-          border: 1px solid rgba(16, 185, 129, 0.2) !important;
-        }
-        
-        .light-theme .text-gray-100,
-        .light-theme .text-gray-200 {
-          color: #1e293b !important;
-        }
-        
-        .light-theme h2.text-xl.font-bold.mb-4 {
-          color: #0f172a !important;
-        }
-        
-        .light-theme p {
-          color: #334155 !important;
-        }
-        
-        .light-theme .text-sm.px-3.py-2.bg-gray-800\/50.hover\:bg-gray-800.rounded-lg.text-gray-200 {
-          background-color: rgba(226, 232, 240, 0.7) !important;
-          color: #475569 !important;
-        }
-        
-        .light-theme .text-sm.px-3.py-2.bg-gray-800\/50.hover\:bg-gray-800.rounded-lg.text-gray-200:hover {
-          background-color: rgba(203, 213, 225, 0.8) !important;
-        }
-        
-        .light-theme button[type="submit"] {
-          background-color: rgba(126, 34, 206, 0.9) !important;
-          border: 1px solid rgba(126, 34, 206, 0.3) !important;
-          color: white !important;
-        }
-        
-        .light-theme button[type="submit"]:hover {
-          background-color: rgba(107, 33, 168, 0.95) !important;
+          color-scheme: ${darkMode ? 'dark' : 'light'};
         }
       `}</style>
     </div>
