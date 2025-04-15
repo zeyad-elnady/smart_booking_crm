@@ -60,6 +60,9 @@ export default function AddCustomer() {
       // Set a flag to force refresh on dashboard
       localStorage.setItem('forceRefreshDashboard', 'true');
       
+      // Set flag to refresh customer list
+      localStorage.setItem('customerListShouldRefresh', 'true');
+      
       // Redirect to the customers list
       router.push('/dashboard/customers')
     } catch (err: any) {

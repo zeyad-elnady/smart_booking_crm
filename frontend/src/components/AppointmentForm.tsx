@@ -1,5 +1,8 @@
-import { useState } from 'react'
+'use client';
+
+import { useState, useEffect } from 'react'
 import { XMarkIcon } from '@heroicons/react/24/outline'
+import { customerAPI, serviceAPI, Customer, Service } from '@/services/api'
 
 interface AppointmentFormProps {
   isOpen: boolean
@@ -18,6 +21,38 @@ export default function AppointmentForm({ isOpen, onClose, onSubmit, initialData
     notes: '',
     status: 'Pending',
   })
+  
+  const [customers, setCustomers] = useState<Customer[]>([])
+  const [services, setServices] = useState<Service[]>([])
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  // Fetch customers and services when the form opens
+  useEffect(() => {
+    if (!isOpen) return;
+    
+    const fetchData = async () => {
+      setLoading(true);
+      setError(null);
+      
+      try {
+        // Fetch customers
+        const customersData = await customerAPI.getCustomers();
+        setCustomers(customersData);
+        
+        // Fetch services
+        const servicesData = await serviceAPI.getServices();
+        setServices(servicesData);
+      } catch (err) {
+        console.error('Error fetching data:', err);
+        setError('Failed to load customers or services. Please try again.');
+      } finally {
+        setLoading(false);
+      }
+    };
+    
+    fetchData();
+  }, [isOpen]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
@@ -43,6 +78,12 @@ export default function AppointmentForm({ isOpen, onClose, onSubmit, initialData
           </button>
         </div>
 
+        {error && (
+          <div className="p-4 bg-red-50 border-l-4 border-red-400 text-red-700">
+            <p>{error}</p>
+          </div>
+        )}
+
         <form onSubmit={handleSubmit} className="p-4 space-y-4">
           <div>
             <label htmlFor="customer" className="block text-sm font-medium text-gray-700">
@@ -55,12 +96,21 @@ export default function AppointmentForm({ isOpen, onClose, onSubmit, initialData
               onChange={(e) => setFormData({ ...formData, customer: e.target.value })}
               className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
               required
+              disabled={loading}
             >
               <option value="">Select a customer</option>
-              <option value="John Doe">John Doe</option>
-              <option value="Jane Smith">Jane Smith</option>
-              <option value="Mike Johnson">Mike Johnson</option>
+              {customers.map((customer) => (
+                <option key={customer._id} value={customer._id}>
+                  {customer.firstName} {customer.lastName}
+                </option>
+              ))}
             </select>
+            {loading && customers.length === 0 && (
+              <p className="mt-1 text-sm text-gray-500">Loading customers...</p>
+            )}
+            {!loading && customers.length === 0 && (
+              <p className="mt-1 text-sm text-gray-500">No customers found. Please add customers first.</p>
+            )}
           </div>
 
           <div>
@@ -74,11 +124,20 @@ export default function AppointmentForm({ isOpen, onClose, onSubmit, initialData
               onChange={(e) => setFormData({ ...formData, service: e.target.value })}
               className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
               required
+              disabled={loading}
             >
               <option value="">Select a service</option>
-              <option value="Haircut">Haircut</option>
-              <option value="Manicure">Manicure</option>
-              <option value="Massage">Massage</option>
+              {services.map((service) => (
+                <option key={service._id} value={service._id}>
+                  {service.name}
+                </option>
+              ))}
+              {loading && services.length === 0 && (
+                <option disabled>Loading services...</option>
+              )}
+              {!loading && services.length === 0 && (
+                <option disabled>No services found</option>
+              )}
             </select>
           </div>
 
@@ -179,6 +238,7 @@ export default function AppointmentForm({ isOpen, onClose, onSubmit, initialData
             <button
               type="submit"
               className="px-4 py-2 text-sm font-medium text-white bg-indigo-600 border border-transparent rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+              disabled={loading || customers.length === 0}
             >
               {initialData ? 'Update' : 'Create'} Appointment
             </button>

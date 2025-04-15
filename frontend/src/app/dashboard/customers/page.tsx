@@ -12,25 +12,53 @@ export default function Customers() {
   const [loading, setLoading] = useState(true)
   const [isMockData, setIsMockData] = useState(false)
   
+  async function fetchCustomers() {
+    try {
+      setLoading(true)
+      const data = await customerAPI.getCustomers()
+      setCustomers(data)
+      
+      // Check if we're using mock data by looking for mock_ in ID
+      const hasMockData = data.some(customer => customer._id.toString().includes('mock_'));
+      setIsMockData(hasMockData);
+    } catch (error) {
+      console.error('Failed to fetch customers:', error)
+      setIsMockData(true);
+    } finally {
+      setLoading(false)
+    }
+  }
+
   useEffect(() => {
-    async function fetchCustomers() {
-      try {
-        setLoading(true)
-        const data = await customerAPI.getCustomers()
-        setCustomers(data)
-        
-        // Check if we're using mock data by looking for mock_ in ID
-        const hasMockData = data.some(customer => customer._id.toString().includes('mock_'));
-        setIsMockData(hasMockData);
-      } catch (error) {
-        console.error('Failed to fetch customers:', error)
-        setIsMockData(true);
-      } finally {
-        setLoading(false)
+    fetchCustomers()
+    
+    // Setup listener for navigation events to refresh data
+    const handleRouteChange = () => {
+      console.log('Navigation detected, refreshing customers')
+      fetchCustomers()
+    }
+    
+    // Add event listener for focus
+    window.addEventListener('focus', handleRouteChange)
+    
+    // Setup refresh on navigation
+    const checkNavigation = () => {
+      const shouldRefresh = localStorage.getItem('customerListShouldRefresh')
+      if (shouldRefresh === 'true') {
+        console.log('Refresh flag detected, refreshing customers')
+        fetchCustomers()
+        localStorage.removeItem('customerListShouldRefresh')
       }
     }
-
-    fetchCustomers()
+    
+    // Check immediately and then setup interval
+    checkNavigation()
+    const intervalId = setInterval(checkNavigation, 1000)
+    
+    return () => {
+      window.removeEventListener('focus', handleRouteChange)
+      clearInterval(intervalId)
+    }
   }, [])
   
   const filteredCustomers = customers.filter(customer => 
@@ -128,6 +156,15 @@ export default function Customers() {
             {searchTerm ? 'No customers match your search' : 'No customers found. Add your first customer!'}
           </div>
         )}
+      </div>
+      
+      <div className="flex justify-center">
+        <button 
+          onClick={() => fetchCustomers()} 
+          className="px-4 py-2 text-sm bg-indigo-600 hover:bg-indigo-700 text-white rounded-md"
+        >
+          Refresh Customer List
+        </button>
       </div>
     </div>
   )

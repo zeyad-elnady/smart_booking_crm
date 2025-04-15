@@ -6,7 +6,10 @@
   "scripts": {
     "start": "node server.js",
     "dev": "nodemon server.js",
-    "setup-db": "node scripts/setupLocalDB.js"
+    "setup-db": "node scripts/setupLocalDB.js",
+    "sync-db": "node scripts/syncDatabases.js",
+    "export-data": "node -e \"require('./utils/localDataService').exportData() && console.log('Data exported successfully')\"",
+    "backup": "node -e \"const path = require('path'); const timestamp = new Date().toISOString().replace(/:/g, '-'); const exportPath = path.join(__dirname, 'data', `backup-manual-${timestamp}.json`); require('./utils/localDataService').exportData(exportPath) && console.log(`Backup created at ${exportPath}`)\""
   },
   "dependencies": {
     "bcryptjs": "^2.4.3",

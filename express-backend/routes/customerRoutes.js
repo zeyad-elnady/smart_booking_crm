@@ -8,6 +8,7 @@ const {
   deleteCustomer,
 } = require('../controllers/customerController');
 const { protect } = require('../middleware/authMiddleware');
+const localDataService = require('../utils/localDataService');
 
 // Mock data for when MongoDB is unavailable
 const mockCustomers = [
@@ -40,13 +41,36 @@ const modifiedControllers = {
     try {
       // Check if MongoDB is connected
       if (require('mongoose').connection.readyState !== 1) {
-        console.log('MongoDB not connected, returning mock customers');
+        console.log('MongoDB not connected, checking local storage for customers');
+        
+        // Try to get customers from local storage first
+        const localCustomers = localDataService.find('customers');
+        
+        if (localCustomers && localCustomers.length > 0) {
+          console.log(`Found ${localCustomers.length} customers in local storage`);
+          return res.json(localCustomers);
+        }
+        
+        // Fall back to mock customers if no local storage customers
+        console.log('No customers found in local storage, returning mock customers');
         return res.json(mockCustomers);
       }
       
       return getCustomers(req, res);
     } catch (error) {
       console.error('Error in getCustomers:', error.message);
+      
+      // Try to get customers from local storage on error
+      try {
+        const localCustomers = localDataService.find('customers');
+        if (localCustomers && localCustomers.length > 0) {
+          return res.json(localCustomers);
+        }
+      } catch (localError) {
+        console.error('Local storage error:', localError.message);
+      }
+      
+      // Fall back to mock customers
       res.json(mockCustomers);
     }
   },
@@ -55,7 +79,18 @@ const modifiedControllers = {
     try {
       // Check if MongoDB is connected
       if (require('mongoose').connection.readyState !== 1) {
-        console.log('MongoDB not connected, returning mock customer');
+        console.log('MongoDB not connected, checking local storage for customer');
+        
+        // Try to get customer from local storage first
+        const localCustomer = localDataService.findById('customers', req.params.id);
+        
+        if (localCustomer) {
+          console.log('Found customer in local storage');
+          return res.json(localCustomer);
+        }
+        
+        // Fall back to mock customer if not found in local storage
+        console.log('Customer not found in local storage, returning mock customer');
         const mockCustomer = mockCustomers.find(c => c._id === req.params.id) || mockCustomers[0];
         return res.json(mockCustomer);
       }
@@ -63,6 +98,18 @@ const modifiedControllers = {
       return getCustomerById(req, res);
     } catch (error) {
       console.error('Error in getCustomerById:', error.message);
+      
+      // Try to get customer from local storage on error
+      try {
+        const localCustomer = localDataService.findById('customers', req.params.id);
+        if (localCustomer) {
+          return res.json(localCustomer);
+        }
+      } catch (localError) {
+        console.error('Local storage error:', localError.message);
+      }
+      
+      // Fall back to mock customer
       const mockCustomer = mockCustomers.find(c => c._id === req.params.id) || mockCustomers[0];
       res.json(mockCustomer);
     }

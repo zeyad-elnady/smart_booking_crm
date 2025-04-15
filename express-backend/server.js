@@ -2,12 +2,22 @@ const express = require('express');
 const dotenv = require('dotenv');
 const cors = require('cors');
 const morgan = require('morgan');
+const path = require('path');
+const fs = require('fs');
 const connectDB = require('./config/db');
+const localDataService = require('./utils/localDataService');
 
 // Load environment variables
 dotenv.config();
 
+// Create data directory if it doesn't exist
+const DATA_DIR = path.join(__dirname, 'data');
+if (!fs.existsSync(DATA_DIR)) {
+  fs.mkdirSync(DATA_DIR, { recursive: true });
+}
+
 // Connect to database
+console.log('Connecting to database...');
 connectDB();
 
 // Import routes
@@ -45,11 +55,103 @@ if (process.env.NODE_ENV === 'development') {
 
 // Health check route for API connectivity testing
 app.get('/', (req, res) => {
+  const dbStatus = localDataService.isMongoConnected() 
+    ? 'connected' 
+    : 'using local storage';
+  
   res.json({ 
     message: 'Smart Booking CRM API', 
     status: 'online',
+    database: dbStatus,
     timestamp: new Date().toISOString() 
   });
+});
+
+// Database status and operations routes
+app.get('/api/db/status', (req, res) => {
+  const isConnected = localDataService.isMongoConnected();
+  const statusFile = path.join(DATA_DIR, 'db-status.json');
+  let syncStatus = {};
+  
+  // Read sync status if it exists
+  if (fs.existsSync(statusFile)) {
+    try {
+      syncStatus = JSON.parse(fs.readFileSync(statusFile, 'utf8'));
+    } catch (error) {
+      console.error('Error reading status file:', error);
+    }
+  }
+  
+  // Get local storage stats
+  const backupFiles = fs.existsSync(DATA_DIR) 
+    ? fs.readdirSync(DATA_DIR).filter(file => file.startsWith('backup-')).length 
+    : 0;
+  
+  res.json({
+    mongodb: {
+      connected: isConnected,
+      url: isConnected ? process.env.MONGODB_URI : null
+    },
+    localStorage: {
+      available: true,
+      backupCount: backupFiles
+    },
+    lastSync: syncStatus.endTime || null,
+    syncSuccess: syncStatus.success || false
+  });
+});
+
+// Trigger manual database sync
+app.post('/api/db/sync', async (req, res) => {
+  try {
+    // Import the sync function
+    const syncDatabases = require('./scripts/syncDatabases');
+    
+    // Run the sync as a background process
+    res.json({ 
+      message: 'Database synchronization started',
+      status: 'running'
+    });
+    
+    // Execute sync after sending response
+    syncDatabases().then(success => {
+      console.log(`Manual sync completed with status: ${success ? 'success' : 'failed'}`);
+    }).catch(error => {
+      console.error('Manual sync error:', error);
+    });
+  } catch (error) {
+    res.status(500).json({ 
+      message: 'Failed to start synchronization',
+      error: error.message
+    });
+  }
+});
+
+// Export data route
+app.get('/api/db/export', (req, res) => {
+  try {
+    const timestamp = new Date().toISOString().replace(/:/g, '-');
+    const exportPath = path.join(DATA_DIR, `export-${timestamp}.json`);
+    
+    const result = localDataService.exportData(exportPath);
+    
+    if (result.success) {
+      res.json({
+        message: 'Data exported successfully',
+        path: result.path
+      });
+    } else {
+      res.status(500).json({
+        message: 'Export failed',
+        error: result.error
+      });
+    }
+  } catch (error) {
+    res.status(500).json({
+      message: 'Export failed',
+      error: error.message
+    });
+  }
 });
 
 // Mount routes
@@ -77,14 +179,49 @@ app.use((err, req, res, next) => {
   });
 });
 
+// Setup periodic database synchronization
+let syncInterval = null;
+const setupPeriodicSync = () => {
+  // Clear any existing interval
+  if (syncInterval) {
+    clearInterval(syncInterval);
+  }
+  
+  // Set up periodic sync every 15 minutes if MongoDB is connected
+  syncInterval = setInterval(async () => {
+    if (localDataService.isMongoConnected()) {
+      console.log('Running scheduled database synchronization...');
+      try {
+        const syncDatabases = require('./scripts/syncDatabases');
+        await syncDatabases();
+      } catch (error) {
+        console.error('Scheduled sync error:', error);
+      }
+    }
+  }, 15 * 60 * 1000); // 15 minutes
+};
+
 // Start server
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
   console.log(`Server running in ${process.env.NODE_ENV} mode on port ${PORT}`);
   console.log(`API available at http://localhost:${PORT}`);
   
+  // Set up periodic database sync
+  setupPeriodicSync();
+  
+  // Initial database sync if MongoDB is connected
+  if (localDataService.isMongoConnected()) {
+    console.log('Performing initial database synchronization...');
+    const syncDatabases = require('./scripts/syncDatabases');
+    syncDatabases().catch(error => {
+      console.error('Initial sync error:', error);
+    });
+  }
+  
   // Log startup message for debugging
   console.log('==========================================================');
   console.log('Server started successfully with CORS enabled for all origins');
+  console.log('Database mode: ' + (localDataService.isMongoConnected() ? 'MongoDB' : 'Local Storage'));
   console.log('==========================================================');
 }); 

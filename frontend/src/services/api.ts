@@ -13,23 +13,169 @@ const API = axios.create({
 // Debug the API base URL at startup
 console.log('API configured with baseURL:', API.defaults.baseURL);
 
+// Also log environment variables if available
+if (typeof window !== 'undefined') {
+  console.log('Running in browser environment');
+  console.log('Window location:', window.location.origin);
+  // Check if we're running in development or production
+  const isDev = process.env.NODE_ENV === 'development';
+  console.log('Environment:', isDev ? 'development' : 'production');
+  
+  // Check for any custom API URL from environment variables
+  if (process.env.NEXT_PUBLIC_API_URL) {
+    console.log('Environment API URL:', process.env.NEXT_PUBLIC_API_URL);
+  }
+}
+
 // Try to ping the API on startup
 const pingAPI = async () => {
   try {
     console.log('Attempting to connect to API server...');
-    const response = await fetch('http://localhost:5000', { 
+    // Log the full URL we're connecting to
+    const baseUrl = 'http://localhost:5000';
+    console.log('Connecting to:', baseUrl);
+    
+    // First try a basic fetch with detailed error reporting
+    const response = await fetch(baseUrl, { 
       mode: 'cors',
-      credentials: 'omit'  // Avoid CORS issues
+      credentials: 'omit',  // Avoid CORS issues
+      // Add a shorter timeout for faster feedback
+      signal: AbortSignal.timeout(5000)
     });
-    console.log('API server connection:', response.ok ? 'SUCCESS' : 'FAILED', 'Status:', response.status);
+    
+    console.log('API server connection response:', {
+      ok: response.ok,
+      status: response.status,
+      statusText: response.statusText
+    });
+    
+    if (response.ok) {
+      console.log('API server connection: SUCCESS');
+      // Try to get and log the response body for further diagnostics
+      try {
+        const data = await response.text();
+        console.log('API server response body:', data.substring(0, 100) + (data.length > 100 ? '...' : ''));
+        
+        // Now test the appointments endpoint
+        console.log('Testing appointments endpoint...');
+        const appointmentsResponse = await fetch(`${baseUrl}/api/appointments/recent`, {
+          mode: 'cors',
+          credentials: 'omit',
+          signal: AbortSignal.timeout(5000)
+        });
+        
+        console.log('Appointments endpoint response:', {
+          ok: appointmentsResponse.ok,
+          status: appointmentsResponse.status,
+          statusText: appointmentsResponse.statusText
+        });
+        
+        if (appointmentsResponse.ok) {
+          const appointmentsData = await appointmentsResponse.json();
+          console.log('Appointments endpoint data:', appointmentsData);
+          console.log('API connectivity test COMPLETE - All endpoints working properly');
+        } else {
+          console.error('Appointments endpoint test FAILED');
+        }
+      } catch (bodyError) {
+        console.log('Could not read response body:', bodyError.message);
+      }
+    } else {
+      console.error('API server connection FAILED with status:', response.status, response.statusText);
+    }
   } catch (error) {
     console.error('API server connection FAILED:', error.message);
+    
+    // More detailed diagnostics based on error type
+    if (error.name === 'AbortError') {
+      console.error('Connection timed out after 5 seconds');
+    } else if (error.message.includes('Failed to fetch')) {
+      console.error('Network error - server may be down or CORS issue');
+    } else if (error.message.includes('NetworkError')) {
+      console.error('Network error - check if server is running');
+    }
+    
     console.log('Please ensure the backend server is running on port 5000');
+    console.log('Check terminal for backend server logs or errors');
   }
 };
 
 // Execute the ping
 pingAPI();
+
+// Add a function to test API connection that can be called from components
+export const testAPIConnection = async (): Promise<{
+  success: boolean;
+  message: string;
+  details?: any;
+}> => {
+  try {
+    const baseUrl = API.defaults.baseURL.replace('/api', '');
+    console.log('Testing API connection to:', baseUrl);
+    
+    // Test main endpoint
+    const response = await fetch(baseUrl, { 
+      mode: 'cors',
+      credentials: 'omit',
+      signal: AbortSignal.timeout(5000)
+    });
+    
+    if (!response.ok) {
+      return {
+        success: false,
+        message: `API server returned error status: ${response.status} ${response.statusText}`,
+      };
+    }
+    
+    // Test appointments endpoint
+    const appointmentsUrl = `${baseUrl}/api/appointments/recent`;
+    console.log('Testing appointments endpoint:', appointmentsUrl);
+    
+    const appointmentsResponse = await fetch(appointmentsUrl, {
+      mode: 'cors',
+      credentials: 'omit',
+      signal: AbortSignal.timeout(5000)
+    });
+    
+    if (!appointmentsResponse.ok) {
+      return {
+        success: false,
+        message: `Appointments API returned error status: ${appointmentsResponse.status} ${appointmentsResponse.statusText}`,
+      };
+    }
+    
+    const appointmentsData = await appointmentsResponse.json();
+    
+    return {
+      success: true,
+      message: 'API connection successful. All endpoints are working properly.',
+      details: {
+        baseUrl,
+        appointments: appointmentsData.slice(0, 2) // Just return first 2 for brevity
+      }
+    };
+  } catch (error) {
+    console.error('API connection test failed:', error);
+    
+    let errorMessage = 'Unknown connection error';
+    
+    if (error.name === 'AbortError') {
+      errorMessage = 'Connection timed out after 5 seconds';
+    } else if (error.message.includes('Failed to fetch')) {
+      errorMessage = 'Network error - server may be down or CORS issue';
+    } else if (error.message.includes('NetworkError')) {
+      errorMessage = 'Network error - check if server is running';
+    } else {
+      errorMessage = `Error: ${error.message}`;
+    }
+    
+    return {
+      success: false,
+      message: errorMessage,
+      details: { error: error.message }
+    };
+  }
+};
 
 // Add a function to set cookie
 const setCookie = (name: string, value: string, days: number = 30) => {
