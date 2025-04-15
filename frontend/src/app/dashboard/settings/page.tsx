@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import { authAPI } from '@/services/api'
 import { MoonIcon, SunIcon } from '@heroicons/react/24/outline'
+import { useTheme } from '@/components/ThemeProvider'
 
 export default function Settings() {
   const [user, setUser] = useState(null)
@@ -14,8 +15,10 @@ export default function Settings() {
   const [hasServiceLink, setHasServiceLink] = useState(false)
   const [saveSuccess, setSaveSuccess] = useState(false)
   
-  // Appearance settings
-  const [darkMode, setDarkMode] = useState(true)
+  // Get theme from global context
+  const { darkMode, toggleTheme } = useTheme()
+  
+  // Local state for other settings
   const [accentColor, setAccentColor] = useState('purple')
   
   // Notification settings
@@ -34,19 +37,6 @@ export default function Settings() {
     { day: 'Sunday', open: '10:00', close: '15:00', isOpen: false },
   ])
   
-  // Function to apply theme to document
-  const applyTheme = (isDark) => {
-    if (typeof document !== 'undefined') {
-      if (isDark) {
-        document.documentElement.classList.add('dark-theme')
-        document.documentElement.classList.remove('light-theme')
-      } else {
-        document.documentElement.classList.add('light-theme')
-        document.documentElement.classList.remove('dark-theme')
-      }
-    }
-  }
-  
   useEffect(() => {
     // Get current user from localStorage
     const currentUser = authAPI.getCurrentUser()
@@ -62,12 +52,6 @@ export default function Settings() {
       setServiceName(savedServiceName)
       setHasServiceLink(true)
     }
-    
-    // Load saved appearance settings if exists
-    const savedDarkMode = localStorage.getItem('darkMode')
-    const isDarkMode = savedDarkMode === null ? true : savedDarkMode === 'true'
-    setDarkMode(isDarkMode)
-    applyTheme(isDarkMode)
     
     const savedAccentColor = localStorage.getItem('accentColor')
     if (savedAccentColor) {
@@ -121,13 +105,6 @@ export default function Settings() {
     setHasServiceLink(false)
   }
   
-  const handleToggleDarkMode = () => {
-    const newValue = !darkMode
-    setDarkMode(newValue)
-    localStorage.setItem('darkMode', String(newValue))
-    applyTheme(newValue)
-  }
-  
   const handleAccentColorChange = (color) => {
     setAccentColor(color)
     localStorage.setItem('accentColor', color)
@@ -171,7 +148,7 @@ export default function Settings() {
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-[60vh]">
-        <div className="text-white">Loading settings...</div>
+        <div className={darkMode ? 'text-white' : 'text-gray-800'}>Loading settings...</div>
       </div>
     )
   }
@@ -216,7 +193,7 @@ export default function Settings() {
               </p>
             </div>
             <button 
-              onClick={handleToggleDarkMode}
+              onClick={toggleTheme}
               className={`p-2 rounded-lg border ${
                 darkMode 
                   ? 'bg-gray-800 border-gray-700' 

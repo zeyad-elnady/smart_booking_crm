@@ -4,9 +4,12 @@ import Navigation from '@/components/Navigation'
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { authAPI } from '@/services/api'
+import { useTheme } from '@/components/ThemeProvider'
 
 // Background shapes component
 const BackgroundShapes = () => {
+  const { darkMode } = useTheme()
+  
   return (
     <div className="fixed inset-0 -z-10 overflow-hidden pointer-events-none">
       <div className="absolute -top-20 -left-10 w-96 h-96 bg-purple-300 rounded-full mix-blend-multiply filter blur-3xl opacity-20 animate-blob"></div>
@@ -26,6 +29,7 @@ export default function DashboardLayout({
   const [mounted, setMounted] = useState(false)
   const [loading, setLoading] = useState(true)
   const [authorized, setAuthorized] = useState(false)
+  const { darkMode } = useTheme()
   
   useEffect(() => {
     setMounted(true)
@@ -57,9 +61,9 @@ export default function DashboardLayout({
   // Show loading state
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-b from-[#111827] to-[#0f172a] text-white flex items-center justify-center">
+      <div className={`min-h-screen ${darkMode ? 'bg-gradient-to-b from-[#111827] to-[#0f172a] text-white' : 'bg-gradient-to-b from-[#f1f5f9] to-[#e2e8f0] text-gray-800'} flex items-center justify-center`}>
         <div className="text-center">
-          <div className="w-16 h-16 border-4 border-dashed rounded-full animate-spin border-white mx-auto mb-4"></div>
+          <div className={`w-16 h-16 border-4 border-dashed rounded-full animate-spin ${darkMode ? 'border-white' : 'border-indigo-600'} mx-auto mb-4`}></div>
           <p className="text-xl">Loading...</p>
         </div>
       </div>
@@ -70,11 +74,11 @@ export default function DashboardLayout({
   if (!authorized) return null
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-[#111827] to-[#0f172a] text-white">
-      <BackgroundShapes />
-      <Navigation />
+    <div className={`min-h-screen ${darkMode ? 'bg-gradient-to-b from-[#111827] to-[#0f172a] text-white' : 'bg-gradient-to-b from-[#f1f5f9] to-[#e2e8f0] text-gray-800'}`}>
+      {mounted && <BackgroundShapes />}
+      {mounted && <Navigation />}
       <main className="pt-24 pb-10 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto">
-        <div className="glass-dark w-full p-6 sm:p-8 rounded-2xl shadow-xl border border-white/5">
+        <div className={`w-full p-6 sm:p-8 rounded-2xl shadow-xl ${darkMode ? 'glass-dark border border-white/5' : 'glass-light border border-black/5'}`}>
           {children}
         </div>
       </main>

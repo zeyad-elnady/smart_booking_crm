@@ -229,13 +229,13 @@ export default function Dashboard() {
           <h1 className="text-3xl font-bold mb-2 gradient-text">
             Welcome back{user?.name ? `, ${user.name}` : ''}
           </h1>
-          <p className="text-white/80">
+          <p className="text-white/80 dark:text-white/80 light:text-gray-600">
             Here's an overview of {user?.businessName || 'your business'} today
           </p>
         </div>
         <div className="glass p-4 mt-4 md:mt-0 rounded-lg">
-          <p className="text-white text-sm">Today's Date</p>
-          <p className="text-xl font-bold text-white">
+          <p className="text-sm dark:text-white/80 light:text-gray-600">Today's Date</p>
+          <p className="text-xl font-bold dark:text-white light:text-gray-800">
             {new Date().toLocaleDateString('en-US', {
               weekday: 'long',
               year: 'numeric',
@@ -317,59 +317,78 @@ export default function Dashboard() {
         </div>
       )}
 
-      <div className="flex justify-between items-center">
-        <h2 className="text-xl font-semibold text-white">Business Statistics</h2>
-        <div className="flex items-center">
-          {lastUpdated && (
-            <span className="text-sm text-gray-400 mr-3">
-              Last updated: {lastUpdated.toLocaleTimeString()}
-            </span>
-          )}
-          <button 
-            onClick={handleRefreshStats}
-            disabled={refreshing}
-            className="flex items-center px-3 py-1.5 bg-gray-800 hover:bg-gray-700 text-white text-sm rounded-md transition-colors"
-          >
-            <ArrowPathIcon className={`h-4 w-4 mr-1.5 ${refreshing ? 'animate-spin' : ''}`} />
-            Refresh
-          </button>
-        </div>
-      </div>
-
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-        {statDefinitions.map((stat, index) => (
-          <div 
-            key={stat.id} 
-            className="glass-card hover:scale-105 transition-transform duration-300"
-            style={{ 
-              animationDelay: `${index * 150}ms`,
-              opacity: loading ? 0 : 1,
-              animation: 'fadeIn 0.6s forwards'
-            }}
-          >
-            <div className={`rounded-lg p-5 relative overflow-hidden`}>
-              <div className={`absolute inset-0 opacity-10 bg-gradient-to-br ${stat.color}`}></div>
-              <div className="relative z-10">
-                <div className={`inline-flex rounded-lg bg-gradient-to-br ${stat.color} p-3 text-white mb-4`}>
-                  <stat.icon className="h-6 w-6" aria-hidden="true" />
-                </div>
-                <div className="mt-2">
-                  <p className="text-sm font-medium text-gray-300">
-                    {stat.name}
-                  </p>
-                  
-                  {loading ? (
-                    <div className="h-9 mt-1 bg-gray-800/40 animate-pulse rounded"></div>
-                  ) : (
-                    <p className="text-3xl font-semibold text-white">
-                      {stats ? stat.format(stats[stat.id as keyof DashboardStats]) : '0'}
-                    </p>
-                  )}
-                </div>
-              </div>
+      <div className="space-y-4">
+        <div className="flex items-center justify-between">
+          <h2 className="text-xl font-semibold dark:text-white light:text-gray-800">
+            Business Statistics
+          </h2>
+          <div className="flex items-center">
+            <div className="text-sm mr-4 dark:text-gray-300 light:text-gray-600">
+              {lastUpdated ? (
+                <>Last Updated: {lastUpdated.toLocaleTimeString()}</>
+              ) : (
+                "Loading..."
+              )}
             </div>
+            <button
+              onClick={handleRefreshStats}
+              className="p-2 rounded-full hover:bg-gray-700/20 transition-colors"
+              disabled={refreshing}
+              aria-label="Refresh stats"
+            >
+              <ArrowPathIcon 
+                className={`h-5 w-5 dark:text-white light:text-gray-700 ${refreshing ? 'animate-spin' : ''}`} 
+              />
+            </button>
           </div>
-        ))}
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          {loading ? (
+            // Loading skeleton
+            <>
+              {[...Array(4)].map((_, i) => (
+                <div key={i} className="glass p-6 rounded-xl h-40 animate-pulse">
+                  <div className="h-6 bg-gray-300/10 rounded w-1/2 mb-4"></div>
+                  <div className="h-10 bg-gray-300/10 rounded w-1/3"></div>
+                </div>
+              ))}
+            </>
+          ) : (
+            <>
+              {statDefinitions.map((stat, index) => {
+                // Determine CSS class for card background based on color
+                let cardBgClass = '';
+                if (stat.color.includes('blue')) cardBgClass = 'card-blue-bg';
+                else if (stat.color.includes('purple')) cardBgClass = 'card-purple-bg';
+                else if (stat.color.includes('green')) cardBgClass = 'card-green-bg';
+                else if (stat.color.includes('amber')) cardBgClass = 'card-amber-bg';
+                
+                // Get stat value
+                const value = stats ? stats[stat.id] : 0;
+                
+                return (
+                  <div 
+                    key={stat.id} 
+                    className={`glass rounded-xl p-6 ${cardBgClass}`}
+                  >
+                    <div className="flex items-center mb-4">
+                      <div className={`p-3 rounded-lg bg-gradient-to-br ${stat.color} mr-3`}>
+                        <stat.icon className="h-6 w-6 text-white" aria-hidden="true" />
+                      </div>
+                      <h3 className="stat-label text-sm font-medium">
+                        {stat.name}
+                      </h3>
+                    </div>
+                    <div className="stat-value text-4xl">
+                      {stat.format(value)}
+                    </div>
+                  </div>
+                );
+              })}
+            </>
+          )}
+        </div>
       </div>
 
       <div className="mt-8">

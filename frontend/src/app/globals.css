@@ -38,6 +38,118 @@ body {
   will-change: scroll-position;
 }
 
+/* BEGINNING OF ADDED CSS RULES */
+
+/* Light theme text fixes */
+.light-theme .gradient-text {
+  background-image: linear-gradient(45deg, var(--gradient-text-from, #3a026e), var(--gradient-text-to, #083b8c)) !important;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  text-shadow: none;
+}
+
+/* Fix conditional text coloring */
+.light-theme .text-white {
+  color: #1e293b !important;
+}
+
+.light-theme .text-white\/80 {
+  color: rgba(30, 41, 59, 0.8) !important;
+}
+
+.light-theme .text-gray-300 {
+  color: rgba(30, 41, 59, 0.7) !important;
+}
+
+.light-theme .text-gray-400 {
+  color: rgba(30, 41, 59, 0.6) !important;
+}
+
+/* Fix card styling in light theme */
+.light-theme .glass {
+  background: rgba(255, 255, 255, 0.7) !important;
+  border: 1px solid rgba(0, 0, 0, 0.1) !important;
+  box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.15) !important;
+  color: #1e293b !important;
+}
+
+.light-theme .glass-card {
+  background: rgba(255, 255, 255, 0.7) !important;
+  border: 1px solid rgba(0, 0, 0, 0.1) !important;
+  box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.15) !important;
+}
+
+.light-theme .glass-card:hover {
+  transform: translateY(-8px);
+  box-shadow: 0 12px 36px 0 rgba(31, 38, 135, 0.2) !important;
+}
+
+/* Fix color utilities for light theme */
+@media (min-width: 1024px) {
+  .light-theme .lg\:text-white {
+    color: #1e293b !important;
+  }
+
+  .light-theme .lg\:text-gray-300 {
+    color: rgba(30, 41, 59, 0.7) !important;
+  }
+}
+
+/* Ensure tables have proper contrast in light theme */
+.light-theme table th {
+  color: #1e293b !important;
+}
+
+.light-theme table td {
+  color: #334155 !important;
+}
+
+/* Dashboard Stat Cards */
+.light-theme .card-blue-bg,
+.light-theme .card-purple-bg,
+.light-theme .card-green-bg,
+.light-theme .card-amber-bg {
+  background-color: rgba(255, 255, 255, 0.8) !important;
+  border: 1px solid rgba(0, 0, 0, 0.1) !important;
+}
+
+.light-theme .stat-label {
+  color: rgba(30, 41, 59, 0.7) !important;
+}
+
+.light-theme .stat-value {
+  color: #1e293b !important;
+}
+
+/* Override background colors for light theme */
+.light-theme [class*="bg-gray-800"] {
+  background-color: #e2e8f0 !important;
+}
+
+.light-theme [class*="bg-gray-700"] {
+  background-color: #f1f5f9 !important;
+}
+
+.light-theme .bg-white\/10 {
+  background-color: rgba(30, 41, 59, 0.1) !important;
+}
+
+.light-theme .bg-white\/5 {
+  background-color: rgba(30, 41, 59, 0.05) !important;
+}
+
+/* Fix hover effects in light theme */
+.light-theme .hover\:bg-gray-700:hover {
+  background-color: #e2e8f0 !important;
+}
+
+.light-theme .hover\:bg-gray-700\/20:hover {
+  background-color: rgba(30, 41, 59, 0.1) !important;
+}
+
+/* END OF ADDED CSS RULES */
+
 /* Glassmorphism Styles - Optimized */
 .glass {
   background: rgba(255, 255, 255, 0.15);
