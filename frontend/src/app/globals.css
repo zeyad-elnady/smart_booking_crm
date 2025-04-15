@@ -50,20 +50,39 @@ body {
 }
 
 /* Fix conditional text coloring */
-.light-theme .text-white {
+.light-theme .text-white,
+.light-theme .dark\:text-white {
   color: #1e293b !important;
 }
 
-.light-theme .text-white\/80 {
+.light-theme .text-white\/80,
+.light-theme .dark\:text-white\/80 {
   color: rgba(30, 41, 59, 0.8) !important;
 }
 
-.light-theme .text-gray-300 {
+.light-theme .text-gray-300,
+.light-theme .dark\:text-gray-300 {
   color: rgba(30, 41, 59, 0.7) !important;
 }
 
-.light-theme .text-gray-400 {
+.light-theme .text-gray-400,
+.light-theme .dark\:text-gray-400 {
   color: rgba(30, 41, 59, 0.6) !important;
+}
+
+/* Fix specific dashboard elements for light theme */
+.light-theme p.text-sm.dark\:text-white\/80 {
+  color: rgba(30, 41, 59, 0.8) !important;
+}
+
+.light-theme p.text-xl.font-bold.dark\:text-white {
+  color: #1e293b !important;
+}
+
+.light-theme h2.text-xl.font-semibold.dark\:text-white,
+.light-theme h2.text-xl.font-semibold.mb-6.text-white,
+.light-theme h2.text-xl.font-semibold {
+  color: #1e293b !important;
 }
 
 /* Fix card styling in light theme */
@@ -115,11 +134,11 @@ body {
 }
 
 .light-theme .stat-label {
-  color: rgba(30, 41, 59, 0.7) !important;
+  color: #1e293b !important;
 }
 
 .light-theme .stat-value {
-  color: #1e293b !important;
+  color: #0f172a !important;
 }
 
 /* Override background colors for light theme */
@@ -421,4 +440,554 @@ select option {
   color: white !important;
   padding: 8px !important;
   z-index: 9999 !important;
+}
+
+/* Add specific fixes for customer and service add pages in light theme */
+
+.light-theme .min-h-\[calc\(100vh-4rem\)\].bg-gradient-to-br.from-gray-900.via-purple-900\/30.to-gray-900 {
+  background: linear-gradient(to bottom right, #f1f5f9, #e0e7ff, #f1f5f9) !important;
+}
+
+.light-theme .bg-gray-900\/40,
+.light-theme .bg-gray-900\/60 {
+  background-color: rgba(255, 255, 255, 0.9) !important;
+  border: 1px solid rgba(0, 0, 0, 0.1) !important;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05) !important;
+}
+
+.light-theme .form-container {
+  background-color: rgba(255, 255, 255, 0.95) !important;
+  border: 1px solid rgba(0, 0, 0, 0.08) !important;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.08) !important;
+}
+
+/* Fix text colors in info panels */
+.light-theme .sticky.top-6 h2.text-white,
+.light-theme .sticky.top-6 h3.text-white,
+.light-theme h3.text-white.font-medium {
+  color: #1e293b !important;
+}
+
+.light-theme .sticky.top-6 p.text-gray-300,
+.light-theme p.text-gray-300 {
+  color: #475569 !important;
+}
+
+.light-theme .sticky.top-6 p.text-gray-400,
+.light-theme .sticky.top-6 p.text-sm.text-gray-400,
+.light-theme p.text-gray-400,
+.light-theme p.text-sm.text-gray-400 {
+  color: #64748b !important;
+}
+
+/* Fix tip boxes */
+.light-theme .bg-indigo-500\/10 {
+  background-color: rgba(99, 102, 241, 0.05) !important;
+  border-color: rgba(99, 102, 241, 0.2) !important;
+}
+
+.light-theme .sticky.top-6 p.text-sm.text-gray-300,
+.light-theme p.text-sm.text-gray-300 {
+  color: #4338ca !important;
+}
+
+/* Fix form elements */
+.light-theme .w-full.rounded-lg.border.border-white\/10.bg-gray-900,
+.light-theme input[type="text"].w-full.rounded-lg.border.border-white\/10.bg-gray-900,
+.light-theme input[type="email"].w-full.rounded-lg.border.border-white\/10.bg-gray-900,
+.light-theme textarea.w-full.rounded-lg.border.border-white\/10.bg-gray-900 {
+  background-color: white !important;
+  border: 1px solid #e2e8f0 !important;
+  color: #1e293b !important;
+}
+
+.light-theme input.w-full.rounded-lg.border.border-white\/10.bg-gray-900::placeholder,
+.light-theme textarea.w-full.rounded-lg.border.border-white\/10.bg-gray-900::placeholder {
+  color: #94a3b8 !important;
+}
+
+.light-theme input.h-4.w-4.rounded.border-white\/10.bg-gray-900.text-indigo-600 {
+  border: 1px solid #cbd5e1 !important;
+  background-color: white !important;
+}
+
+.light-theme .form-container label.text-gray-300,
+.light-theme label.block.mb-2.text-sm.font-medium.text-gray-300 {
+  color: #475569 !important; 
+}
+
+/* Fix button styles */
+.light-theme .flex.items-center.text-gray-300.hover\:text-white {
+  color: #4b5563 !important;
+}
+
+.light-theme .flex.items-center.text-gray-300.hover\:text-white:hover {
+  color: #1e293b !important;
+}
+
+/* Fix submit buttons in forms */
+.light-theme button.w-full.py-3.px-4.rounded-lg.font-medium.transition-all.duration-300.bg-purple-800\/80.backdrop-blur-sm.hover\:bg-purple-900\/90 {
+  background-color: rgba(126, 34, 206, 0.9) !important;
+  border: 1px solid rgba(126, 34, 206, 0.3) !important;
+  color: white !important;
+  box-shadow: 0 4px 6px rgba(126, 34, 206, 0.2) !important;
+}
+
+.light-theme button.w-full.py-3.px-4.rounded-lg.font-medium.transition-all.duration-300.bg-purple-800\/80.backdrop-blur-sm.hover\:bg-purple-900\/90:hover {
+  background-color: rgba(107, 33, 168, 0.95) !important;
+  box-shadow: 0 6px 8px rgba(126, 34, 206, 0.3) !important;
+}
+
+/* Fix border colors in left side panels */
+.light-theme .border-l-2.border-indigo-500,
+.light-theme .border-l-2.border-purple-500,
+.light-theme .border-l-2.border-pink-500 {
+  border-left-width: 2px;
+}
+
+/* Fix background decorative elements */
+.light-theme .absolute.top-0.right-0.w-1\/3.h-1\/3.bg-indigo-500\/10,
+.light-theme .absolute.bottom-0.left-0.w-1\/2.h-1\/2.bg-purple-500\/10 {
+  opacity: 0.3 !important;
+}
+
+/* Fix error message styling */
+.light-theme .mb-6.p-4.bg-red-500\/10.backdrop-blur-sm.border.border-red-500\/20.rounded-lg {
+  background-color: rgba(239, 68, 68, 0.05) !important;
+  border-color: rgba(239, 68, 68, 0.2) !important;
+}
+
+.light-theme .mb-6.p-4.bg-red-500\/10.backdrop-blur-sm.border.border-red-500\/20.rounded-lg p.text-red-400 {
+  color: rgb(220, 38, 38) !important;
+}
+
+/* Fix heading with gradient text */
+.light-theme h1.text-3xl.font-bold.mb-8.bg-gradient-to-r.from-indigo-400.via-purple-400.to-pink-400.bg-clip-text.text-transparent {
+  background: linear-gradient(to right, #4f46e5, #8b5cf6, #ec4899) !important;
+  -webkit-background-clip: text !important;
+  background-clip: text !important;
+  color: transparent !important;
+  text-shadow: none !important;
+}
+
+/* Light theme dashboard text fixes */
+.light-theme .stat-label {
+  color: #1e293b !important;
+}
+
+.light-theme .stat-value {
+  color: #0f172a !important;
+}
+
+/* Fix recent appointments heading */
+.light-theme h2.text-xl.font-semibold.text-white {
+  color: #1e293b !important;
+}
+
+/* Fix welcome message */
+.light-theme p.text-white\/80.dark\:text-white\/80.light\:text-gray-600 {
+  color: rgba(30, 41, 59, 0.8) !important;
+}
+
+.light-theme .glass p.text-sm.dark\:text-white\/80.light\:text-gray-600 {
+  color: rgba(30, 41, 59, 0.8) !important;
+}
+
+.light-theme .glass p.text-xl.font-bold.dark\:text-white.light\:text-gray-800 {
+  color: #1e293b !important;
+}
+
+/* Force text colors for specific dashboard elements in light mode */
+.light-theme .text-white {
+  color: #1e293b !important;
+}
+
+.light-theme div.text-sm.mr-4.dark\:text-gray-300.light\:text-gray-600 {
+  color: rgba(30, 41, 59, 0.7) !important;
+}
+
+/* Fix dashboard date and section headers text visibility in light mode */
+.light-theme .glass p.text-sm.dark\:text-white\/80 {
+  color: rgba(30, 41, 59, 0.8) !important;
+}
+
+.light-theme .glass p.text-xl.font-bold.dark\:text-white {
+  color: #1e293b !important;
+}
+
+.light-theme h2.text-xl.font-semibold.dark\:text-white.light\:text-gray-800 {
+  color: #1e293b !important;
+}
+
+.light-theme p.text-white\/80.dark\:text-white\/80.light\:text-gray-600 {
+  color: rgba(30, 41, 59, 0.8) !important;
+}
+
+.light-theme h2.text-xl.font-semibold.mb-6.text-white {
+  color: #1e293b !important;
+}
+
+/* Fix color of last updated text */
+.light-theme .text-sm.mr-4.dark\:text-gray-300.light\:text-gray-600 {
+  color: rgba(30, 41, 59, 0.7) !important;
+}
+
+/* Fixed Dashboard Date Display */
+.light-theme .glass p.text-sm.dark\:text-white\/80,
+.light-theme .glass p.text-sm.dark\:text-white\/80.light\:text-gray-600 {
+  color: #1e293b !important;
+  font-weight: 600 !important;
+}
+
+.light-theme .glass p.text-xl.font-bold.dark\:text-white,
+.light-theme .glass p.text-xl.font-bold.dark\:text-white.light\:text-gray-800 {
+  color: #0f172a !important;
+  font-weight: 700 !important;
+}
+
+.light-theme h2.text-xl.font-semibold,
+.light-theme h2.text-xl.font-semibold.dark\:text-white,
+.light-theme h2.text-xl.font-semibold.dark\:text-white.light\:text-gray-800,
+.light-theme h2.text-xl.font-semibold.mb-6.text-white,
+.light-theme h2.text-xl.font-semibold.text-white {
+  color: #0f172a !important;
+  font-weight: 700 !important;
+}
+
+/* Fix dropdown and select components in light mode */
+.light-theme .dark-input {
+  background-color: white !important;
+  border: 1px solid #e2e8f0 !important;
+  color: #1e293b !important;
+}
+
+/* Override inline background color from style attribute */
+.light-theme button[style*="background-color"] {
+  background-color: white !important;
+}
+
+.light-theme .dark-input span.text-gray-400 {
+  color: #64748b !important;
+}
+
+.light-theme .dark-input span.text-white {
+  color: #1e293b !important;
+}
+
+.light-theme .dark-input svg.text-gray-400 {
+  color: #64748b !important;
+}
+
+.light-theme button.dark-input:hover,
+.light-theme select.dark-input:hover {
+  border-color: #cbd5e1 !important;
+}
+
+.light-theme button.dark-input:focus,
+.light-theme select.dark-input:focus {
+  border-color: #818cf8 !important;
+  box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.2) !important;
+}
+
+/* Fix regular dropdown button styles in light mode */
+.light-theme button.w-full.flex.items-center.justify-between.rounded-lg.border.border-white\/10.bg-gray-900 {
+  background-color: white !important;
+  border: 1px solid #e2e8f0 !important;
+  color: #1e293b !important;
+}
+
+.light-theme button.w-full.flex.items-center.justify-between.rounded-lg.border.border-white\/10.bg-gray-900 span {
+  color: #1e293b !important;
+}
+
+.light-theme button.w-full.flex.items-center.justify-between.rounded-lg.border.border-white\/10.bg-gray-900 .h-4.w-4 {
+  color: #64748b !important;
+}
+
+/* Fix dropdown menu in light mode */
+.light-theme .absolute.z-50.mt-1.w-full.rounded-md.bg-gray-800.border.border-white\/10.shadow-lg {
+  background-color: white !important;
+  border: 1px solid #e2e8f0 !important;
+}
+
+.light-theme .absolute.z-50.mt-1.w-full.rounded-md.bg-gray-800.border.border-white\/10.shadow-lg li {
+  color: #1e293b !important;
+}
+
+.light-theme .absolute.z-50.mt-1.w-full.rounded-md.bg-gray-800.border.border-white\/10.shadow-lg li:hover {
+  background-color: #f1f5f9 !important;
+}
+
+/* Fix CustomDropdown component dropdown menu in light mode */
+.light-theme div[style*="background-color: rgba(17, 24, 39, 0.95)"] {
+  background-color: white !important;
+  border: 1px solid #e2e8f0 !important;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -2px rgba(0, 0, 0, 0.05) !important;
+}
+
+/* Fix dropdown option colors in light mode */
+.light-theme div[style*="background-color: rgba(17, 24, 39, 0.95)"] div.px-4.py-2 {
+  color: #1e293b !important;
+}
+
+.light-theme div[style*="background-color: rgba(17, 24, 39, 0.95)"] div.px-4.py-2.text-gray-200:hover {
+  background-color: #f1f5f9 !important;
+}
+
+.light-theme div[style*="background-color: rgba(17, 24, 39, 0.95)"] div.px-4.py-2.bg-indigo-500\/20 {
+  background-color: rgba(99, 102, 241, 0.1) !important;
+  color: #4f46e5 !important;
+}
+
+/* Fix main landing page container in light mode - more specific selector */
+.light-theme div.glass.text-center.p-12.mb-12.w-full.max-w-4xl.mx-auto.border.border-opacity-20 {
+  background: rgba(255, 255, 255, 0.9) !important;
+  border: 1px solid rgba(0, 0, 0, 0.1) !important;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1) !important;
+}
+
+/* Fix "Learn More" button in light mode */
+.light-theme a.glass.hover\:bg-white\/10.border.border-white.border-opacity-20.text-white {
+  background-color: rgba(255, 255, 255, 0.7) !important;
+  border: 1px solid rgba(0, 0, 0, 0.15) !important;
+  color: #1e293b !important;
+}
+
+.light-theme a.glass.hover\:bg-white\/10.border.border-white.border-opacity-20.text-white:hover {
+  background-color: rgba(0, 0, 0, 0.05) !important;
+}
+
+/* Fix "Get Started" button in light mode - keep gradient but improve contrast */
+.light-theme a.glass-dark.bg-gradient-to-r.from-purple-600.to-blue-500 {
+  background: linear-gradient(to right, #6d28d9, #3b82f6) !important;
+  border: none !important;
+  color: white !important;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06) !important;
+}
+
+/* Fix the landing page background in light mode */
+.light-theme .min-h-screen.bg-gradient-to-br.from-gray-900.via-purple-900\/30.to-gray-900 {
+  background: linear-gradient(135deg, #f0f4ff, #e0e7ff, #f0f4ff) !important;
+}
+
+/* Fix landing page content container */
+.light-theme .min-h-screen.bg-gradient-to-br.from-gray-900.via-purple-900\/30.to-gray-900 .mt-12 {
+  color: #1e293b !important;
+}
+
+/* Fix landing page heading in light mode */
+.light-theme .text-4xl.font-bold.tracking-tight.text-white.sm\:text-5xl.md\:text-6xl,
+.light-theme .text-3xl.font-bold.tracking-tight.text-white.sm\:text-4xl.md\:text-5xl {
+  color: #1e293b !important;
+}
+
+/* Fix landing page paragraph text in light mode */
+.light-theme .text-xl.text-gray-300,
+.light-theme .text-lg.text-gray-300 {
+  color: #475569 !important;
+}
+
+/* Fix landing page hero container */
+.light-theme .glass.text-center.p-12.mb-12.w-full.max-w-4xl.mx-auto {
+  background: rgba(255, 255, 255, 0.85) !important;
+  border: 1px solid rgba(0, 0, 0, 0.1) !important;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1) !important;
+}
+
+/* Fix more background issues in light mode for pages */
+.light-theme .min-h-screen.bg-gradient-to-br.from-gray-900.to-gray-950.p-0,
+.light-theme .bg-gradient-to-br.from-gray-900.to-gray-950 {
+  background: linear-gradient(135deg, #f8fafc, #f1f5f9) !important;
+}
+
+/* Fix Add Customer page styles in light theme */
+.light-theme .min-h-\[calc\(100vh-4rem\)\].bg-gradient-to-br.from-gray-900.via-purple-900\/30.to-gray-900 {
+  background: linear-gradient(to bottom right, #f1f5f9, #e0e7ff, #f1f5f9) !important;
+}
+
+.light-theme .min-h-\[calc\(100vh-4rem\)\].bg-gradient-to-br.from-gray-900.via-purple-900\/30.to-gray-900 .absolute.top-0.right-0.w-1\/3.h-1\/3.bg-indigo-500\/10 {
+  background-color: rgba(99, 102, 241, 0.1) !important;
+}
+
+.light-theme .min-h-\[calc\(100vh-4rem\)\].bg-gradient-to-br.from-gray-900.via-purple-900\/30.to-gray-900 .absolute.bottom-0.left-0.w-1\/2.h-1\/2.bg-purple-500\/10 {
+  background-color: rgba(168, 85, 247, 0.1) !important;
+}
+
+/* Fix form input styles */
+.light-theme input[type="text"],
+.light-theme input[type="email"],
+.light-theme input[type="tel"],
+.light-theme input[type="number"],
+.light-theme textarea,
+.light-theme select {
+  background-color: white !important;
+  border: 1px solid #e2e8f0 !important;
+  color: #1e293b !important;
+}
+
+.light-theme input::placeholder,
+.light-theme textarea::placeholder {
+  color: #94a3b8 !important;
+}
+
+/* Fix calendar picker icon in inputs */
+.light-theme input[type="date"]::-webkit-calendar-picker-indicator,
+.light-theme input[type="time"]::-webkit-calendar-picker-indicator {
+  filter: invert(0.5) !important;
+}
+
+/* Fix specific form elements */
+.light-theme label {
+  color: #475569 !important;
+}
+
+.light-theme span.text-pink-500 {
+  color: #db2777 !important;
+}
+
+/* Fix form container hover effect in light mode */
+.light-theme .form-container:hover {
+  box-shadow: 0 25px 50px -12px rgba(79, 70, 229, 0.1) !important;
+}
+
+/* Fix specific buttons in forms */
+.light-theme .flex.items-center.text-gray-300.hover\:text-white.mb-4.transition-colors {
+  color: #475569 !important;
+}
+
+.light-theme .flex.items-center.text-gray-300.hover\:text-white.mb-4.transition-colors:hover {
+  color: #1e293b !important;
+}
+
+.light-theme .flex.items-center.text-gray-300.hover\:text-white.mb-4.transition-colors svg {
+  color: #475569 !important;
+}
+
+.light-theme .flex.items-center.text-gray-300.hover\:text-white.mb-4.transition-colors:hover svg {
+  color: #1e293b !important;
+}
+
+/* Target scrollbars in light mode */
+.light-theme ::-webkit-scrollbar-track {
+  background: rgba(15, 23, 42, 0.05) !important;
+}
+
+.light-theme ::-webkit-scrollbar-thumb {
+  background: rgba(99, 102, 241, 0.2) !important;
+}
+
+.light-theme ::-webkit-scrollbar-thumb:hover {
+  background: rgba(99, 102, 241, 0.3) !important;
+}
+
+/* Fix form input and label styling in light mode for Add Customer and Add Service pages */
+.light-theme input[type="text"],
+.light-theme input[type="email"],
+.light-theme input[type="tel"],
+.light-theme input[type="number"],
+.light-theme input[type="color"],
+.light-theme select,
+.light-theme textarea {
+  background-color: #f8fafc !important;
+  border-color: #cbd5e1 !important;
+  color: #334155 !important;
+}
+
+.light-theme input[type="text"]:focus,
+.light-theme input[type="email"]:focus,
+.light-theme input[type="tel"]:focus,
+.light-theme input[type="number"]:focus,
+.light-theme input[type="color"]:focus,
+.light-theme select:focus,
+.light-theme textarea:focus {
+  border-color: #7c3aed !important;
+  box-shadow: 0 0 0 3px rgba(124, 58, 237, 0.2) !important;
+}
+
+.light-theme .relative .left-3 {
+  color: #64748b !important;
+}
+
+/* Fix form container styling */
+.light-theme div[class*="lg:w-2/3"] {
+  background-color: rgba(255, 255, 255, 0.9) !important;
+  border-color: rgba(0, 0, 0, 0.1) !important;
+  box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.15) !important;
+}
+
+.light-theme div[class*="lg:w-1/3"] {
+  background-color: rgba(255, 255, 255, 0.9) !important;
+  border-color: rgba(0, 0, 0, 0.1) !important;
+  box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.15) !important;
+}
+
+/* Fix dropdown styling in light mode */
+.light-theme div[class*="absolute z-10 mt-1"] {
+  background-color: white !important;
+  border-color: #e2e8f0 !important;
+  color: #334155 !important;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06) !important;
+}
+
+.light-theme div[class*="absolute z-10 mt-1"] button {
+  color: #334155 !important;
+}
+
+.light-theme div[class*="absolute z-10 mt-1"] button:hover {
+  background-color: #f1f5f9 !important;
+}
+
+/* Fix form buttons and controls */
+.light-theme button[type="submit"],
+.light-theme button[type="button"] {
+  background-color: #6d28d9 !important;
+  color: white !important;
+}
+
+.light-theme button[type="submit"]:hover,
+.light-theme button[type="button"]:hover {
+  background-color: #5b21b6 !important;
+}
+
+/* Fix the colored info panels */
+.light-theme div[class*="bg-blue-900/30"],
+.light-theme div[class*="bg-purple-900/30"],
+.light-theme div[class*="bg-emerald-900/30"] {
+  background-color: var(--card-color, rgba(255, 255, 255, 0.9)) !important;
+  border: 1px solid rgba(0, 0, 0, 0.1) !important;
+}
+
+.light-theme div[class*="bg-blue-900/30"] {
+  --card-color: rgba(219, 234, 254, 0.7) !important;
+}
+
+.light-theme div[class*="bg-purple-900/30"] {
+  --card-color: rgba(237, 233, 254, 0.7) !important;
+}
+
+.light-theme div[class*="bg-emerald-900/30"] {
+  --card-color: rgba(209, 250, 229, 0.7) !important;
+}
+
+/* Ensure placeholder text has proper contrast */
+.light-theme input::placeholder {
+  color: #94a3b8 !important;
+}
+
+/* Fix the page background for add customer and add service pages */
+.light-theme .p-6.w-full {
+  background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%) !important;
+}
+
+/* Override any unwanted dark mode specific styling */
+.light-theme .bg-gray-800 {
+  background-color: #f1f5f9 !important;
+}
+
+.light-theme .border-gray-700 {
+  border-color: #cbd5e1 !important;
+}
+
+.light-theme .border-white\/10 {
+  border-color: rgba(0, 0, 0, 0.1) !important;
 }

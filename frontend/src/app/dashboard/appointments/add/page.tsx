@@ -234,282 +234,266 @@ export default function AddAppointment() {
   ]
 
   return (
-    <div className="min-h-[calc(100vh-4rem)] bg-gradient-to-br from-gray-900 via-purple-900/30 to-gray-900 p-0 relative">
-      {/* Decorative elements */}
-      <div className="absolute top-0 right-0 w-1/3 h-1/3 bg-indigo-500/10 rounded-full blur-3xl"></div>
-      <div className="absolute bottom-0 left-0 w-1/2 h-1/2 bg-purple-500/10 rounded-full blur-3xl"></div>
-      
-      {/* Navigation */}
-      <div className="p-6">
-        <button 
-          onClick={() => router.push('/dashboard/appointments')}
-          className="flex items-center text-gray-300 hover:text-white mb-4 transition-colors"
+    <div className="p-6 w-full">
+      <div className="mb-6 flex items-center">
+        <button
+          onClick={() => router.back()}
+          className="mr-4 rounded-full p-2 transition hover:bg-white/10"
         >
-          <ArrowLeftIcon className="h-4 w-4 mr-2" />
-          <span>Back to appointments</span>
+          <ArrowLeftIcon className="h-6 w-6" />
         </button>
-      
-        {/* Main content */}
-        <div className="grid grid-cols-1 lg:grid-cols-[1fr,2fr] gap-8 max-w-7xl mx-auto">
-          {/* Left side - Info panel */}
-          <div className="hidden lg:block">
-            <div className="sticky top-6 bg-gray-900/40 backdrop-blur-md rounded-2xl p-6 border border-white/10 shadow-xl">
-              <h2 className="text-xl font-bold text-white mb-4">Schedule a New Appointment</h2>
-              <p className="text-gray-300 mb-6">Create a new appointment by filling out the form. All fields marked with an asterisk (*) are required.</p>
-              
-              <div className="space-y-6">
-                <div className="border-l-2 border-indigo-500 pl-4">
-                  <h3 className="text-white font-medium">Customer Selection</h3>
-                  <p className="text-gray-400 text-sm">Choose the customer for this appointment.</p>
-                </div>
-                
-                <div className="border-l-2 border-purple-500 pl-4">
-                  <h3 className="text-white font-medium">Service Details</h3>
-                  <p className="text-gray-400 text-sm">Select the service and specify duration.</p>
-                </div>
-                
-                <div className="border-l-2 border-pink-500 pl-4">
-                  <h3 className="text-white font-medium">Date & Time</h3>
-                  <p className="text-gray-400 text-sm">When will this appointment take place?</p>
-                </div>
-              </div>
-              
-              <div className="mt-8 p-4 bg-indigo-500/10 rounded-xl border border-indigo-500/20">
-                <p className="text-sm text-gray-300">Need to add a new customer or service first?</p>
-                <div className="mt-3 flex space-x-3">
-                  <Link href="/dashboard/customers/add" className="text-xs px-3 py-2 bg-gray-800/50 hover:bg-gray-800 rounded-lg text-gray-200 transition-colors">
-                    Add Customer
-                  </Link>
-                  <Link href="/dashboard/services/add" className="text-xs px-3 py-2 bg-gray-800/50 hover:bg-gray-800 rounded-lg text-gray-200 transition-colors">
-                    Add Service
-                  </Link>
-                </div>
-              </div>
-            </div>
-          </div>
-          
-          {/* Right side - Form */}
-          <div className="form-container bg-gray-900/60 backdrop-blur-md rounded-2xl p-8 border border-white/10 shadow-2xl">
-            <h1 className="text-3xl font-bold mb-8 bg-gradient-to-r from-indigo-400 via-purple-400 to-pink-400 bg-clip-text text-transparent">
-              Schedule New Appointment
-            </h1>
+        <h1 className="text-2xl font-bold">Schedule New Appointment</h1>
+      </div>
 
-            <form onSubmit={handleSubmit} className="space-y-8">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div>
-                  <label htmlFor="customer" className="block mb-2 text-sm font-medium text-gray-300">
-                    Customer <span className="text-pink-500">*</span>
-                  </label>
-                  <CustomDropdown
-                    id="customer"
-                    name="customerId"
-                    value={formData.customerId}
-                    onChange={(value) => handleDropdownChange('customerId', value)}
-                    required
-                    placeholder="Select a customer"
-                    options={customerOptions}
-                  />
-                  {formErrors.customerId && (
-                    <p className="mt-1 text-sm text-pink-500">{formErrors.customerId}</p>
-                  )}
-                </div>
-
-                <div>
-                  <label htmlFor="service" className="block mb-2 text-sm font-medium text-gray-300">
-                    Service <span className="text-pink-500">*</span>
-                  </label>
-                  <CustomDropdown
-                    id="service"
-                    name="serviceId"
-                    value={formData.serviceId}
-                    onChange={(value) => handleDropdownChange('serviceId', value)}
-                    required
-                    placeholder="Select a service"
-                    options={serviceOptions}
-                  />
-                  {formErrors.serviceId && (
-                    <p className="mt-1 text-sm text-pink-500">{formErrors.serviceId}</p>
-                  )}
-                </div>
-
-                <div>
-                  <label htmlFor="date" className="block mb-2 text-sm font-medium text-gray-300">
-                    Date <span className="text-pink-500">*</span>
-                  </label>
-                  <div className="relative">
-                    <input
-                      type="date"
-                      id="date"
-                      name="date"
-                      value={formData.date}
-                      onChange={handleChange}
-                      required
-                      className="w-full rounded-lg border border-white/10 bg-gray-900 px-4 py-2.5 text-gray-100 shadow-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20"
-                    />
-                  </div>
-                  {formErrors.date && (
-                    <p className="mt-1 text-sm text-pink-500">{formErrors.date}</p>
-                  )}
-                </div>
-
-                <div>
-                  <label htmlFor="time" className="block mb-2 text-sm font-medium text-gray-300">
-                    Time <span className="text-pink-500">*</span>
-                  </label>
-                  <div className="relative">
-                    <input
-                      type="time"
-                      id="time"
-                      name="time"
-                      value={formData.time}
-                      onChange={handleChange}
-                      required
-                      className="w-full rounded-lg border border-white/10 bg-gray-900 px-4 py-2.5 text-gray-100 shadow-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20"
-                    />
-                  </div>
-                  {formErrors.time && (
-                    <p className="mt-1 text-sm text-pink-500">{formErrors.time}</p>
-                  )}
-                </div>
-
-                <div>
-                  <label htmlFor="duration" className="block mb-2 text-sm font-medium text-gray-300">
-                    Duration (minutes) <span className="text-pink-500">*</span>
-                  </label>
-                  <div className="relative">
-                    <input
-                      type="number"
-                      id="duration"
-                      name="duration"
-                      min="15"
-                      max="180"
-                      step="15"
-                      value={formData.duration}
-                      onChange={handleChange}
-                      required
-                      className="w-full rounded-lg border border-white/10 bg-gray-900 px-4 py-2.5 text-gray-100 shadow-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20"
-                    />
-                  </div>
-                  {formErrors.duration && (
-                    <p className="mt-1 text-sm text-pink-500">{formErrors.duration}</p>
-                  )}
-                </div>
-
-                <div>
-                  <label htmlFor="status" className="block mb-2 text-sm font-medium text-gray-300">
-                    Status <span className="text-pink-500">*</span>
-                  </label>
-                  <CustomDropdown
-                    id="status"
-                    name="status"
-                    value={formData.status}
-                    onChange={(value) => handleDropdownChange('status', value)}
-                    required
-                    placeholder="Select status"
-                    options={statusOptions}
-                  />
-                  {formErrors.status && (
-                    <p className="mt-1 text-sm text-pink-500">{formErrors.status}</p>
-                  )}
-                </div>
+      <div className="flex flex-col lg:flex-row lg:space-x-6">
+        <div className="lg:w-2/3 mb-6 lg:mb-0 rounded-xl backdrop-blur-md border border-white/10 p-6 bg-gray-800/30">
+          <form onSubmit={handleSubmit} className="space-y-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div>
+                <label htmlFor="customer" className="block mb-2 text-sm font-medium">
+                  Customer <span className="text-pink-500">*</span>
+                </label>
+                <CustomDropdown
+                  value={formData.customerId}
+                  onChange={(value) => handleDropdownChange('customerId', value)}
+                  placeholder="Select a customer"
+                  options={customerOptions}
+                />
+                {formErrors.customerId && (
+                  <p className="mt-1 text-sm text-pink-500">{formErrors.customerId}</p>
+                )}
               </div>
 
               <div>
-                <label htmlFor="notes" className="block mb-2 text-sm font-medium text-gray-300">
-                  Notes
+                <label htmlFor="service" className="block mb-2 text-sm font-medium">
+                  Service <span className="text-pink-500">*</span>
                 </label>
-                <textarea
-                  id="notes"
-                  name="notes"
-                  value={formData.notes}
-                  onChange={handleChange}
-                  rows={4}
-                  className="w-full rounded-lg border border-white/10 bg-gray-900 px-4 py-2.5 text-gray-100 shadow-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20"
-                  placeholder="Add any notes about this appointment"
-                ></textarea>
+                <CustomDropdown
+                  value={formData.serviceId}
+                  onChange={(value) => handleDropdownChange('serviceId', value)}
+                  placeholder="Select a service"
+                  options={serviceOptions}
+                />
+                {formErrors.serviceId && (
+                  <p className="mt-1 text-sm text-pink-500">{formErrors.serviceId}</p>
+                )}
               </div>
 
-              <div className="pt-4">
-                <button
-                  type="submit"
-                  disabled={loading}
-                  className="w-full py-3 px-4 rounded-lg font-medium transition-all duration-300 bg-purple-800/80 backdrop-blur-sm hover:bg-purple-900/90 focus:outline-none focus:ring-2 focus:ring-purple-500/50 focus:ring-offset-2 shadow-lg border border-purple-600/20 text-white"
-                >
-                  {loading ? 'Creating...' : 'Schedule Appointment'}
-                </button>
+              <div>
+                <label htmlFor="date" className="block mb-2 text-sm font-medium">
+                  Date <span className="text-pink-500">*</span>
+                </label>
+                <div className="relative">
+                  <input
+                    type="date"
+                    id="date"
+                    name="date"
+                    value={formData.date}
+                    onChange={handleChange}
+                    required
+                    className="w-full rounded-lg border border-white/10 bg-gray-900/60 px-4 py-2.5 text-gray-100 shadow-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20"
+                  />
+                </div>
+                {formErrors.date && (
+                  <p className="mt-1 text-sm text-pink-500">{formErrors.date}</p>
+                )}
               </div>
-            </form>
+
+              <div>
+                <label htmlFor="time" className="block mb-2 text-sm font-medium">
+                  Time <span className="text-pink-500">*</span>
+                </label>
+                <div className="relative">
+                  <input
+                    type="time"
+                    id="time"
+                    name="time"
+                    value={formData.time}
+                    onChange={handleChange}
+                    required
+                    className="w-full rounded-lg border border-white/10 bg-gray-900/60 px-4 py-2.5 text-gray-100 shadow-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20"
+                  />
+                </div>
+                {formErrors.time && (
+                  <p className="mt-1 text-sm text-pink-500">{formErrors.time}</p>
+                )}
+              </div>
+
+              <div>
+                <label htmlFor="duration" className="block mb-2 text-sm font-medium">
+                  Duration (minutes) <span className="text-pink-500">*</span>
+                </label>
+                <div className="relative">
+                  <input
+                    type="number"
+                    id="duration"
+                    name="duration"
+                    min="15"
+                    max="180"
+                    step="15"
+                    value={formData.duration}
+                    onChange={handleChange}
+                    required
+                    className="w-full rounded-lg border border-white/10 bg-gray-900/60 px-4 py-2.5 text-gray-100 shadow-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20"
+                  />
+                </div>
+                {formErrors.duration && (
+                  <p className="mt-1 text-sm text-pink-500">{formErrors.duration}</p>
+                )}
+              </div>
+
+              <div>
+                <label htmlFor="status" className="block mb-2 text-sm font-medium">
+                  Status <span className="text-pink-500">*</span>
+                </label>
+                <CustomDropdown
+                  value={formData.status}
+                  onChange={(value) => handleDropdownChange('status', value)}
+                  placeholder="Select status"
+                  options={statusOptions}
+                />
+                {formErrors.status && (
+                  <p className="mt-1 text-sm text-pink-500">{formErrors.status}</p>
+                )}
+              </div>
+            </div>
+
+            <div>
+              <label htmlFor="notes" className="block mb-2 text-sm font-medium">
+                Notes
+              </label>
+              <textarea
+                id="notes"
+                name="notes"
+                value={formData.notes}
+                onChange={handleChange}
+                rows={4}
+                className="w-full rounded-lg border border-white/10 bg-gray-900/60 px-4 py-2.5 text-gray-100 shadow-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20"
+                placeholder="Add any notes about this appointment"
+              ></textarea>
+            </div>
+
+            <div className="pt-4">
+              <button
+                type="submit"
+                disabled={loading}
+                className="w-full py-3 px-4 rounded-lg font-medium transition-all duration-300 bg-purple-800/80 backdrop-blur-sm hover:bg-purple-900/90 focus:outline-none focus:ring-2 focus:ring-purple-500/50 focus:ring-offset-2 shadow-lg border border-purple-600/20 text-white"
+              >
+                {loading ? 'Creating...' : 'Schedule Appointment'}
+              </button>
+            </div>
+          </form>
+        </div>
+
+        <div className="lg:w-1/3 space-y-6">
+          <div className="rounded-xl backdrop-blur-md border border-white/10 p-6 bg-blue-900/30">
+            <h2 className="text-xl font-bold mb-4">Appointment Management</h2>
+            <p>Schedule appointments for your customers by selecting a service, date, and time. All required fields are marked with an asterisk (*).</p>
+          </div>
+
+          <div className="rounded-xl backdrop-blur-md border border-white/10 p-6 bg-purple-900/30">
+            <h2 className="text-xl font-bold mb-4">Customer & Service</h2>
+            <p>Choose a customer and service for this appointment. Need to create a new customer or service first?</p>
+            <div className="mt-4 flex space-x-3">
+              <Link href="/dashboard/customers/add" className="text-sm px-3 py-2 bg-gray-800/50 hover:bg-gray-800 rounded-lg text-gray-200 transition-colors">
+                Add Customer
+              </Link>
+              <Link href="/dashboard/services/add" className="text-sm px-3 py-2 bg-gray-800/50 hover:bg-gray-800 rounded-lg text-gray-200 transition-colors">
+                Add Service
+              </Link>
+            </div>
+          </div>
+          
+          <div className="rounded-xl backdrop-blur-md border border-white/10 p-6 bg-emerald-900/30">
+            <h2 className="text-xl font-bold mb-4">Date & Time</h2>
+            <p>Select an appropriate date and time for the appointment. You can adjust the duration based on the service requirements.</p>
           </div>
         </div>
       </div>
 
       <style jsx global>{`
-        body {
-          overflow-x: hidden;
-        }
-        
-        .dark-input {
-          color: white;
-          background-color: rgba(17, 24, 39, 0.9);
-        }
-        
-        .dark-input:focus {
-          border-color: #818cf8;
-          box-shadow: 0 0 0 1px rgba(129, 140, 248, 0.1);
-        }
-        
         input[type="date"]::-webkit-calendar-picker-indicator,
         input[type="time"]::-webkit-calendar-picker-indicator {
           filter: invert(0.8);
         }
         
-        .form-container {
-          transition: all 0.3s ease;
-        }
-        
-        .form-container:hover {
-          box-shadow: 0 25px 50px -12px rgba(79, 70, 229, 0.2);
-        }
-
         /* Fix color scheme for date/time inputs */
         input[type="date"],
         input[type="time"],
         input[type="number"] {
           color-scheme: dark;
         }
-        
-        /* Hide scrollbars but allow scrolling if needed */
-        ::-webkit-scrollbar {
-          width: 6px;
-        }
-        
-        ::-webkit-scrollbar-track {
-          background: rgba(15, 20, 30, 0.5);
-        }
-        
-        ::-webkit-scrollbar-thumb {
-          background: rgba(99, 102, 241, 0.3);
-          border-radius: 3px;
-        }
-        
-        ::-webkit-scrollbar-thumb:hover {
-          background: rgba(99, 102, 241, 0.5);
-        }
 
-        /* Subtle animation for the form */
-        @keyframes fadeIn {
-          from {
-            opacity: 0;
-            transform: translateY(10px);
-          }
-          to {
-            opacity: 1;
-            transform: translateY(0);
-          }
+        /* Light theme styles for appointment form */
+        .light-theme input[type="date"]::-webkit-calendar-picker-indicator,
+        .light-theme input[type="time"]::-webkit-calendar-picker-indicator {
+          filter: invert(0.5) !important;
         }
         
-        .form-container {
-          animation: fadeIn 0.5s ease-out forwards;
+        .light-theme input[type="date"],
+        .light-theme input[type="time"],
+        .light-theme input[type="number"] {
+          color-scheme: light;
+          background-color: white !important;
+          border: 1px solid #e2e8f0 !important;
+          color: #1e293b !important;
+        }
+        
+        .light-theme .rounded-lg.border.border-white\/10.bg-gray-900\/60 {
+          background-color: white !important;
+          border: 1px solid #e2e8f0 !important;
+          color: #1e293b !important;
+        }
+        
+        .light-theme label.block.mb-2.text-sm.font-medium {
+          color: #475569 !important;
+        }
+        
+        .light-theme .rounded-xl.backdrop-blur-md.border.border-white\/10.p-6.bg-blue-900\/30 {
+          background-color: rgba(219, 234, 254, 0.4) !important;
+          border: 1px solid rgba(59, 130, 246, 0.2) !important;
+        }
+        
+        .light-theme .rounded-xl.backdrop-blur-md.border.border-white\/10.p-6.bg-purple-900\/30 {
+          background-color: rgba(237, 233, 254, 0.4) !important;
+          border: 1px solid rgba(139, 92, 246, 0.2) !important;
+        }
+        
+        .light-theme .rounded-xl.backdrop-blur-md.border.border-white\/10.p-6.bg-emerald-900\/30 {
+          background-color: rgba(209, 250, 229, 0.4) !important;
+          border: 1px solid rgba(16, 185, 129, 0.2) !important;
+        }
+        
+        .light-theme .text-gray-100,
+        .light-theme .text-gray-200 {
+          color: #1e293b !important;
+        }
+        
+        .light-theme h2.text-xl.font-bold.mb-4 {
+          color: #0f172a !important;
+        }
+        
+        .light-theme p {
+          color: #334155 !important;
+        }
+        
+        .light-theme .text-sm.px-3.py-2.bg-gray-800\/50.hover\:bg-gray-800.rounded-lg.text-gray-200 {
+          background-color: rgba(226, 232, 240, 0.7) !important;
+          color: #475569 !important;
+        }
+        
+        .light-theme .text-sm.px-3.py-2.bg-gray-800\/50.hover\:bg-gray-800.rounded-lg.text-gray-200:hover {
+          background-color: rgba(203, 213, 225, 0.8) !important;
+        }
+        
+        .light-theme button[type="submit"] {
+          background-color: rgba(126, 34, 206, 0.9) !important;
+          border: 1px solid rgba(126, 34, 206, 0.3) !important;
+          color: white !important;
+        }
+        
+        .light-theme button[type="submit"]:hover {
+          background-color: rgba(107, 33, 168, 0.95) !important;
         }
       `}</style>
     </div>
