@@ -21,8 +21,8 @@ interface BusinessHour {
 export default function Settings() {
    const [user, setUser] = useState<User | null>(null);
    const [loading, setLoading] = useState(true);
-
-   // Service link states
+  
+  // Service link states
    const [serviceLink, setServiceLink] = useState("");
    const [serviceName, setServiceName] = useState("");
    const [hasServiceLink, setHasServiceLink] = useState(false);
@@ -46,18 +46,26 @@ export default function Settings() {
       { day: "Saturday", open: "10:00", close: "15:00", isOpen: true },
       { day: "Sunday", open: "10:00", close: "15:00", isOpen: false },
    ]);
-
-   useEffect(() => {
-      // Get current user from localStorage
+  
+  useEffect(() => {
+    // Get current user from localStorage
       const currentUser = authAPI.getCurrentUser();
+<<<<<<< HEAD
       if (currentUser) {
          setUser(currentUser as User);
       }
 
       // Load saved service link if exists
+=======
+    if (currentUser) {
+         setUser(currentUser);
+    }
+    
+    // Load saved service link if exists
+>>>>>>> 68703957c20658264237d7bce2615504b2bd060b
       const savedServiceLink = localStorage.getItem("serviceLink");
       const savedServiceName = localStorage.getItem("serviceName");
-      if (savedServiceLink && savedServiceName) {
+    if (savedServiceLink && savedServiceName) {
          setServiceLink(savedServiceLink);
          setServiceName(savedServiceName);
          setHasServiceLink(true);
@@ -90,21 +98,21 @@ export default function Settings() {
 
       setLoading(false);
    }, []);
-
-   const handleServiceLinkSave = () => {
-      if (serviceLink && serviceName) {
+  
+  const handleServiceLinkSave = () => {
+    if (serviceLink && serviceName) {
          localStorage.setItem("serviceLink", serviceLink);
          localStorage.setItem("serviceName", serviceName);
          localStorage.setItem("serviceChoice", "yes");
          setHasServiceLink(true);
          setSaveSuccess(true);
-
-         // Clear success message after 3 seconds
+      
+      // Clear success message after 3 seconds
          setTimeout(() => setSaveSuccess(false), 3000);
-      }
+    }
    };
-
-   const handleServiceLinkRemove = () => {
+  
+  const handleServiceLinkRemove = () => {
       localStorage.removeItem("serviceLink");
       localStorage.removeItem("serviceName");
       localStorage.setItem("serviceChoice", "no");
@@ -151,24 +159,24 @@ export default function Settings() {
       authAPI.logout();
       window.location.href = "/login";
    };
-
-   if (loading) {
-      return (
-         <div className="flex items-center justify-center min-h-[60vh]">
+  
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-[60vh]">
             <div className={darkMode ? "text-white" : "text-gray-800"}>
                Loading settings...
             </div>
-         </div>
+      </div>
       );
-   }
-
-   return (
+  }
+  
+  return (
       <div
          className={`space-y-8 animate-fadeIn ${
             darkMode ? "dark-content" : "light-content"
          }`}
       >
-         <div>
+      <div>
             <h1
                className={`text-2xl font-semibold ${
                   darkMode ? "text-white" : "text-gray-800"
@@ -181,10 +189,10 @@ export default function Settings() {
                   darkMode ? "text-gray-300" : "text-gray-600"
                }`}
             >
-               Manage your account and application preferences.
-            </p>
-         </div>
-
+          Manage your account and application preferences.
+        </p>
+      </div>
+      
          <div
             className={`p-6 rounded-lg ${
                darkMode ? "glass-dark" : "glass-light"
@@ -197,7 +205,7 @@ export default function Settings() {
             >
                Personal Information
             </h2>
-            <div className="mb-6">
+        <div className="mb-6">
                <p
                   className={`text-sm ${
                      darkMode ? "text-gray-400" : "text-gray-500"
@@ -208,8 +216,8 @@ export default function Settings() {
                <p className={darkMode ? "text-white" : "text-gray-800"}>
                   {user?.email || "Not available"}
                </p>
-            </div>
-            <div className="mb-6">
+        </div>
+        <div className="mb-6">
                <p
                   className={`text-sm ${
                      darkMode ? "text-gray-400" : "text-gray-500"
@@ -220,8 +228,8 @@ export default function Settings() {
                <p className={darkMode ? "text-white" : "text-gray-800"}>
                   {user?.name || "Not available"}
                </p>
-            </div>
-            <div className="mb-6">
+        </div>
+        <div className="mb-6">
                <p
                   className={`text-sm ${
                      darkMode ? "text-gray-400" : "text-gray-500"
@@ -486,9 +494,9 @@ export default function Settings() {
                      )}
                   </div>
                ))}
-            </div>
-         </div>
-
+        </div>
+      </div>
+      
          <div
             className={`p-6 rounded-lg ${
                darkMode ? "glass-dark" : "glass-light"
@@ -506,13 +514,13 @@ export default function Settings() {
                   darkMode ? "text-gray-300" : "text-gray-600"
                }`}
             >
-               {hasServiceLink
-                  ? "Manage your service link that appears on the dashboard"
-                  : "Add a direct link to your service website on your dashboard"}
-            </p>
-
-            <div className="space-y-4">
-               <div className="flex flex-col space-y-2">
+          {hasServiceLink 
+            ? "Manage your service link that appears on the dashboard" 
+            : "Add a direct link to your service website on your dashboard"}
+        </p>
+        
+        <div className="space-y-4">
+          <div className="flex flex-col space-y-2">
                   <label
                      htmlFor="serviceName"
                      className={`text-sm ${
@@ -521,21 +529,21 @@ export default function Settings() {
                   >
                      Service Name
                   </label>
-                  <input
-                     type="text"
-                     id="serviceName"
-                     value={serviceName}
-                     onChange={(e) => setServiceName(e.target.value)}
-                     placeholder="My Salon Website"
+            <input
+              type="text"
+              id="serviceName"
+              value={serviceName}
+              onChange={(e) => setServiceName(e.target.value)}
+              placeholder="My Salon Website"
                      className={`px-3 py-2 border rounded-md ${
                         darkMode
                            ? "bg-gray-800/50 border-gray-700 text-white"
                            : "bg-white border-gray-300 text-gray-800"
                      }`}
-                  />
-               </div>
-
-               <div className="flex flex-col space-y-2">
+            />
+          </div>
+          
+          <div className="flex flex-col space-y-2">
                   <label
                      htmlFor="serviceLink"
                      className={`text-sm ${
@@ -544,24 +552,24 @@ export default function Settings() {
                   >
                      Service URL
                   </label>
-                  <input
-                     type="url"
-                     id="serviceLink"
-                     value={serviceLink}
-                     onChange={(e) => setServiceLink(e.target.value)}
-                     placeholder="https://your-website.com"
+            <input
+              type="url"
+              id="serviceLink"
+              value={serviceLink}
+              onChange={(e) => setServiceLink(e.target.value)}
+              placeholder="https://your-website.com"
                      className={`px-3 py-2 border rounded-md ${
                         darkMode
                            ? "bg-gray-800/50 border-gray-700 text-white"
                            : "bg-white border-gray-300 text-gray-800"
                      }`}
-                  />
-               </div>
-
-               <div className="flex flex-wrap gap-3 pt-2">
-                  <button
-                     onClick={handleServiceLinkSave}
-                     disabled={!serviceLink || !serviceName}
+            />
+          </div>
+          
+          <div className="flex flex-wrap gap-3 pt-2">
+            <button
+              onClick={handleServiceLinkSave}
+              disabled={!serviceLink || !serviceName}
                      className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
                         darkMode
                            ? "bg-gradient-to-r from-purple-600 to-blue-500 hover:from-purple-700 hover:to-blue-600 text-white"
@@ -569,30 +577,30 @@ export default function Settings() {
                      }`}
                   >
                      {hasServiceLink ? "Update Link" : "Save Link"}
-                  </button>
-
-                  {hasServiceLink && (
-                     <button
-                        onClick={handleServiceLinkRemove}
+            </button>
+            
+            {hasServiceLink && (
+              <button
+                onClick={handleServiceLinkRemove}
                         className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
                            darkMode
                               ? "bg-gray-700 text-white hover:bg-gray-600"
                               : "bg-white text-gray-900 border border-gray-300 hover:bg-gray-50"
                         }`}
-                     >
-                        Remove Link
-                     </button>
-                  )}
-               </div>
-
-               {saveSuccess && (
-                  <div className="px-3 py-2 bg-green-500/20 border border-green-500/30 rounded-md text-green-300">
-                     Service link saved successfully!
-                  </div>
-               )}
+              >
+                Remove Link
+              </button>
+            )}
+          </div>
+          
+          {saveSuccess && (
+            <div className="px-3 py-2 bg-green-500/20 border border-green-500/30 rounded-md text-green-300">
+              Service link saved successfully!
             </div>
-         </div>
-
+          )}
+        </div>
+      </div>
+      
          <div
             className={`p-6 rounded-lg ${
                darkMode ? "glass-dark" : "glass-light"
@@ -609,10 +617,10 @@ export default function Settings() {
                onClick={handleSignOut}
                className="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700"
             >
-               Sign Out
-            </button>
-         </div>
-
+          Sign Out
+        </button>
+      </div>
+      
          <style jsx global>{`
             /* Global theme classes */
             .dark-theme {
@@ -665,7 +673,7 @@ export default function Settings() {
                --text-muted: #64748b;
             }
 
-            @keyframes fadeIn {
+        @keyframes fadeIn {
                from {
                   opacity: 0;
                   transform: translateY(20px);
@@ -674,16 +682,16 @@ export default function Settings() {
                   opacity: 1;
                   transform: translateY(0);
                }
-            }
-            .animate-fadeIn {
-               animation: fadeIn 0.5s ease-out forwards;
-            }
+        }
+        .animate-fadeIn {
+          animation: fadeIn 0.5s ease-out forwards;
+        }
 
             input[type="date"]::-webkit-calendar-picker-indicator,
             input[type="time"]::-webkit-calendar-picker-indicator {
                filter: ${darkMode ? "invert(0.8)" : "none"};
-            }
-         `}</style>
-      </div>
+        }
+      `}</style>
+    </div>
    );
-}
+} 
