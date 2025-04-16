@@ -44,11 +44,11 @@ const getCustomerById = async (req, res) => {
       // Use local data service as fallback
       console.log('MongoDB disconnected, using local data storage');
       const customer = localDataService.findById('customers', customerId);
-      
-      if (!customer) {
-        return res.status(404).json({ message: 'Customer not found' });
-      }
-      
+    
+    if (!customer) {
+      return res.status(404).json({ message: 'Customer not found' });
+    }
+    
       return res.json(customer);
     }
   } catch (error) {
@@ -74,19 +74,19 @@ const createCustomer = async (req, res) => {
     
     // Check if MongoDB is connected
     if (localDataService.isMongoConnected()) {
-      // Check if customer with this email already exists
-      const customerExists = await Customer.findOne({ email });
-      
-      if (customerExists) {
-        return res.status(400).json({ message: 'Customer with this email already exists' });
-      }
-      
-      const customer = await Customer.create({
-        firstName,
-        lastName,
-        email,
-        phone,
-        notes,
+    // Check if customer with this email already exists
+    const customerExists = await Customer.findOne({ email });
+    
+    if (customerExists) {
+      return res.status(400).json({ message: 'Customer with this email already exists' });
+    }
+    
+    const customer = await Customer.create({
+      firstName,
+      lastName,
+      email,
+      phone,
+      notes,
         user: req.user ? req.user._id : null, // Associate with user if available
       });
       
@@ -165,28 +165,28 @@ const updateCustomer = async (req, res) => {
     // Check if MongoDB is connected
     if (localDataService.isMongoConnected()) {
       const customer = await Customer.findById(customerId);
+    
+    if (!customer) {
+      return res.status(404).json({ message: 'Customer not found' });
+    }
+    
+    // If email is changed, check if the new email is already in use
+    if (email && email !== customer.email) {
+      const customerExists = await Customer.findOne({ email });
       
-      if (!customer) {
-        return res.status(404).json({ message: 'Customer not found' });
+      if (customerExists) {
+        return res.status(400).json({ message: 'Customer with this email already exists' });
       }
-      
-      // If email is changed, check if the new email is already in use
-      if (email && email !== customer.email) {
-        const customerExists = await Customer.findOne({ email });
-        
-        if (customerExists) {
-          return res.status(400).json({ message: 'Customer with this email already exists' });
-        }
-      }
-      
-      customer.firstName = firstName || customer.firstName;
-      customer.lastName = lastName || customer.lastName;
-      customer.email = email || customer.email;
-      customer.phone = phone !== undefined ? phone : customer.phone;
-      customer.notes = notes !== undefined ? notes : customer.notes;
-      
-      const updatedCustomer = await customer.save();
-      
+    }
+    
+    customer.firstName = firstName || customer.firstName;
+    customer.lastName = lastName || customer.lastName;
+    customer.email = email || customer.email;
+    customer.phone = phone !== undefined ? phone : customer.phone;
+    customer.notes = notes !== undefined ? notes : customer.notes;
+    
+    const updatedCustomer = await customer.save();
+    
       // Also update in local storage for redundancy
       localDataService.update('customers', customerId, {
         firstName: updatedCustomer.firstName,
@@ -265,13 +265,13 @@ const deleteCustomer = async (req, res) => {
     // Check if MongoDB is connected
     if (localDataService.isMongoConnected()) {
       const customer = await Customer.findById(customerId);
-      
-      if (!customer) {
-        return res.status(404).json({ message: 'Customer not found' });
-      }
-      
-      await customer.deleteOne();
-      
+    
+    if (!customer) {
+      return res.status(404).json({ message: 'Customer not found' });
+    }
+    
+    await customer.deleteOne();
+    
       // Also delete from local storage for consistency
       localDataService.remove('customers', customerId);
       
