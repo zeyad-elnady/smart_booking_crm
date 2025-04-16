@@ -119,179 +119,39 @@ body {
 }
 
 .glass-dark {
-   background: rgba(17, 25, 40, 0.8);
+   background: rgba(17, 25, 40, 0.75);
    border-radius: 16px;
    border: 1px solid rgba(255, 255, 255, 0.05);
    box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
    transition: border 0.4s ease;
-}
-
-@supports (backdrop-filter: blur(16px)) {
-   .glass-dark {
-      backdrop-filter: blur(16px);
-      -webkit-backdrop-filter: blur(16px);
-   }
+   backdrop-filter: blur(12px);
+   -webkit-backdrop-filter: blur(12px);
 }
 
 .glass-dark:hover {
    border: 1px solid rgba(255, 255, 255, 0.1);
 }
 
-/* Fix form elements */
-.light-theme input[type="text"],
-.light-theme input[type="email"],
-.light-theme input[type="tel"],
-.light-theme input[type="number"],
-.light-theme textarea,
-.light-theme select {
-   background-color: white !important;
-   border: 1px solid #e2e8f0 !important;
-   color: #1e293b !important;
-}
-
-.light-theme input::placeholder,
-.light-theme textarea::placeholder {
-   color: #94a3b8 !important;
-}
-
-/* Fix calendar picker icon in inputs */
-.light-theme input[type="date"]::-webkit-calendar-picker-indicator,
-.light-theme input[type="time"]::-webkit-calendar-picker-indicator {
-   filter: invert(0.5) !important;
-}
-
-/* Fix specific form elements */
-.light-theme label {
-   color: #475569 !important;
-}
-
-.light-theme span.text-pink-500 {
-   color: #db2777 !important;
-}
-
-/* Fix form container hover effect in light mode */
-.light-theme .form-container:hover {
-   box-shadow: 0 25px 50px -12px rgba(79, 70, 229, 0.1) !important;
-}
-
-/* Fix specific buttons in forms */
-.light-theme
-   .flex.items-center.text-gray-300.hover\:text-white.mb-4.transition-colors {
-   color: #475569 !important;
-}
-
-.light-theme
-   .flex.items-center.text-gray-300.hover\:text-white.mb-4.transition-colors:hover {
-   color: #1e293b !important;
-}
-
-.light-theme
-   .flex.items-center.text-gray-300.hover\:text-white.mb-4.transition-colors
-   svg {
-   color: #475569 !important;
-}
-
-.light-theme
-   .flex.items-center.text-gray-300.hover\:text-white.mb-4.transition-colors:hover
-   svg {
-   color: #1e293b !important;
-}
-
-/* Light theme button styles */
-.light-theme button,
-.light-theme a[role="button"],
-.light-theme .button-like {
-   &[class*="bg-gradient-to-r"],
-   &[class*="bg-purple"],
-   &[class*="bg-indigo"],
-   &[class*="bg-blue"],
-   &:not([class*="hover:"]) {
-      background: white !important;
-      color: #1e293b !important;
-      border: 1px solid #e2e8f0 !important;
-      box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05) !important;
-   }
-
-   &:hover {
-      background: #f8fafc !important;
-      border-color: #cbd5e1 !important;
-   }
-
-   &:disabled {
-      background: #f1f5f9 !important;
-      color: #94a3b8 !important;
-      cursor: not-allowed;
-   }
-}
-
-/* Exception for danger/warning buttons */
-.light-theme button[class*="bg-red"],
-.light-theme a[class*="bg-red"],
-.light-theme button[class*="bg-yellow"],
-.light-theme a[class*="bg-yellow"] {
-   background: white !important;
-   border: 1px solid #ef4444 !important;
-   color: #ef4444 !important;
-
-   &:hover {
-      background: #fef2f2 !important;
-   }
-}
-
-/* Keep primary action buttons distinct */
-.light-theme button[type="submit"],
-.light-theme a.primary-action {
-   background: white !important;
-   color: #1e293b !important;
-   border: 1px solid #e2e8f0 !important;
-   box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05) !important;
-
-   &:hover {
-      background: #f8fafc !important;
-      border-color: #cbd5e1 !important;
-   }
-}
-
-/* END OF ADDED CSS RULES */
-
-/* Glassmorphism Styles - Optimized */
-.glass {
-   background: rgba(255, 255, 255, 0.15);
+.glass-light {
+   background: rgba(255, 255, 255, 0.25);
    border-radius: 16px;
-   border: 1px solid rgba(255, 255, 255, 0.12);
-   box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.25);
-   transition: border 0.4s ease;
-   will-change: transform;
-}
-
-@supports (backdrop-filter: blur(16px)) {
-   .glass {
-      backdrop-filter: blur(16px);
-      -webkit-backdrop-filter: blur(16px);
-   }
-}
-
-.glass:hover {
-   border: 1px solid rgba(255, 255, 255, 0.2);
-}
-
-.glass-dark {
-   background: rgba(17, 25, 40, 0.8);
-   border-radius: 16px;
-   border: 1px solid rgba(255, 255, 255, 0.05);
-   box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
-   transition: border 0.4s ease;
-}
-
-@supports (backdrop-filter: blur(16px)) {
-   .glass-dark {
-      backdrop-filter: blur(16px);
-      -webkit-backdrop-filter: blur(16px);
-   }
-}
-
-.glass-dark:hover {
    border: 1px solid rgba(255, 255, 255, 0.1);
+   box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05),
+      0 2px 4px -2px rgba(0, 0, 0, 0.03);
+   transition: border 0.4s ease;
+   backdrop-filter: blur(12px);
+   -webkit-backdrop-filter: blur(12px);
+}
+
+/* For browsers that don't support backdrop-filter */
+@supports not (backdrop-filter: blur(12px)) {
+   .glass-light {
+      background: rgba(255, 255, 255, 0.85);
+   }
+}
+
+.glass-light:hover {
+   border: 1px solid rgba(0, 0, 0, 0.08);
 }
 
 .glass-card {

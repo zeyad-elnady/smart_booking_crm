@@ -13,6 +13,8 @@ import {
    Cog6ToothIcon,
    Bars3Icon,
    XMarkIcon,
+   SunIcon,
+   MoonIcon,
 } from "@heroicons/react/24/outline";
 
 // Navigation links with icons for reusability
@@ -33,7 +35,7 @@ export default function Navigation() {
    const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
    const [mounted, setMounted] = useState(false);
    const pathname = usePathname();
-   const { darkMode } = useTheme();
+   const { darkMode, toggleTheme } = useTheme();
 
    useEffect(() => {
       setMounted(true);
@@ -54,11 +56,11 @@ export default function Navigation() {
 
    return (
       <nav
-         className={`fixed w-[calc(100%-2rem)] mx-4 top-4 z-20 ${
+         className={`fixed w-[calc(100%-2rem)] mx-4 top-4 z-20 backdrop-blur-md rounded-xl ${
             darkMode
                ? "glass-dark border-b border-white/10"
-               : "glass-light border-b border-gray-200"
-         } backdrop-blur-md rounded-xl`}
+               : "bg-white/25 border-b border-white/25"
+         }`}
       >
          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="flex h-16 justify-between items-center">
@@ -67,67 +69,94 @@ export default function Navigation() {
                      href="/dashboard"
                      className={`text-xl font-bold flex items-center ${
                         darkMode
-                           ? "text-white hover:text-purple-300"
-                           : "text-gray-900 hover:text-purple-600"
+                           ? "text-purple-300 hover:text-purple-200"
+                           : "text-purple-500 hover:text-purple-600"
                      } transition-colors`}
                   >
                      <span
                         className={`mr-2 ${
-                           darkMode ? "text-purple-400" : "text-purple-600"
+                           darkMode ? "text-purple-300" : "text-purple-500"
                         }`}
                      >
-                        <svg
-                           xmlns="http://www.w3.org/2000/svg"
-                           className="h-6 w-6"
-                           fill="none"
-                           viewBox="0 0 24 24"
-                           stroke="currentColor"
-                        >
-                           <path
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                              strokeWidth={2}
-                              d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"
-                           />
-                        </svg>
+                        <img
+                           src="/icon.svg"
+                           alt="Smart Booking"
+                           className={`h-6 w-6 ${
+                              darkMode ? "opacity-85" : "opacity-90"
+                           }`}
+                           style={{
+                              filter: `brightness(0) saturate(100%) ${
+                                 darkMode
+                                    ? "invert(85%) sepia(15%) saturate(1000%) hue-rotate(200deg) brightness(98%) contrast(92%)"
+                                    : "invert(45%) sepia(30%) saturate(1000%) hue-rotate(235deg) brightness(95%) contrast(88%)"
+                              }`,
+                           }}
+                        />
                      </span>
                      Smart Booking
                   </Link>
                </div>
 
                {/* Desktop Navigation */}
-               <div className="hidden md:flex md:items-center md:space-x-6">
-                  {navigationLinks.map((item) => {
-                     const isCurrentPage = isActive(item.href);
-                     return (
-                        <Link
-                           key={item.name}
-                           href={item.href}
-                           className={`flex items-center px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
-                              isCurrentPage
-                                 ? darkMode
-                                    ? "bg-purple-500/20 text-white border border-purple-500/30"
-                                    : "bg-purple-50 text-purple-700 border border-purple-100"
-                                 : darkMode
-                                 ? "text-gray-300 hover:bg-white/10 hover:text-white"
-                                 : "text-gray-600 hover:bg-gray-100 hover:text-gray-900"
-                           }`}
-                        >
-                           <item.icon
-                              className={`mr-2 h-5 w-5 ${
+               <div className="hidden md:flex md:items-center md:justify-center flex-1 mx-8">
+                  <div className="flex items-center space-x-4">
+                     {navigationLinks.map((item) => {
+                        const isCurrentPage = isActive(item.href);
+                        return (
+                           <Link
+                              key={item.name}
+                              href={item.href}
+                              className={`flex items-center px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
                                  isCurrentPage
                                     ? darkMode
-                                       ? "text-purple-300"
-                                       : "text-purple-600"
+                                       ? "bg-purple-500/20 text-white border border-purple-500/30"
+                                       : "bg-purple-50 text-purple-700 border border-purple-100"
                                     : darkMode
-                                    ? "text-gray-400"
-                                    : "text-gray-500"
+                                    ? "text-gray-300 hover:bg-white/10 hover:text-white"
+                                    : "text-gray-600 hover:bg-gray-100 hover:text-gray-900"
                               }`}
-                           />
-                           {item.name}
-                        </Link>
-                     );
-                  })}
+                           >
+                              <item.icon
+                                 className={`mr-2 h-5 w-5 ${
+                                    isCurrentPage
+                                       ? darkMode
+                                          ? "text-purple-300"
+                                          : "text-purple-600"
+                                       : darkMode
+                                       ? "text-gray-400"
+                                       : "text-gray-500"
+                                 }`}
+                              />
+                              {item.name}
+                           </Link>
+                        );
+                     })}
+                  </div>
+               </div>
+
+               {/* Theme Toggle Button */}
+               <div className="hidden md:block">
+                  <button
+                     onClick={toggleTheme}
+                     className="relative w-14 h-7 rounded-full bg-purple-600/20 border border-purple-500/30 transition-all duration-300 ease-in-out focus:outline-none flex items-center justify-start overflow-hidden"
+                     aria-label="Toggle theme"
+                  >
+                     <div
+                        className={`absolute h-6 w-6 rounded-full transition-all duration-500 ease-in-out transform ${
+                           darkMode
+                              ? "translate-x-7 bg-purple-300 rotate-[360deg]"
+                              : "translate-x-1 bg-yellow-400 rotate-0"
+                        } flex items-center justify-center shadow-sm`}
+                     >
+                        <div className="absolute inset-0 flex items-center justify-center transition-opacity duration-200">
+                           {darkMode ? (
+                              <MoonIcon className="h-4.5 w-4.5 text-purple-900 stroke-[2.5] animate-fadeIn" />
+                           ) : (
+                              <SunIcon className="h-4.5 w-4.5 text-yellow-600 stroke-[2.5] animate-fadeIn" />
+                           )}
+                        </div>
+                     </div>
+                  </button>
                </div>
 
                {/* Mobile menu button */}
@@ -198,9 +227,54 @@ export default function Navigation() {
                         </Link>
                      );
                   })}
+
+                  {/* Update Mobile Theme Toggle Button */}
+                  <button
+                     onClick={toggleTheme}
+                     className="relative w-full flex items-center px-3 py-2 rounded-md text-base font-medium"
+                  >
+                     <div className="relative w-14 h-7 rounded-full bg-purple-600/20 border border-purple-500/30 transition-all duration-300 ease-in-out focus:outline-none mr-3 flex items-center justify-start overflow-hidden">
+                        <div
+                           className={`absolute h-6 w-6 rounded-full transition-all duration-500 ease-in-out transform ${
+                              darkMode
+                                 ? "translate-x-7 bg-purple-300 rotate-[360deg]"
+                                 : "translate-x-1 bg-yellow-400 rotate-0"
+                           } flex items-center justify-center shadow-sm`}
+                        >
+                           <div className="absolute inset-0 flex items-center justify-center transition-opacity duration-200">
+                              {darkMode ? (
+                                 <MoonIcon className="h-4.5 w-4.5 text-purple-900 stroke-[2.5] animate-fadeIn" />
+                              ) : (
+                                 <SunIcon className="h-4.5 w-4.5 text-yellow-600 stroke-[2.5] animate-fadeIn" />
+                              )}
+                           </div>
+                        </div>
+                     </div>
+                     <span
+                        className={darkMode ? "text-gray-300" : "text-gray-600"}
+                     >
+                        Toggle Theme
+                     </span>
+                  </button>
                </div>
             </div>
          )}
+
+         <style jsx global>{`
+            @keyframes fadeIn {
+               from {
+                  opacity: 0;
+                  transform: scale(0.8) rotate(-30deg);
+               }
+               to {
+                  opacity: 1;
+                  transform: scale(1) rotate(0);
+               }
+            }
+            .animate-fadeIn {
+               animation: fadeIn 0.3s ease-out forwards;
+            }
+         `}</style>
       </nav>
    );
 }

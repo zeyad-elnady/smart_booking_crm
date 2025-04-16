@@ -5,8 +5,21 @@ import { authAPI } from "@/services/api";
 import { MoonIcon, SunIcon } from "@heroicons/react/24/outline";
 import { useTheme } from "@/components/ThemeProvider";
 
+interface User {
+   email: string;
+   name: string;
+   businessName: string;
+}
+
+interface BusinessHour {
+   day: string;
+   open: string;
+   close: string;
+   isOpen: boolean;
+}
+
 export default function Settings() {
-   const [user, setUser] = useState(null);
+   const [user, setUser] = useState<User | null>(null);
    const [loading, setLoading] = useState(true);
 
    // Service link states
@@ -24,7 +37,7 @@ export default function Settings() {
    const [marketingEmails, setMarketingEmails] = useState(false);
 
    // Business hours
-   const [businessHours, setBusinessHours] = useState([
+   const [businessHours, setBusinessHours] = useState<BusinessHour[]>([
       { day: "Monday", open: "09:00", close: "17:00", isOpen: true },
       { day: "Tuesday", open: "09:00", close: "17:00", isOpen: true },
       { day: "Wednesday", open: "09:00", close: "17:00", isOpen: true },
@@ -38,7 +51,7 @@ export default function Settings() {
       // Get current user from localStorage
       const currentUser = authAPI.getCurrentUser();
       if (currentUser) {
-         setUser(currentUser);
+         setUser(currentUser as User);
       }
 
       // Load saved service link if exists
@@ -100,7 +113,7 @@ export default function Settings() {
       setHasServiceLink(false);
    };
 
-   const handleNotificationToggle = (type, value) => {
+   const handleNotificationToggle = (type: string, value: boolean) => {
       switch (type) {
          case "email":
             setEmailNotifications(value);
@@ -117,13 +130,17 @@ export default function Settings() {
       }
    };
 
-   const updateBusinessHours = (index, field, value) => {
+   const updateBusinessHours = (
+      index: number,
+      field: keyof BusinessHour,
+      value: string | boolean
+   ) => {
       const updatedHours = [...businessHours];
 
       if (field === "isOpen") {
-         updatedHours[index].isOpen = value;
+         updatedHours[index].isOpen = value as boolean;
       } else {
-         updatedHours[index][field] = value;
+         updatedHours[index][field] = value as string;
       }
 
       setBusinessHours(updatedHours);
@@ -215,60 +232,6 @@ export default function Settings() {
                <p className={darkMode ? "text-white" : "text-gray-800"}>
                   {user?.businessName || "Not available"}
                </p>
-            </div>
-         </div>
-
-         <div
-            className={`p-6 rounded-lg ${
-               darkMode ? "glass-dark" : "glass-light"
-            }`}
-         >
-            <h2
-               className={`text-xl font-semibold mb-4 ${
-                  darkMode ? "text-white" : "text-gray-800"
-               }`}
-            >
-               Appearance
-            </h2>
-            <p
-               className={`mb-4 ${
-                  darkMode ? "text-gray-300" : "text-gray-600"
-               }`}
-            >
-               Customize how the application looks
-            </p>
-
-            <div className="space-y-6">
-               <div className="flex justify-between items-center">
-                  <div>
-                     <h3 className={darkMode ? "text-white" : "text-gray-800"}>
-                        Theme Mode
-                     </h3>
-                     <p
-                        className={`text-sm ${
-                           darkMode ? "text-gray-400" : "text-gray-500"
-                        }`}
-                     >
-                        {darkMode
-                           ? "Currently using Dark theme"
-                           : "Currently using Light theme"}
-                     </p>
-                  </div>
-                  <button
-                     onClick={toggleTheme}
-                     className={`p-2 rounded-lg border ${
-                        darkMode
-                           ? "bg-gray-800 border-gray-700"
-                           : "bg-white border-gray-300"
-                     } transition-all duration-300`}
-                  >
-                     {darkMode ? (
-                        <SunIcon className="h-6 w-6 text-yellow-400" />
-                     ) : (
-                        <MoonIcon className="h-6 w-6 text-indigo-600" />
-                     )}
-                  </button>
-               </div>
             </div>
          </div>
 
