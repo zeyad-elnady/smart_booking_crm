@@ -1073,3 +1073,15 @@ select option {
       border-color: #cbd5e1 !important;
    }
 }
+
+/* Dropdown menu styles */
+.dropdown-menu {
+   position: absolute !important;
+   bottom: auto !important;
+   top: 100% !important;
+   min-width: 100%;
+   background-color: #1f2937 !important;
+   color: white !important;
+   padding: 8px !important;
+   z-index: 9999 !important;
+}
