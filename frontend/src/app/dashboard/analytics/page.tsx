@@ -168,7 +168,7 @@ export default function AnalyticsPage() {
                   </span>
                 </div>
               </div>
-              <div className={`p-3 rounded-lg bg-gradient-to-br from-purple-400 to-purple-600`}>
+              <div className={`p-3 rounded-lg bg-gradient-to-br from-blue-400 to-blue-600`}>
                 <UsersIcon className="h-6 w-6 text-white" />
               </div>
             </div>
@@ -198,7 +198,7 @@ export default function AnalyticsPage() {
                   </span>
                 </div>
               </div>
-              <div className={`p-3 rounded-lg bg-gradient-to-br from-blue-400 to-blue-600`}>
+              <div className={`p-3 rounded-lg bg-gradient-to-br from-purple-400 to-purple-600`}>
                 <CalendarDaysIcon className="h-6 w-6 text-white" />
               </div>
             </div>
@@ -206,7 +206,6 @@ export default function AnalyticsPage() {
         </div>
       </div>
       
-      {/* Revenue Chart */}
       <div className="mb-8">
         <h2 className={`text-xl font-semibold mb-4 ${darkMode ? 'text-white' : 'text-gray-800'}`}>
           Revenue Trends (2023)
@@ -226,38 +225,47 @@ export default function AnalyticsPage() {
             </div>
             
             {/* Chart bars */}
-            <div className="absolute bottom-6 left-0 right-0 flex justify-between items-end px-4 h-48">
-              {mockRevenueData.map((item, index) => {
-                const maxValue = getMaxValue(mockRevenueData)
-                const height = (item.value / maxValue) * 100
-                
-                return (
-                  <div 
-                    key={index}
-                    className={`w-4 md:w-6 rounded-t-md bg-gradient-to-t ${darkMode 
-                      ? 'from-green-500 to-green-300' 
-                      : 'from-green-600 to-green-400'
-                    } relative group`}
-                    style={{ height: `${height}%` }}
-                  >
-                    {/* Tooltip */}
-                    <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
-                      <div className={`px-2 py-1 rounded text-xs ${darkMode 
-                        ? 'bg-gray-800 text-white' 
-                        : 'bg-white text-gray-800 shadow-md'
-                      }`}>
+            <div className="absolute bottom-6 left-0 right-0 px-4 h-48">
+              <div className="flex items-end justify-between h-full">
+                {mockRevenueData.map((item, index) => {
+                  const maxValue = getMaxValue(mockRevenueData)
+                  const height = (item.value / maxValue) * 100
+                  
+                  return (
+                    <div 
+                      key={index} 
+                      className={`w-4 rounded-t-sm relative group`}
+                      style={{ height: `${height}%` }}
+                    >
+                      <div 
+                        className={`w-full h-full rounded-t-sm ${darkMode 
+                          ? 'bg-gradient-to-t from-green-500 to-green-400' 
+                          : 'bg-gradient-to-t from-green-600 to-green-400'}`}
+                      ></div>
+                      
+                      {/* Tooltip */}
+                      <div className="absolute opacity-0 group-hover:opacity-100 bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-2 py-1 bg-black text-white text-xs rounded transition-opacity duration-200">
                         ${item.value}
                       </div>
                     </div>
-                  </div>
-                )
-              })}
+                  )
+                })}
+              </div>
+            </div>
+            
+            {/* Y-axis grid lines */}
+            <div className="absolute inset-0 flex flex-col justify-between pt-2 pb-6">
+              {[0, 1, 2, 3].map((_, index) => (
+                <div 
+                  key={index} 
+                  className={`w-full h-px ${darkMode ? 'bg-gray-700' : 'bg-gray-200'}`}
+                ></div>
+              ))}
             </div>
           </div>
         </div>
       </div>
       
-      {/* Other charts */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
         {/* Customer Growth Chart */}
         <div>
@@ -320,28 +328,40 @@ export default function AnalyticsPage() {
                 
                 {/* Data points */}
                 {mockCustomerData.map((item, index) => {
-                  const maxValue = getMaxValue(mockCustomerData)
-                  const left = `${(index / (mockCustomerData.length - 1)) * 100}%`
-                  const bottom = `${(item.value / maxValue) * 100}%`
-                  
-                  return (
-                    <div 
-                      key={index}
-                      className={`absolute w-2 h-2 rounded-full ${darkMode ? 'bg-purple-500' : 'bg-purple-600'} transform -translate-x-1 group`}
-                      style={{ left, bottom }}
-                    >
-                      {/* Tooltip */}
-                      <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 opacity-0 group-hover:opacity-100 transition-opacity duration-200 z-10">
-                        <div className={`px-2 py-1 rounded text-xs ${darkMode 
-                          ? 'bg-gray-800 text-white' 
-                          : 'bg-white text-gray-800 shadow-md'
-                        }`}>
-                          {item.value} customers
+                  if (index % 2 === 0) {
+                    const maxValue = getMaxValue(mockCustomerData)
+                    const left = (index / (mockCustomerData.length - 1)) * 100
+                    const top = 100 - (item.value / maxValue) * 100
+                    
+                    return (
+                      <div 
+                        key={index}
+                        className={`absolute w-2 h-2 rounded-full bg-white border-2 transform -translate-x-1 -translate-y-1 group 
+                          ${darkMode ? 'border-purple-500' : 'border-purple-600'}`}
+                        style={{ 
+                          left: `${left}%`, 
+                          top: `${top}%` 
+                        }}
+                      >
+                        {/* Tooltip */}
+                        <div className="absolute opacity-0 group-hover:opacity-100 bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-2 py-1 bg-black text-white text-xs rounded transition-opacity duration-200 whitespace-nowrap">
+                          {item.month}: {item.value} customers
                         </div>
                       </div>
-                    </div>
-                  )
+                    )
+                  }
+                  return null
                 })}
+              </div>
+              
+              {/* Y-axis grid lines */}
+              <div className="absolute inset-0 flex flex-col justify-between pt-2 pb-6">
+                {[0, 1, 2, 3].map((_, index) => (
+                  <div 
+                    key={index} 
+                    className={`w-full h-px ${darkMode ? 'bg-gray-700' : 'bg-gray-200'}`}
+                  ></div>
+                ))}
               </div>
             </div>
           </div>
@@ -368,33 +388,80 @@ export default function AnalyticsPage() {
                 ))}
               </div>
               
-              {/* Chart bars */}
-              <div className="absolute bottom-6 left-0 right-0 flex justify-between items-end px-4 h-48">
+              {/* Chart area */}
+              <div className="absolute bottom-6 left-0 right-0 px-4 h-48">
+                <svg className="w-full h-full" viewBox="0 0 100 100" preserveAspectRatio="none">
+                  <path
+                    d={mockAppointmentsData.map((item, index) => {
+                      const maxValue = getMaxValue(mockAppointmentsData)
+                      const x = (index / (mockAppointmentsData.length - 1)) * 100
+                      const y = 100 - (item.value / maxValue) * 100
+                      return (index === 0 ? 'M' : 'L') + `${x},${y}`
+                    }).join(' ')}
+                    fill="none"
+                    stroke={darkMode ? '#3b82f6' : '#2563eb'}
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
+                  {/* Fill area under the line */}
+                  <path
+                    d={`
+                      ${mockAppointmentsData.map((item, index) => {
+                        const maxValue = getMaxValue(mockAppointmentsData)
+                        const x = (index / (mockAppointmentsData.length - 1)) * 100
+                        const y = 100 - (item.value / maxValue) * 100
+                        return (index === 0 ? 'M' : 'L') + `${x},${y}`
+                      }).join(' ')}
+                      L100,100 L0,100 Z
+                    `}
+                    fill="url(#blue-gradient)"
+                    opacity="0.2"
+                  />
+                  <defs>
+                    <linearGradient id="blue-gradient" x1="0%" y1="0%" x2="0%" y2="100%">
+                      <stop offset="0%" stopColor={darkMode ? '#3b82f6' : '#2563eb'} />
+                      <stop offset="100%" stopColor={darkMode ? '#3b82f6' : '#2563eb'} stopOpacity="0" />
+                    </linearGradient>
+                  </defs>
+                </svg>
+                
+                {/* Data points */}
                 {mockAppointmentsData.map((item, index) => {
-                  const maxValue = getMaxValue(mockAppointmentsData)
-                  const height = (item.value / maxValue) * 100
-                  
-                  return (
-                    <div 
-                      key={index}
-                      className={`w-2 md:w-3 rounded-t-md ${darkMode 
-                        ? 'bg-blue-500' 
-                        : 'bg-blue-600'
-                      } relative group`}
-                      style={{ height: `${height}%` }}
-                    >
-                      {/* Tooltip */}
-                      <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
-                        <div className={`px-2 py-1 rounded text-xs ${darkMode 
-                          ? 'bg-gray-800 text-white' 
-                          : 'bg-white text-gray-800 shadow-md'
-                        }`}>
-                          {item.value} appts
+                  if (index % 2 === 0) {
+                    const maxValue = getMaxValue(mockAppointmentsData)
+                    const left = (index / (mockAppointmentsData.length - 1)) * 100
+                    const top = 100 - (item.value / maxValue) * 100
+                    
+                    return (
+                      <div 
+                        key={index}
+                        className={`absolute w-2 h-2 rounded-full bg-white border-2 transform -translate-x-1 -translate-y-1 group
+                          ${darkMode ? 'border-blue-500' : 'border-blue-600'}`}
+                        style={{ 
+                          left: `${left}%`, 
+                          top: `${top}%` 
+                        }}
+                      >
+                        {/* Tooltip */}
+                        <div className="absolute opacity-0 group-hover:opacity-100 bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-2 py-1 bg-black text-white text-xs rounded transition-opacity duration-200 whitespace-nowrap">
+                          {item.month}: {item.value} appointments
                         </div>
                       </div>
-                    </div>
-                  )
+                    )
+                  }
+                  return null
                 })}
+              </div>
+              
+              {/* Y-axis grid lines */}
+              <div className="absolute inset-0 flex flex-col justify-between pt-2 pb-6">
+                {[0, 1, 2, 3].map((_, index) => (
+                  <div 
+                    key={index} 
+                    className={`w-full h-px ${darkMode ? 'bg-gray-700' : 'bg-gray-200'}`}
+                  ></div>
+                ))}
               </div>
             </div>
           </div>

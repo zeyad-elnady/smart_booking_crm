@@ -101,8 +101,8 @@ export default function AddCustomer() {
         <h1 className={`text-2xl font-bold ${darkMode ? 'text-white' : 'text-gray-800'}`}>Add Customer</h1>
       </div>
 
-      <div className="flex flex-col lg:flex-row lg:space-x-6">
-        <div className={`lg:w-2/3 mb-6 lg:mb-0 rounded-xl backdrop-blur-md border p-6 ${
+      <div className="flex">
+        <div className={`w-full rounded-xl backdrop-blur-md border p-6 ${
           darkMode 
             ? 'border-white/10 bg-gray-800/30' 
             : 'border-gray-200 bg-white shadow-sm'
@@ -278,35 +278,6 @@ export default function AddCustomer() {
               {isLoading ? 'Adding...' : 'Add Customer'}
             </button>
           </form>
-        </div>
-
-        <div className="lg:w-1/3 space-y-6">
-          <div className={`rounded-xl backdrop-blur-md border p-6 ${
-            darkMode 
-              ? 'border-white/10 bg-blue-900/30 text-white' 
-              : 'border-blue-200 bg-blue-50 text-blue-900 shadow-sm'
-          }`}>
-            <h2 className="text-xl font-bold mb-4">Customer Management</h2>
-            <p className={darkMode ? 'text-blue-100' : 'text-blue-800'}>Add new customers to your business database. Complete all required fields marked with an asterisk (*).</p>
-          </div>
-
-          <div className={`rounded-xl backdrop-blur-md border p-6 ${
-            darkMode 
-              ? 'border-white/10 bg-purple-900/30 text-white' 
-              : 'border-purple-200 bg-purple-50 text-purple-900 shadow-sm'
-          }`}>
-            <h2 className="text-xl font-bold mb-4">Contact Information</h2>
-            <p className={darkMode ? 'text-purple-100' : 'text-purple-800'}>Ensure contact details are accurate for future communications and appointment notifications.</p>
-          </div>
-          
-          <div className={`rounded-xl backdrop-blur-md border p-6 ${
-            darkMode 
-              ? 'border-white/10 bg-emerald-900/30 text-white' 
-              : 'border-emerald-200 bg-emerald-50 text-emerald-900 shadow-sm'
-          }`}>
-            <h2 className="text-xl font-bold mb-4">Privacy Note</h2>
-            <p className={darkMode ? 'text-emerald-100' : 'text-emerald-800'}>Customer data is stored securely and used only for business purposes in compliance with data protection regulations.</p>
-          </div>
         </div>
       </div>
     </div>

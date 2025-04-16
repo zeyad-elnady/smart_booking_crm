@@ -73,7 +73,7 @@ export default function Home() {
                 >
                   <path d="M17.293 13.293A8 8 0 016.707 2.707a8.001 8.001 0 1010.586 10.586z" />
                 </svg>
-              </div>
+          </div>
               
               {/* Sun icon - RIGHT side */}
               <div 
@@ -113,7 +113,7 @@ export default function Home() {
             {/* Ray effects around sun - only visible in light mode */}
             <div className={`absolute inset-0 transition-opacity duration-700 ${darkMode ? 'opacity-0' : 'opacity-100'}`}>
               <div className="absolute top-1 right-2 w-5 h-5 bg-yellow-300/30 rounded-full animate-[pulse_2s_ease-in-out_infinite]" style={{ animationDelay: '0.5s' }}></div>
-            </div>
+          </div>
           </button>
 
           <Link href="/login" className={`px-4 py-2 rounded-lg ${darkMode ? 'text-gray-300 hover:text-white' : 'text-gray-700 hover:text-gray-900'}`}>Login</Link>
@@ -131,31 +131,31 @@ export default function Home() {
             ? 'from-purple-400 via-indigo-500 to-purple-600'
             : 'from-indigo-700 via-purple-700 to-indigo-600'
         } bg-clip-text text-transparent`}>
-          Streamline Your Bookings
-        </h1>
+              Streamline Your Bookings
+            </h1>
         <p className={`text-xl mb-8 transition-colors duration-500 ${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>
           The complete customer relationship management solution 
           designed specifically for service-based businesses.
-        </p>
-        <div className="flex flex-col sm:flex-row gap-4 justify-center">
+            </p>
+            <div className="flex flex-col sm:flex-row gap-4 justify-center">
           <Link href="/dashboard" className={`px-8 py-4 rounded-xl text-lg font-medium transition-all duration-300 ${
             darkMode
               ? 'glass-dark bg-gradient-to-r from-purple-600 to-blue-500 text-white hover:from-purple-700 hover:to-blue-600 shadow-lg hover:shadow-xl'
               : lightModeStyles.getStartedBtn
           }`}>
-            Get Started
-          </Link>
+                Get Started
+              </Link>
           <Link href="#features" className={`px-8 py-4 rounded-xl text-lg font-medium transition-all duration-300 ${
             darkMode
               ? 'glass hover:bg-white/10 border border-white border-opacity-20 text-white hover:bg-white/5 shadow-lg hover:shadow-xl'
               : `${lightModeStyles.learnMoreBtn} border`
           }`}>
-            Learn More
-          </Link>
-        </div>
-      </div>
-      
-      {/* Features section */}
+                Learn More
+              </Link>
+            </div>
+          </div>
+          
+          {/* Features section */}
       <section id="features" className={`w-full max-w-7xl mx-auto py-12 transition-colors duration-500 ${darkMode ? 'text-white' : 'text-gray-800'}`}>
         <h2 className={`text-3xl font-bold text-center mb-12 bg-gradient-to-r transition-all duration-700 ${
           darkMode
@@ -163,7 +163,7 @@ export default function Home() {
             : 'from-indigo-700 to-purple-700'
         } bg-clip-text text-transparent`}>
           Features
-        </h2>
+            </h2>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
           {[
             { title: 'Smart Scheduling', description: 'Optimize your calendar with AI-powered appointment management.'},

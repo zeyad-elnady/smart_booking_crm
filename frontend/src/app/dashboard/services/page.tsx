@@ -68,11 +68,6 @@ export default function Services() {
 
   return (
     <div className="space-y-6 animate-fadeIn">
-      {debugInfo && (
-        <div className="p-4 glass border border-gray-500/30 rounded-lg text-gray-300 text-sm">
-          Debug: {debugInfo}
-        </div>
-      )}
       
       <div className="sm:flex sm:items-center">
         <div className="sm:flex-auto">

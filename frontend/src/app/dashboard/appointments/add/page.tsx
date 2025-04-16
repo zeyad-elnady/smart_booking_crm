@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react'
 import Link from 'next/link'
-import { ArrowLeftIcon } from '@heroicons/react/24/outline'
+import { ArrowLeftIcon, UserPlusIcon, PlusCircleIcon } from '@heroicons/react/24/outline'
 import { customerAPI, serviceAPI, Customer, Service } from '@/services/api'
 import CustomDropdown from '@/components/CustomDropdown'
 import { useRouter } from 'next/navigation'
@@ -247,8 +247,52 @@ export default function AddAppointment() {
         <h1 className={`text-2xl font-bold ${darkMode ? 'text-white' : 'text-gray-800'}`}>Schedule New Appointment</h1>
       </div>
 
+      {/* Quick Actions Panel that matches the application style */}
+      <div className="mb-6">
+        <div className={`rounded-xl border backdrop-blur-sm ${
+          darkMode 
+            ? 'border-white/10 bg-gray-800/30' 
+            : 'border-gray-200 bg-white shadow-sm'
+        }`}>
+          <div className="p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div>
+              <h2 className={`text-lg font-semibold ${darkMode ? 'text-white' : 'text-gray-800'}`}>
+                Need to add a customer or service first?
+              </h2>
+              <p className={`text-sm mt-1 ${darkMode ? 'text-gray-300' : 'text-gray-600'}`}>
+                Create these records before scheduling the appointment
+              </p>
+            </div>
+            <div className="flex gap-3">
+              <Link 
+                href="/dashboard/customers/add" 
+                className={`flex items-center justify-center px-4 py-2 rounded-lg ${
+                  darkMode
+                    ? 'bg-purple-800 hover:bg-purple-700 text-white' 
+                    : 'bg-purple-700 hover:bg-purple-600 text-white'
+                } shadow-md hover:shadow-lg transform hover:-translate-y-1 transition-all duration-300 ease-in-out`}
+              >
+                <UserPlusIcon className="w-5 h-5 mr-2" />
+                <span className="font-medium">Add Customer</span>
+              </Link>
+              <Link 
+                href="/dashboard/services/add" 
+                className={`flex items-center justify-center px-4 py-2 rounded-lg ${
+                  darkMode
+                    ? 'bg-purple-800 hover:bg-purple-700 text-white' 
+                    : 'bg-purple-700 hover:bg-purple-600 text-white'
+                } shadow-md hover:shadow-lg transform hover:-translate-y-1 transition-all duration-300 ease-in-out`}
+              >
+                <PlusCircleIcon className="w-5 h-5 mr-2" />
+                <span className="font-medium">Add Service</span>
+              </Link>
+            </div>
+          </div>
+        </div>
+      </div>
+
       <div className="flex flex-col lg:flex-row lg:space-x-6">
-        <div className={`lg:w-2/3 mb-6 lg:mb-0 rounded-xl backdrop-blur-md border p-6 ${
+        <div className={`w-full mb-6 lg:mb-0 rounded-xl backdrop-blur-md border p-6 ${
           darkMode 
             ? 'border-white/10 bg-gray-800/30' 
             : 'border-gray-200 bg-white shadow-sm'
@@ -386,7 +430,7 @@ export default function AddAppointment() {
                 value={formData.notes}
                 onChange={handleChange}
                 rows={4}
-                className={`w-full rounded-lg border px-4 py-2.5 shadow-sm ${
+                className={`w-full rounded-lg border px-4 py-2.5 shadow-sm resize-none ${
                   darkMode 
                     ? 'border-white/10 bg-gray-900/60 text-gray-100 focus:border-indigo-500' 
                     : 'border-gray-300 bg-white text-gray-900 focus:border-indigo-500'
@@ -409,51 +453,6 @@ export default function AddAppointment() {
               </button>
             </div>
           </form>
-        </div>
-
-        <div className="lg:w-1/3 space-y-6">
-          <div className={`rounded-xl backdrop-blur-md border p-6 ${
-            darkMode 
-              ? 'border-white/10 bg-blue-900/30 text-white' 
-              : 'border-blue-200 bg-blue-50 text-blue-900 shadow-sm'
-          }`}>
-            <h2 className="text-xl font-bold mb-4">Appointment Management</h2>
-            <p className={darkMode ? 'text-blue-100' : 'text-blue-800'}>Schedule appointments for your customers by selecting a service, date, and time. All required fields are marked with an asterisk (*).</p>
-          </div>
-
-          <div className={`rounded-xl backdrop-blur-md border p-6 ${
-            darkMode 
-              ? 'border-white/10 bg-purple-900/30 text-white' 
-              : 'border-purple-200 bg-purple-50 text-purple-900 shadow-sm'
-          }`}>
-            <h2 className="text-xl font-bold mb-4">Customer & Service</h2>
-            <p className={darkMode ? 'text-purple-100' : 'text-purple-800'}>Choose a customer and service for this appointment. Need to create a new customer or service first?</p>
-            <div className="mt-4 flex space-x-3">
-              <Link href="/dashboard/customers/add" className={`text-sm px-3 py-2 rounded-lg transition-colors ${
-                darkMode
-                  ? 'bg-gray-800/50 hover:bg-gray-800 text-gray-200'
-                  : 'bg-gray-200/70 hover:bg-gray-300 text-gray-700'
-              }`}>
-                Add Customer
-              </Link>
-              <Link href="/dashboard/services/add" className={`text-sm px-3 py-2 rounded-lg transition-colors ${
-                darkMode
-                  ? 'bg-gray-800/50 hover:bg-gray-800 text-gray-200'
-                  : 'bg-gray-200/70 hover:bg-gray-300 text-gray-700'
-              }`}>
-                Add Service
-              </Link>
-            </div>
-          </div>
-          
-          <div className={`rounded-xl backdrop-blur-md border p-6 ${
-            darkMode 
-              ? 'border-white/10 bg-emerald-900/30 text-white' 
-              : 'border-emerald-200 bg-emerald-50 text-emerald-900 shadow-sm'
-          }`}>
-            <h2 className="text-xl font-bold mb-4">Date & Time</h2>
-            <p className={darkMode ? 'text-emerald-100' : 'text-emerald-800'}>Select an appropriate date and time for the appointment. You can adjust the duration based on the service requirements.</p>
-          </div>
         </div>
       </div>
 
