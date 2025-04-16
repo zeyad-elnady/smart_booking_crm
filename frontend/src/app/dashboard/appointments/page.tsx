@@ -26,6 +26,7 @@ import {
    addMonths,
    subMonths,
 } from "date-fns";
+import { appointmentService, Appointment } from "@/lib/appointmentService";
 
 export default function Appointments() {
    const { darkMode } = useTheme();
@@ -34,7 +35,22 @@ export default function Appointments() {
    const [currentDate, setCurrentDate] = useState(new Date());
    const [currentWeek, setCurrentWeek] = useState<Date[]>([]);
    const [monthDays, setMonthDays] = useState<(Date | null)[]>([]);
-   const [selectedAppointment, setSelectedAppointment] = useState<any>(null);
+   const [selectedAppointment, setSelectedAppointment] =
+      useState<Appointment | null>(null);
+   const [appointments, setAppointments] = useState<Appointment[]>([]);
+
+   // Load appointments
+   useEffect(() => {
+      const loadAppointments = () => {
+         const allAppointments = appointmentService.getAll();
+         setAppointments(allAppointments);
+      };
+
+      loadAppointments();
+      // Refresh appointments every minute
+      const interval = setInterval(loadAppointments, 60000);
+      return () => clearInterval(interval);
+   }, []);
 
    // Generate week days
    useEffect(() => {
@@ -70,62 +86,12 @@ export default function Appointments() {
    const goToNextMonth = () => setCurrentDate(addMonths(currentDate, 1));
    const goToPrevMonth = () => setCurrentDate(subMonths(currentDate, 1));
 
-   const appointments = [
-      {
-         id: 1,
-         customer: { name: "John Doe", initial: "J" },
-         service: "Haircut",
-         time: "10:00 AM",
-         duration: "30 min",
-         date: "2023-05-15", // For demo purposes, this should be today's date in actual implementation
-         status: "Confirmed",
-         notes: "Client prefers scissors only, no clippers",
-         statusColor: "from-green-400 to-emerald-500",
-      },
-      {
-         id: 2,
-         customer: { name: "Jane Smith", initial: "J" },
-         service: "Manicure",
-         time: "11:30 AM",
-         duration: "45 min",
-         date: "2023-05-15", // Same date as first appointment for demo
-         status: "Pending",
-         notes: "New client, first visit",
-         statusColor: "from-amber-400 to-yellow-500",
-      },
-      {
-         id: 3,
-         customer: { name: "Mike Johnson", initial: "M" },
-         service: "Massage",
-         time: "2:00 PM",
-         duration: "60 min",
-         date: "2023-05-16", // Next day for demo
-         status: "Confirmed",
-         notes: "Focus on upper back area",
-         statusColor: "from-green-400 to-emerald-500",
-      },
-   ];
-
    // Function to get appointments for a specific day
    const getAppointmentsForDay = (day: Date | null) => {
       if (!day) return [];
 
-      // In a real app, this would filter appointments by actual date
-      // Here we're using the demo dates
       const dayStr = format(day, "yyyy-MM-dd");
-
-      // Assign some appointments to today for demo purposes
-      const today = format(new Date(), "yyyy-MM-dd");
-      const tomorrow = format(addDays(new Date(), 1), "yyyy-MM-dd");
-
-      if (format(day, "yyyy-MM-dd") === today) {
-         return appointments.filter((a) => a.date === "2023-05-15");
-      }
-      if (format(day, "yyyy-MM-dd") === tomorrow) {
-         return appointments.filter((a) => a.date === "2023-05-16");
-      }
-
-      return [];
+      return appointments.filter((a) => a.date === dayStr);
    };
 
    // Function to handle switching between list and calendar views
@@ -133,13 +99,25 @@ export default function Appointments() {
    const switchToCalendarView = () => setViewMode("calendar");
 
    // Function to handle appointment click
-   const handleAppointmentClick = (appointment: any) => {
+   const handleAppointmentClick = (appointment: Appointment) => {
       setSelectedAppointment(appointment);
    };
 
    // Function to close appointment modal
    const closeAppointmentModal = () => {
       setSelectedAppointment(null);
+   };
+
+   const handleDeleteAppointment = async (appointmentId: string) => {
+      try {
+         await appointmentService.delete(appointmentId);
+         setAppointments(
+            appointments.filter((apt) => apt.id !== appointmentId)
+         );
+         setSelectedAppointment(null); // Close modal if open
+      } catch (error) {
+         console.error("Error deleting appointment:", error);
+      }
    };
 
    return (
@@ -248,6 +226,18 @@ export default function Appointments() {
                                  >
                                     Edit
                                  </Link>
+                                 <button
+                                    onClick={() =>
+                                       handleDeleteAppointment(appointment.id)
+                                    }
+                                    className={`transition-colors ${
+                                       darkMode
+                                          ? "text-red-400 hover:text-red-300 hover:bg-red-500/10"
+                                          : "text-red-600 hover:text-red-700 hover:bg-red-50"
+                                    }`}
+                                 >
+                                    Delete
+                                 </button>
                               </div>
                            </div>
                         </li>
@@ -632,6 +622,18 @@ export default function Appointments() {
                      >
                         Edit Appointment
                      </Link>
+                     <button
+                        onClick={() =>
+                           handleDeleteAppointment(selectedAppointment.id)
+                        }
+                        className={`px-4 py-2 rounded-full text-sm font-medium ${
+                           darkMode
+                              ? "bg-red-600 text-white hover:bg-red-700"
+                              : "bg-red-100 text-red-600 hover:bg-red-200"
+                        } transition-colors`}
+                     >
+                        Delete
+                     </button>
                   </div>
                </div>
             </div>

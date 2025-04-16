@@ -83,6 +83,16 @@ export default function Customers() {
       router.push(`/dashboard/customers/edit/${customerId}`);
    };
 
+   const handleDeleteClick = async (customerId: string) => {
+      try {
+         await customerAPI.deleteCustomer(customerId);
+         // Refresh the customer list after deletion
+         fetchCustomers();
+      } catch (error) {
+         console.error("Failed to delete customer:", error);
+      }
+   };
+
    const filteredCustomers = customers.filter(
       (customer) =>
          `${customer.firstName} ${customer.lastName}`
@@ -265,6 +275,16 @@ export default function Customers() {
                                  }`}
                               >
                                  Edit
+                              </button>
+                              <button
+                                 onClick={() => handleDeleteClick(customer._id)}
+                                 className={`transition-colors px-3 py-1 rounded ${
+                                    darkMode
+                                       ? "text-red-400 hover:text-red-300 hover:bg-red-500/10"
+                                       : "text-red-600 hover:text-red-700 hover:bg-red-50"
+                                 }`}
+                              >
+                                 Delete
                               </button>
                            </div>
                         </div>

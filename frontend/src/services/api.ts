@@ -47,6 +47,17 @@ if (typeof window !== "undefined") {
    console.log("Using API host:", API_HOST);
 }
 
+// Add error type interface
+interface ApiError extends Error {
+   code?: string;
+   response?: {
+      data?: {
+         message?: string;
+      };
+      status?: number;
+   };
+}
+
 // Try to ping the API on startup
 const pingAPI = async () => {
    try {
@@ -66,7 +77,7 @@ const pingAPI = async () => {
             console.log("API server connection: SUCCESS");
             return; // Success, exit the function
          }
-      } catch (initialError) {
+      } catch (initialError: unknown) {
          console.log(
             "Initial connection attempt failed, trying fallback options..."
          );
@@ -87,8 +98,10 @@ const pingAPI = async () => {
             console.log("API server connection via localhost: SUCCESS");
             return;
          }
-      } catch (localhostError) {
-         console.log("Localhost fallback failed:", localhostError.message);
+      } catch (localhostError: unknown) {
+         if (localhostError instanceof Error) {
+            console.log("Localhost fallback failed:", localhostError.message);
+         }
       }
 
       // If everything fails, try IP address 127.0.0.1
@@ -106,15 +119,19 @@ const pingAPI = async () => {
             console.log("API server connection via IP: SUCCESS");
             return;
          }
-      } catch (ipError) {
-         console.log("IP fallback failed:", ipError.message);
+      } catch (ipError: unknown) {
+         if (ipError instanceof Error) {
+            console.log("IP fallback failed:", ipError.message);
+         }
       }
 
       // If we get here, all attempts failed
       console.error("All API connection attempts failed");
       console.log("Please ensure the backend server is running on port 5000");
-   } catch (error) {
-      console.error("API server connection FAILED:", error.message);
+   } catch (error: unknown) {
+      if (error instanceof Error) {
+         console.error("API server connection FAILED:", error.message);
+      }
       console.log("Please ensure the backend server is running on port 5000");
    }
 };
@@ -174,25 +191,33 @@ export const testAPIConnection = async (): Promise<{
             appointments: appointmentsData.slice(0, 2), // Just return first 2 for brevity
          },
       };
-   } catch (error) {
+   } catch (error: unknown) {
       console.error("API connection test failed:", error);
 
       let errorMessage = "Unknown connection error";
 
-      if (error.name === "AbortError") {
-         errorMessage = "Connection timed out after 5 seconds";
-      } else if (error.message.includes("Failed to fetch")) {
-         errorMessage = "Network error - server may be down or CORS issue";
-      } else if (error.message.includes("NetworkError")) {
-         errorMessage = "Network error - check if server is running";
-      } else {
-         errorMessage = `Error: ${error.message}`;
+      if (error instanceof Error) {
+         if (error.name === "AbortError") {
+            errorMessage = "Connection timed out after 5 seconds";
+         } else if (error.message.includes("Failed to fetch")) {
+            errorMessage = "Network error - server may be down or CORS issue";
+         } else if (error.message.includes("NetworkError")) {
+            errorMessage = "Network error - check if server is running";
+         } else {
+            errorMessage = `Error: ${error.message}`;
+         }
+
+         return {
+            success: false,
+            message: errorMessage,
+            details: { error: error.message },
+         };
       }
 
       return {
          success: false,
          message: errorMessage,
-         details: { error: error.message },
+         details: { error: "Unknown error occurred" },
       };
    }
 };
@@ -309,6 +334,7 @@ export interface CustomerData {
    lastName: string;
    email: string;
    phone: string;
+   address?: string;
    notes?: string;
 }
 
@@ -326,7 +352,7 @@ export interface AppointmentData {
    time: string;
    duration: string;
    notes?: string;
-   status?: "Pending" | "Confirmed" | "Cancelled" | "Completed";
+   status?: "Waiting" | "Cancelled" | "Completed";
 }
 
 export interface Appointment
@@ -389,14 +415,14 @@ export const customerAPI = {
       }
    },
 
-   getCustomerById: async (id) => {
+   getCustomerById: async (id: string) => {
       try {
          console.log(
             `Fetching customer with ID ${id} from ${API.defaults.baseURL}/customers/${id}`
          );
          const response = await API.get(`/customers/${id}`);
          return response.data;
-      } catch (error) {
+      } catch (error: unknown) {
          console.error(`Error fetching customer ${id}:`, error);
 
          // If API call fails, try to get from localStorage
@@ -404,7 +430,7 @@ export const customerAPI = {
          if (mockCustomers) {
             console.log("Using mock customer data from localStorage");
             const customers = JSON.parse(mockCustomers);
-            const customer = customers.find((c) => c._id === id);
+            const customer = customers.find((c: Customer) => c._id === id);
             if (customer) {
                return customer;
             }
@@ -414,7 +440,7 @@ export const customerAPI = {
       }
    },
 
-   createCustomer: async (data) => {
+   createCustomer: async (data: CustomerData) => {
       try {
          const response = await API.post("/customers", data);
 
@@ -435,7 +461,7 @@ export const customerAPI = {
          }
 
          return response.data;
-      } catch (error) {
+      } catch (error: unknown) {
          console.error("Error creating customer:", error);
 
          // If API call fails, save to localStorage
@@ -466,7 +492,7 @@ export const customerAPI = {
       }
    },
 
-   updateCustomer: async (id, data) => {
+   updateCustomer: async (id: string, data: Partial<CustomerData>) => {
       try {
          const response = await API.put(`/customers/${id}`, data);
 
@@ -475,7 +501,7 @@ export const customerAPI = {
             const mockCustomers = localStorage.getItem("mockCustomers");
             if (mockCustomers) {
                const customers = JSON.parse(mockCustomers);
-               const index = customers.findIndex((c) => c._id === id);
+               const index = customers.findIndex((c: Customer) => c._id === id);
                if (index !== -1) {
                   customers[index] = {
                      ...customers[index],
@@ -488,12 +514,14 @@ export const customerAPI = {
                   );
                }
             }
-         } catch (e) {
-            console.error("Error updating local storage:", e);
+         } catch (e: unknown) {
+            if (e instanceof Error) {
+               console.error("Error updating local storage:", e.message);
+            }
          }
 
          return response.data;
-      } catch (error) {
+      } catch (error: unknown) {
          console.error(`Error updating customer ${id}:`, error);
 
          // If API call fails, update localStorage
@@ -501,7 +529,7 @@ export const customerAPI = {
             const mockCustomers = localStorage.getItem("mockCustomers");
             if (mockCustomers) {
                const customers = JSON.parse(mockCustomers);
-               const index = customers.findIndex((c) => c._id === id);
+               const index = customers.findIndex((c: Customer) => c._id === id);
                if (index !== -1) {
                   customers[index] = {
                      ...customers[index],
@@ -516,8 +544,10 @@ export const customerAPI = {
                }
             }
             throw new Error("Customer not found in mock data");
-         } catch (e) {
-            console.error("Error updating localStorage:", e);
+         } catch (e: unknown) {
+            if (e instanceof Error) {
+               console.error("Error updating localStorage:", e.message);
+            }
             throw error;
          }
       }
@@ -536,42 +566,14 @@ export const appointmentAPI = {
       return response.data;
    },
 
-   getAppointmentById: async (id: string) => {
-      const response = await API.get<Appointment>(`/appointments/${id}`);
+   getRecentAppointments: async () => {
+      const response = await API.get<Appointment[]>("/appointments/recent");
       return response.data;
    },
 
-   getRecentAppointments: async (limit = 3) => {
-      try {
-         const response = await API.get(`/appointments/recent?limit=${limit}`);
-         return response.data;
-      } catch (error) {
-         console.error("Error fetching recent appointments:", error);
-         // Return mock data if API fails
-         return [
-            {
-               _id: "1",
-               customer: "John Doe",
-               service: "Haircut",
-               time: "10:00 AM",
-               status: "Confirmed",
-            },
-            {
-               _id: "2",
-               customer: "Jane Smith",
-               service: "Manicure",
-               time: "11:30 AM",
-               status: "Pending",
-            },
-            {
-               _id: "3",
-               customer: "Mike Johnson",
-               service: "Massage",
-               time: "2:00 PM",
-               status: "Confirmed",
-            },
-         ];
-      }
+   getAppointmentById: async (id: string) => {
+      const response = await API.get<Appointment>(`/appointments/${id}`);
+      return response.data;
    },
 
    createAppointment: async (appointmentData: AppointmentData) => {
@@ -651,8 +653,13 @@ export const authAPI = {
                );
                throw new Error(`Backend server error: ${pingResponse.status}`);
             }
-         } catch (error) {
-            console.error("Cannot connect to backend server:", error.message);
+         } catch (error: unknown) {
+            if (error instanceof Error) {
+               console.error(
+                  "Cannot connect to backend server:",
+                  error.message
+               );
+            }
             throw new Error(
                "Cannot connect to server. Please make sure the backend is running."
             );
@@ -668,21 +675,23 @@ export const authAPI = {
             setCookie("token", response.data.token);
          }
          return response.data;
-      } catch (error) {
+      } catch (error: unknown) {
          console.error("Login error detail:", error);
 
          // Extract and enhance error message
-         if (error.code === "ECONNABORTED") {
-            throw new Error(
-               "Connection timeout. Server may be down or overloaded."
-            );
-         } else if (
-            error.message.includes("Network Error") ||
-            error.message.includes("connect")
-         ) {
-            throw new Error(
-               "Network error. Please check if backend server is running."
-            );
+         if (error instanceof Error) {
+            if ((error as ApiError).code === "ECONNABORTED") {
+               throw new Error(
+                  "Connection timeout. Server may be down or overloaded."
+               );
+            } else if (
+               error.message.includes("Network Error") ||
+               error.message.includes("connect")
+            ) {
+               throw new Error(
+                  "Network error. Please check if backend server is running."
+               );
+            }
          }
 
          throw error; // Re-throw for handling in the component

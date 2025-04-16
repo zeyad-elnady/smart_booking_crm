@@ -271,26 +271,18 @@ export default function Services() {
                            </Link>
                            <button
                               onClick={async () => {
-                                 if (
-                                    window.confirm(
-                                       "Are you sure you want to delete this service?"
-                                    )
-                                 ) {
-                                    try {
-                                       await serviceAPI.deleteService(
-                                          service._id
-                                       );
-                                       setServices(
-                                          services.filter(
-                                             (s) => s._id !== service._id
-                                          )
-                                       );
-                                    } catch (err: any) {
-                                       alert(
-                                          err.response?.data?.message ||
-                                             "Failed to delete service"
-                                       );
-                                    }
+                                 try {
+                                    await serviceAPI.deleteService(service._id);
+                                    setServices(
+                                       services.filter(
+                                          (s) => s._id !== service._id
+                                       )
+                                    );
+                                 } catch (err: any) {
+                                    alert(
+                                       err.response?.data?.message ||
+                                          "Failed to delete service"
+                                    );
                                  }
                               }}
                               className={`transition-colors ${

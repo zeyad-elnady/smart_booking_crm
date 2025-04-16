@@ -8,40 +8,52 @@ import {
    ClockIcon,
    XMarkIcon,
    ArrowPathIcon,
+   UsersIcon,
 } from "@heroicons/react/24/outline";
-import { authAPI, User, dashboardAPI, DashboardStats } from "@/services/api";
+import { authAPI, User, dashboardAPI } from "@/services/api";
 import { appointmentAPI } from "@/services/api";
 import { useTheme } from "@/components/ThemeProvider";
+import { format } from "date-fns";
 
-// Stats cards definitions with icons and colors
-const statDefinitions = [
+export interface DashboardStats {
+   todaysAppointments: number;
+   totalCustomers: number;
+   revenueToday: string;
+   averageWaitTime: string;
+   [key: string]: number | string;
+}
+
+interface StatDefinition {
+   name: string;
+   key: keyof DashboardStats;
+   icon: React.ReactNode;
+   color: string;
+}
+
+const statDefinitions: StatDefinition[] = [
    {
-      id: "appointmentsToday",
       name: "Today's Appointments",
-      icon: CalendarIcon,
-      color: "from-blue-400 to-blue-600",
-      format: (value: number) => value.toString(),
+      key: "todaysAppointments",
+      icon: <CalendarIcon className="h-6 w-6" />,
+      color: "bg-blue-500",
    },
    {
-      id: "totalCustomers",
       name: "Total Customers",
-      icon: UserGroupIcon,
-      color: "from-purple-400 to-purple-600",
-      format: (value: number) => value.toString(),
+      key: "totalCustomers",
+      icon: <UsersIcon className="h-6 w-6" />,
+      color: "bg-purple-500",
    },
    {
-      id: "revenueToday",
       name: "Revenue Today",
-      icon: CurrencyDollarIcon,
-      color: "from-green-400 to-green-600",
-      format: (value: number) => `$${value}`,
+      key: "revenueToday",
+      icon: <CurrencyDollarIcon className="h-6 w-6" />,
+      color: "bg-green-500",
    },
    {
-      id: "averageWaitTime",
       name: "Average Wait Time",
-      icon: ClockIcon,
-      color: "from-amber-400 to-amber-600",
-      format: (value: number) => `${value} min`,
+      key: "averageWaitTime",
+      icon: <ClockIcon className="h-6 w-6" />,
+      color: "bg-orange-500",
    },
 ];
 
@@ -52,6 +64,13 @@ interface RecentAppointment {
    service: string;
    time: string;
    status: string;
+}
+
+interface ApiDashboardStats {
+   todaysAppointments: number;
+   totalCustomers: number;
+   revenueToday: number;
+   averageWaitTime: number;
 }
 
 export default function Dashboard() {
@@ -73,46 +92,25 @@ export default function Dashboard() {
    const [appointments, setAppointments] = useState<RecentAppointment[]>([]);
    const [loadingAppointments, setLoadingAppointments] = useState(true);
 
-   const fetchStats = async (refresh = false) => {
+   const fetchStats = async () => {
       try {
-         setRefreshing(refresh);
+         const response = await dashboardAPI.getStats();
+         const apiStats = response as unknown as ApiDashboardStats;
 
-         // Always get current customer count first
-         if (typeof window !== "undefined") {
-            // Force update of customer count before fetching stats
-            const storedMockCustomers = localStorage.getItem("mockCustomers");
-            if (storedMockCustomers) {
-               const customers = JSON.parse(storedMockCustomers);
-               console.log(
-                  `Dashboard detected ${customers.length} customers in localStorage`
-               );
+         // Transform API stats to match our interface
+         const formattedStats: DashboardStats = {
+            todaysAppointments: apiStats.todaysAppointments || 0,
+            totalCustomers: apiStats.totalCustomers || 0,
+            revenueToday: `$${apiStats.revenueToday || 0}`,
+            averageWaitTime: `${apiStats.averageWaitTime || 0} min`,
+         };
 
-               // Update dashboard stats with current count
-               const storedMockStats =
-                  localStorage.getItem("mockDashboardStats");
-               if (storedMockStats) {
-                  const stats = JSON.parse(storedMockStats);
-                  stats.totalCustomers = customers.length;
-                  localStorage.setItem(
-                     "mockDashboardStats",
-                     JSON.stringify(stats)
-                  );
-               }
-            }
-         }
-
-         const data = refresh
-            ? await dashboardAPI.refreshStats()
-            : await dashboardAPI.getStats();
-
-         setStats(data);
+         setStats(formattedStats);
          setLastUpdated(new Date());
          setLoading(false);
-         setRefreshing(false);
       } catch (error) {
-         console.error("Error fetching dashboard stats:", error);
+         console.error("Error fetching stats:", error);
          setLoading(false);
-         setRefreshing(false);
       }
    };
 
@@ -120,7 +118,23 @@ export default function Dashboard() {
       try {
          setLoadingAppointments(true);
          const data = await appointmentAPI.getRecentAppointments();
-         setAppointments(data);
+         // Transform the data to match RecentAppointment interface
+         const transformedData: RecentAppointment[] = data.map(
+            (appointment) => ({
+               _id: appointment._id,
+               customer:
+                  typeof appointment.customer === "string"
+                     ? appointment.customer
+                     : appointment.customer._id,
+               service:
+                  typeof appointment.service === "string"
+                     ? appointment.service
+                     : appointment.service._id,
+               time: appointment.time,
+               status: appointment.status || "Waiting",
+            })
+         );
+         setAppointments(transformedData);
          setLoadingAppointments(false);
       } catch (error) {
          console.error("Error fetching recent appointments:", error);
@@ -129,7 +143,7 @@ export default function Dashboard() {
    };
 
    const handleRefreshStats = () => {
-      fetchStats(true);
+      fetchStats();
       fetchRecentAppointments();
    };
 
@@ -211,7 +225,7 @@ export default function Dashboard() {
 
       // Set up interval to refresh stats every 60 seconds
       const intervalId = setInterval(() => {
-         fetchStats(true);
+         fetchStats();
          fetchRecentAppointments();
       }, 60000);
 
@@ -232,6 +246,12 @@ export default function Dashboard() {
    const handleDeclineServiceLink = () => {
       localStorage.setItem("serviceChoice", "no");
       setShowServicePrompt(false);
+   };
+
+   const formatStatValue = (value: number | string | undefined): string => {
+      if (value === undefined) return "-";
+      if (typeof value === "number") return value.toString();
+      return value;
    };
 
    if (!mounted) return null;
@@ -438,28 +458,25 @@ export default function Dashboard() {
                            cardBgClass = "card-amber-bg";
 
                         // Get stat value
-                        const value = stats ? stats[stat.id] : 0;
+                        const value = stats ? stats[stat.key] : 0;
 
                         return (
                            <div
-                              key={stat.id}
+                              key={stat.key}
                               className={`glass rounded-xl p-6 ${cardBgClass}`}
                            >
                               <div className="flex items-center mb-4">
                                  <div
                                     className={`p-3 rounded-lg bg-gradient-to-br ${stat.color} mr-3`}
                                  >
-                                    <stat.icon
-                                       className="h-6 w-6 text-white"
-                                       aria-hidden="true"
-                                    />
+                                    {stat.icon}
                                  </div>
                                  <h3 className="stat-label text-sm font-medium">
                                     {stat.name}
                                  </h3>
                               </div>
                               <div className="stat-value text-4xl">
-                                 {stat.format(value)}
+                                 {formatStatValue(value)}
                               </div>
                            </div>
                         );
@@ -573,11 +590,16 @@ export default function Dashboard() {
                                  <span
                                     className={`inline-flex items-center rounded-full px-2.5 py-1 text-xs font-medium ${
                                        darkMode
-                                          ? appointment.status === "Confirmed"
+                                          ? appointment.status === "Completed"
                                              ? "bg-green-500/20 text-green-400"
+                                             : appointment.status ===
+                                               "Cancelled"
+                                             ? "bg-red-500/20 text-red-400"
                                              : "bg-yellow-500/20 text-yellow-400"
-                                          : appointment.status === "Confirmed"
+                                          : appointment.status === "Completed"
                                           ? "bg-green-50 text-green-700 ring-1 ring-green-600/20"
+                                          : appointment.status === "Cancelled"
+                                          ? "bg-red-50 text-red-700 ring-1 ring-red-600/20"
                                           : "bg-yellow-50 text-yellow-700 ring-1 ring-yellow-600/20"
                                     }`}
                                  >

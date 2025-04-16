@@ -7,7 +7,14 @@ import {
    UserPlusIcon,
    PlusCircleIcon,
 } from "@heroicons/react/24/outline";
-import { customerAPI, serviceAPI, Customer, Service } from "@/services/api";
+import {
+   customerAPI,
+   serviceAPI,
+   Customer,
+   Service,
+   AppointmentData,
+   appointmentAPI,
+} from "@/services/api";
 import CustomDropdown from "@/components/CustomDropdown";
 import { useRouter } from "next/navigation";
 import { toast } from "react-hot-toast";
@@ -148,7 +155,7 @@ export default function AddAppointment() {
       date: "",
       time: "",
       duration: "60",
-      status: "scheduled",
+      status: "Waiting",
       notes: "",
    });
    const [formErrors, setFormErrors] = useState<any>({});
@@ -217,23 +224,34 @@ export default function AddAppointment() {
 
       setLoading(true);
       try {
+         // Format the date and time into a single ISO string
+         const [hours, minutes] = formData.time.split(":");
+         const appointmentDate = new Date(formData.date);
+         appointmentDate.setHours(parseInt(hours), parseInt(minutes));
+
          // Format data for the API
-         const appointmentData = {
-            customer: formData.customerId,
-            service: formData.serviceId,
-            date: formData.date,
+         const appointmentData: AppointmentData = {
+            customer: formData.customerId.trim(),
+            service: formData.serviceId.trim(),
+            date: appointmentDate.toISOString(),
             time: formData.time,
             duration: formData.duration,
-            status: formData.status,
-            notes: formData.notes,
+            status: "Waiting" as const, // Explicitly type as literal
+            notes: formData.notes || "",
          };
 
-         await createAppointment(appointmentData);
+         console.log("Creating appointment with data:", appointmentData);
+         const result = await createAppointment(appointmentData);
+         console.log("Appointment created:", result);
          toast.success("Appointment created successfully");
          router.push("/dashboard/appointments");
-      } catch (error) {
+      } catch (error: any) {
          console.error("Error creating appointment:", error);
-         toast.error("Failed to create appointment");
+         const errorMessage =
+            error.response?.data?.message ||
+            error.message ||
+            "Failed to create appointment";
+         toast.error(errorMessage);
       } finally {
          setLoading(false);
       }
@@ -249,12 +267,42 @@ export default function AddAppointment() {
 
    const validateForm = () => {
       const errors: any = {};
+
+      // Required field validation
       if (!formData.customerId) errors.customerId = "Customer is required";
       if (!formData.serviceId) errors.serviceId = "Service is required";
       if (!formData.date) errors.date = "Date is required";
       if (!formData.time) errors.time = "Time is required";
       if (!formData.duration) errors.duration = "Duration is required";
-      if (!formData.status) errors.status = "Status is required";
+
+      // Date validation
+      if (formData.date) {
+         const selectedDate = new Date(formData.date);
+         const today = new Date();
+         today.setHours(0, 0, 0, 0);
+
+         if (selectedDate < today) {
+            errors.date = "Cannot schedule appointments in the past";
+         }
+      }
+
+      // Time validation
+      if (formData.time && formData.date) {
+         const [hours, minutes] = formData.time.split(":");
+         const appointmentTime = new Date(formData.date);
+         appointmentTime.setHours(parseInt(hours), parseInt(minutes));
+
+         const now = new Date();
+         if (appointmentTime < now) {
+            errors.time = "Cannot schedule appointments in the past";
+         }
+      }
+
+      // Duration validation
+      if (formData.duration && isNaN(Number(formData.duration))) {
+         errors.duration = "Duration must be a number";
+      }
+
       setFormErrors(errors);
       return Object.keys(errors).length === 0;
    };
@@ -273,13 +321,6 @@ export default function AddAppointment() {
          label: service.name,
       };
    });
-
-   const statusOptions = [
-      { id: "scheduled", label: "Scheduled" },
-      { id: "confirmed", label: "Confirmed" },
-      { id: "cancelled", label: "Cancelled" },
-      { id: "completed", label: "Completed" },
-   ];
 
    return (
       <div className={`p-6 w-full ${darkMode ? "dark" : "light"}`}>
@@ -537,44 +578,6 @@ export default function AddAppointment() {
                         }`}
                      >
                         {formErrors.duration}
-                     </p>
-                  )}
-               </div>
-
-               {/* Status Selection */}
-               <div>
-                  <label
-                     className={`block mb-2 text-sm font-medium ${
-                        darkMode ? "text-gray-200" : "text-gray-700"
-                     }`}
-                  >
-                     Status <span className="text-pink-500">*</span>
-                  </label>
-                  <select
-                     value={formData.status}
-                     onChange={(e) =>
-                        handleDropdownChange("status", e.target.value)
-                     }
-                     className={`w-full px-4 py-2 rounded-lg border focus:ring-1 focus:ring-gray-200 transition-colors ${
-                        darkMode
-                           ? "bg-gray-800 border-gray-700 text-white hover:bg-gray-700"
-                           : "bg-white border-gray-300 text-gray-900 hover:bg-gray-50"
-                     }`}
-                  >
-                     <option value="">Select a status</option>
-                     {statusOptions.map((option) => (
-                        <option key={option.id} value={option.id}>
-                           {option.label}
-                        </option>
-                     ))}
-                  </select>
-                  {formErrors.status && (
-                     <p
-                        className={`mt-1 text-sm ${
-                           darkMode ? "text-red-400" : "text-red-500"
-                        }`}
-                     >
-                        {formErrors.status}
                      </p>
                   )}
                </div>
