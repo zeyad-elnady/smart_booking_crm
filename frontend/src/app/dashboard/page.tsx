@@ -469,69 +469,132 @@ export default function Dashboard() {
             </div>
          </div>
 
-         <div className="mt-8">
-            <h2 className="text-xl font-semibold mb-6 text-white">
-               Recent Appointments
-            </h2>
-            <div className="glass rounded-xl overflow-hidden">
+         {/* Recent Appointments */}
+         <div
+            className={`rounded-lg shadow-sm ${
+               darkMode
+                  ? "glass border border-white/10"
+                  : "bg-white border border-gray-200"
+            }`}
+         >
+            <div className="px-6 py-4">
+               <h3
+                  className={`text-lg font-medium ${
+                     darkMode ? "text-white" : "text-gray-900"
+                  }`}
+               >
+                  Recent Appointments
+               </h3>
+            </div>
+            <div
+               className={`border-t ${
+                  darkMode ? "border-white/10" : "border-gray-200"
+               }`}
+            >
                {loadingAppointments ? (
-                  <div className="p-8 text-center">
-                     <div className="animate-pulse flex flex-col items-center">
-                        <div className="h-10 w-10 bg-gray-700/50 rounded-full mb-4"></div>
-                        <div className="h-4 bg-gray-700/50 rounded w-1/2 mb-2"></div>
-                        <div className="h-4 bg-gray-700/50 rounded w-1/3"></div>
+                  <div className="p-6 text-center">
+                     <div
+                        className={`inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-current border-r-transparent align-[-0.125em] ${
+                           darkMode ? "text-white/30" : "text-gray-300"
+                        }`}
+                        role="status"
+                     >
+                        <span className="!absolute !-m-px !h-px !w-px !overflow-hidden !whitespace-nowrap !border-0 !p-0 ![clip:rect(0,0,0,0)]">
+                           Loading...
+                        </span>
                      </div>
                   </div>
                ) : appointments.length > 0 ? (
-                  <div className="divide-y divide-white/10">
+                  <ul
+                     role="list"
+                     className={`divide-y ${
+                        darkMode ? "divide-white/10" : "divide-gray-200"
+                     }`}
+                  >
                      {appointments.map((appointment) => (
-                        <div
+                        <li
                            key={appointment._id}
-                           className="p-4 flex items-center justify-between hover:bg-white/5 transition-colors"
+                           className={`px-6 py-4 ${
+                              darkMode ? "hover:bg-white/5" : "hover:bg-gray-50"
+                           } transition-colors`}
                         >
-                           <div className="flex items-center">
-                              <div className="flex-shrink-0">
-                                 <div className="h-10 w-10 rounded-full bg-gradient-to-br from-indigo-400 to-purple-600 flex items-center justify-center">
-                                    <span className="text-white font-medium">
-                                       {(appointment.customer &&
-                                          typeof appointment.customer ===
-                                             "string" &&
-                                          appointment.customer.charAt(0)) ||
-                                          "C"}
-                                    </span>
+                           <div className="flex items-center justify-between">
+                              <div className="flex items-center">
+                                 <div className="flex-shrink-0">
+                                    <div
+                                       className={`h-10 w-10 rounded-full flex items-center justify-center ${
+                                          darkMode
+                                             ? "bg-gray-700"
+                                             : "bg-gray-100"
+                                       }`}
+                                    >
+                                       <span
+                                          className={`text-sm font-medium ${
+                                             darkMode
+                                                ? "text-white"
+                                                : "text-gray-900"
+                                          }`}
+                                       >
+                                          {appointment.customer.charAt(0)}
+                                       </span>
+                                    </div>
+                                 </div>
+                                 <div className="ml-4">
+                                    <div
+                                       className={`text-sm font-medium ${
+                                          darkMode
+                                             ? "text-white"
+                                             : "text-gray-900"
+                                       }`}
+                                    >
+                                       {appointment.customer}
+                                    </div>
+                                    <div
+                                       className={`text-sm ${
+                                          darkMode
+                                             ? "text-gray-400"
+                                             : "text-gray-500"
+                                       }`}
+                                    >
+                                       {appointment.service}
+                                    </div>
                                  </div>
                               </div>
-                              <div className="ml-4">
-                                 <div className="text-sm font-medium text-white">
-                                    {appointment.customer || "Unknown Customer"}
+                              <div className="flex items-center space-x-4">
+                                 <div
+                                    className={`text-sm ${
+                                       darkMode
+                                          ? "text-gray-400"
+                                          : "text-gray-500"
+                                    }`}
+                                 >
+                                    {appointment.time}
                                  </div>
-                                 <div className="text-sm text-gray-300">
-                                    {appointment.service || "Unknown Service"}
-                                 </div>
+                                 <span
+                                    className={`inline-flex items-center rounded-full px-2.5 py-1 text-xs font-medium ${
+                                       darkMode
+                                          ? appointment.status === "Confirmed"
+                                             ? "bg-green-500/20 text-green-400"
+                                             : "bg-yellow-500/20 text-yellow-400"
+                                          : appointment.status === "Confirmed"
+                                          ? "bg-green-50 text-green-700 ring-1 ring-green-600/20"
+                                          : "bg-yellow-50 text-yellow-700 ring-1 ring-yellow-600/20"
+                                    }`}
+                                 >
+                                    {appointment.status}
+                                 </span>
                               </div>
                            </div>
-                           <div className="flex items-center">
-                              <div className="text-sm text-gray-300 mr-4">
-                                 {appointment.time}
-                              </div>
-                              <span
-                                 className={`px-2 py-1 text-xs font-medium rounded-full ${
-                                    appointment.status === "Confirmed"
-                                       ? "bg-green-400/20 text-green-300"
-                                       : appointment.status === "Completed"
-                                       ? "bg-blue-400/20 text-blue-300"
-                                       : "bg-yellow-400/20 text-yellow-300"
-                                 }`}
-                              >
-                                 {appointment.status}
-                              </span>
-                           </div>
-                        </div>
+                        </li>
                      ))}
-                  </div>
+                  </ul>
                ) : (
-                  <div className="p-8 text-center text-gray-400">
-                     No appointments scheduled for today
+                  <div
+                     className={`p-6 text-center ${
+                        darkMode ? "text-gray-400" : "text-gray-500"
+                     }`}
+                  >
+                     No recent appointments
                   </div>
                )}
             </div>
