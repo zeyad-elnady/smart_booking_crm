@@ -1,11 +1,17 @@
 {
-  "dependencies": {
-    "@types/uuid": "^10.0.0",
-    "uuid": "^11.1.0"
-  },
-  "devDependencies": {
-    "autoprefixer": "^10.4.21",
-    "postcss": "^8.5.3",
-    "tailwindcss": "^4.1.4"
-  }
+   "dependencies": {
+      "@types/uuid": "^10.0.0",
+      "uuid": "^11.1.0"
+   },
+   "devDependencies": {
+      "autoprefixer": "^10.4.21",
+      "concurrently": "^9.1.2",
+      "postcss": "^8.5.3",
+      "tailwindcss": "^4.1.4"
+   },
+   "scripts": {
+      "dev": "concurrently \"cd frontend && npm run dev\" \"cd express-backend && npm run dev\"",
+      "build": "cd frontend && npm run build",
+      "start": "cd frontend && npm start"
+   }
 }

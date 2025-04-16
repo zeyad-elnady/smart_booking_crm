@@ -122,10 +122,29 @@ const deleteAppointment = async (req, res) => {
    }
 };
 
+// @desc    Get recent appointments
+// @route   GET /api/appointments/recent
+// @access  Private
+const getRecentAppointments = async (req, res) => {
+   try {
+      const appointments = await Appointment.find({})
+         .sort({ date: -1, time: -1 }) // Sort by date and time in descending order
+         .limit(5) // Get only the 5 most recent appointments
+         .populate("customer", "firstName lastName email")
+         .populate("service", "name duration price");
+
+      res.json(appointments);
+   } catch (error) {
+      console.error("Error fetching recent appointments:", error);
+      res.status(500).json({ message: error.message });
+   }
+};
+
 module.exports = {
    getAppointments,
    getAppointmentById,
    createAppointment,
    updateAppointment,
    deleteAppointment,
+   getRecentAppointments,
 };

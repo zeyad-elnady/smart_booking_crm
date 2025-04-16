@@ -6,6 +6,7 @@ const {
    createAppointment,
    updateAppointment,
    deleteAppointment,
+   getRecentAppointments,
 } = require("../controllers/appointmentController");
 const { protect } = require("../middleware/authMiddleware");
 const mongoose = require("mongoose");
@@ -15,6 +16,9 @@ router
    .route("/")
    .get(protect, getAppointments)
    .post(protect, createAppointment);
+
+// Route: /api/appointments/recent
+router.get("/recent", protect, getRecentAppointments);
 
 // Route: /api/appointments/:id
 router
