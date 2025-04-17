@@ -24,7 +24,7 @@ const defaultFormData: AppointmentData = {
    time: "",
    duration: "",
    notes: "",
-   status: "Waiting",
+   status: "Pending",
 };
 
 export default function AppointmentForm({
@@ -362,7 +362,8 @@ export default function AppointmentForm({
                               onChange={(e) =>
                                  setFormData({
                                     ...formData,
-                                    status: e.target.value as AppointmentData["status"],
+                                    status: e.target
+                                       .value as AppointmentData["status"],
                                  })
                               }
                            >

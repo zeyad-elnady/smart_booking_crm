@@ -171,11 +171,11 @@ export default function AddAppointment() {
             // First, let's log the localStorage contents for debugging
             if (typeof localStorage !== "undefined") {
                console.log("LocalStorage keys:", Object.keys(localStorage));
-               
+
                // Log all customer-related storage
-               const mockCustomersData = localStorage.getItem('mockCustomers');
+               const mockCustomersData = localStorage.getItem("mockCustomers");
                console.log("mockCustomers data exists:", !!mockCustomersData);
-               
+
                // Use customerAPI directly to get customers - this already has localStorage fallback
                try {
                   const fetchedCustomers = await customerAPI.getCustomers();
@@ -183,55 +183,95 @@ export default function AddAppointment() {
                   setCustomers(fetchedCustomers || []);
                } catch (error) {
                   console.error("Error fetching customers via API:", error);
-                  
+
                   // If API fails, use default mock data as last resort
                   const mockCustomers = [
-                     { _id: '101', firstName: 'John', lastName: 'Doe', email: 'john@example.com' },
-                     { _id: '102', firstName: 'Jane', lastName: 'Smith', email: 'jane@example.com' },
-                     { _id: '103', firstName: 'Robert', lastName: 'Johnson', email: 'robert@example.com' }
+                     {
+                        _id: "101",
+                        firstName: "John",
+                        lastName: "Doe",
+                        email: "john@example.com",
+                        phone: "123-456-7890",
+                     },
+                     {
+                        _id: "102",
+                        firstName: "Jane",
+                        lastName: "Smith",
+                        email: "jane@example.com",
+                        phone: "234-567-8901",
+                     },
+                     {
+                        _id: "103",
+                        firstName: "Robert",
+                        lastName: "Johnson",
+                        email: "robert@example.com",
+                        phone: "345-678-9012",
+                     },
                   ];
-                  
+
                   // Only use mock data if localStorage has no data
-                  const storedCustomers = localStorage.getItem('mockCustomers');
+                  const storedCustomers = localStorage.getItem("mockCustomers");
                   if (storedCustomers) {
                      const parsedCustomers = JSON.parse(storedCustomers);
                      console.log("Using stored customers:", parsedCustomers);
                      setCustomers(parsedCustomers);
                   } else {
-                     console.log("Using default mock customers:", mockCustomers);
-                     localStorage.setItem('mockCustomers', JSON.stringify(mockCustomers));
+                     console.log("Using default mock customers");
                      setCustomers(mockCustomers);
                   }
                }
-               
+
                // Similar approach for services
-               const mockServicesData = localStorage.getItem('mockServices');
+               const mockServicesData = localStorage.getItem("mockServices");
                console.log("mockServices data exists:", !!mockServicesData);
-               
-               // Use serviceAPI directly to get services
+
+               // Use serviceAPI directly to get services - this already has localStorage fallback
                try {
                   const fetchedServices = await serviceAPI.getServices();
                   console.log("Fetched services via API:", fetchedServices);
                   setServices(fetchedServices || []);
                } catch (error) {
                   console.error("Error fetching services via API:", error);
-                  
+
                   // If API fails, use default mock data as last resort
                   const mockServices = [
-                     { _id: '201', name: 'Haircut', duration: '30', price: '25' },
-                     { _id: '202', name: 'Massage', duration: '60', price: '50' },
-                     { _id: '203', name: 'Manicure', duration: '45', price: '35' }
+                     {
+                        _id: "201",
+                        name: "Haircut",
+                        description: "Basic haircut service",
+                        duration: "30",
+                        price: "25",
+                        category: "Hair",
+                        isActive: true,
+                     },
+                     {
+                        _id: "202",
+                        name: "Manicure",
+                        description: "Basic manicure service",
+                        duration: "45",
+                        price: "35",
+                        category: "Nails",
+                        isActive: true,
+                     },
+                     {
+                        _id: "203",
+                        name: "Massage",
+                        description: "Relaxation massage",
+                        duration: "60",
+                        price: "80",
+                        category: "Spa",
+                        isActive: true,
+                     },
                   ];
-                  
+
                   // Only use mock data if localStorage has no data
-                  const storedServices = localStorage.getItem('mockServices');
+                  const storedServices = localStorage.getItem("mockServices");
                   if (storedServices) {
                      const parsedServices = JSON.parse(storedServices);
                      console.log("Using stored services:", parsedServices);
                      setServices(parsedServices);
                   } else {
-                     console.log("Using default mock services:", mockServices);
-                     localStorage.setItem('mockServices', JSON.stringify(mockServices));
+                     console.log("Using default mock services");
                      setServices(mockServices);
                   }
                }
@@ -289,15 +329,21 @@ export default function AddAppointment() {
       setLoading(true);
       try {
          // Find the selected customer and service details
-         const selectedCustomer = customers.find(c => c._id === formData.customerId);
-         const selectedService = services.find(s => s._id === formData.serviceId);
-         
+         const selectedCustomer = customers.find(
+            (c) => c._id === formData.customerId
+         );
+         const selectedService = services.find(
+            (s) => s._id === formData.serviceId
+         );
+
          if (!selectedCustomer || !selectedService) {
-            toast.error("Selected customer or service not found. Please try again.");
+            toast.error(
+               "Selected customer or service not found. Please try again."
+            );
             setLoading(false);
             return;
          }
-         
+
          // Format data for creation with customer and service info
          const appointmentData: AppointmentData = {
             customer: formData.customerId.trim(),
@@ -311,15 +357,15 @@ export default function AddAppointment() {
             customerInfo: {
                name: `${selectedCustomer.firstName} ${selectedCustomer.lastName}`,
                firstName: selectedCustomer.firstName,
-               lastName: selectedCustomer.lastName
+               lastName: selectedCustomer.lastName,
             },
             serviceInfo: {
-               name: selectedService.name
-            }
+               name: selectedService.name,
+            },
          };
 
          console.log("Creating appointment with data:", appointmentData);
-         
+
          // Skip API call and directly use local storage approach
          // Create a mock appointment object
          const mockAppointment = {
@@ -332,26 +378,35 @@ export default function AddAppointment() {
                name: `${selectedCustomer.firstName} ${selectedCustomer.lastName}`,
                firstName: selectedCustomer.firstName,
                lastName: selectedCustomer.lastName,
-               email: selectedCustomer.email || ""
+               email: selectedCustomer.email || "",
+               phone: selectedCustomer.phone || "",
             },
             service: {
                _id: selectedService._id,
                name: selectedService.name,
                duration: selectedService.duration,
-               price: selectedService.price
+               price: selectedService.price,
             },
-            statusColor: 'from-yellow-500 to-yellow-600'
+            statusColor: "from-yellow-500 to-yellow-600",
          };
-         
+
          // Get current appointments from localStorage
-         const storedAppointments = localStorage.getItem('storedAppointments');
-         const currentAppointments = storedAppointments ? JSON.parse(storedAppointments) : [];
-         
+         const storedAppointments = localStorage.getItem("storedAppointments");
+         const currentAppointments = storedAppointments
+            ? JSON.parse(storedAppointments)
+            : [];
+
          // Add the new appointment and save back to localStorage
          currentAppointments.push(mockAppointment);
-         localStorage.setItem('storedAppointments', JSON.stringify(currentAppointments));
-         
-         console.log("Appointment created directly in localStorage:", mockAppointment);
+         localStorage.setItem(
+            "storedAppointments",
+            JSON.stringify(currentAppointments)
+         );
+
+         console.log(
+            "Appointment created directly in localStorage:",
+            mockAppointment
+         );
          toast.success("Appointment created successfully");
          router.push("/dashboard/appointments");
       } catch (error: any) {
@@ -432,9 +487,9 @@ export default function AddAppointment() {
    const reloadCustomers = async () => {
       try {
          // Clear the current mock customers
-         localStorage.removeItem('mockCustomers');
+         localStorage.removeItem("mockCustomers");
          toast.success("Mock customers cleared. Reloading...");
-         
+
          // Wait a moment then reload the page
          setTimeout(() => {
             window.location.reload();
@@ -444,14 +499,14 @@ export default function AddAppointment() {
          toast.error("Failed to reload customers");
       }
    };
-   
+
    // Function to reload services
    const reloadServices = async () => {
       try {
          // Clear the current mock services
-         localStorage.removeItem('mockServices');
+         localStorage.removeItem("mockServices");
          toast.success("Mock services cleared. Reloading...");
-         
+
          // Wait a moment then reload the page
          setTimeout(() => {
             window.location.reload();
@@ -488,7 +543,9 @@ export default function AddAppointment() {
                <button
                   onClick={() => setDebugMode(!debugMode)}
                   className={`mr-2 px-2 py-1 text-xs rounded-lg ${
-                     darkMode ? "bg-gray-700 text-white" : "bg-gray-200 text-gray-700"
+                     darkMode
+                        ? "bg-gray-700 text-white"
+                        : "bg-gray-200 text-gray-700"
                   }`}
                >
                   {debugMode ? "Hide Debug" : "Debug"}
@@ -497,18 +554,34 @@ export default function AddAppointment() {
          </div>
 
          {debugMode && (
-            <div className={`mb-6 p-4 rounded-lg border ${
-               darkMode ? "bg-red-900/30 border-red-800" : "bg-red-50 border-red-200"
-            }`}>
-               <h3 className={`text-sm font-medium ${darkMode ? "text-red-200" : "text-red-700"}`}>Debug Controls</h3>
-               <p className={`text-xs mb-2 ${darkMode ? "text-red-300" : "text-red-600"}`}>
+            <div
+               className={`mb-6 p-4 rounded-lg border ${
+                  darkMode
+                     ? "bg-red-900/30 border-red-800"
+                     : "bg-red-50 border-red-200"
+               }`}
+            >
+               <h3
+                  className={`text-sm font-medium ${
+                     darkMode ? "text-red-200" : "text-red-700"
+                  }`}
+               >
+                  Debug Controls
+               </h3>
+               <p
+                  className={`text-xs mb-2 ${
+                     darkMode ? "text-red-300" : "text-red-600"
+                  }`}
+               >
                   If you're seeing incorrect data, use these controls:
                </p>
                <div className="flex flex-wrap gap-2">
                   <button
                      onClick={reloadCustomers}
                      className={`text-xs px-3 py-1 rounded-md ${
-                        darkMode ? "bg-red-800 hover:bg-red-700 text-white" : "bg-red-100 hover:bg-red-200 text-red-800"
+                        darkMode
+                           ? "bg-red-800 hover:bg-red-700 text-white"
+                           : "bg-red-100 hover:bg-red-200 text-red-800"
                      }`}
                   >
                      Reset Customer Data
@@ -516,7 +589,9 @@ export default function AddAppointment() {
                   <button
                      onClick={reloadServices}
                      className={`text-xs px-3 py-1 rounded-md ${
-                        darkMode ? "bg-red-800 hover:bg-red-700 text-white" : "bg-red-100 hover:bg-red-200 text-red-800"
+                        darkMode
+                           ? "bg-red-800 hover:bg-red-700 text-white"
+                           : "bg-red-100 hover:bg-red-200 text-red-800"
                      }`}
                   >
                      Reset Service Data
@@ -524,22 +599,42 @@ export default function AddAppointment() {
                </div>
                <div className="grid grid-cols-2 gap-4 mt-2">
                   <div>
-                     <p className={`text-xs font-medium ${darkMode ? "text-red-300" : "text-red-600"}`}>
+                     <p
+                        className={`text-xs font-medium ${
+                           darkMode ? "text-red-300" : "text-red-600"
+                        }`}
+                     >
                         Current customers: {customers.length}
                      </p>
-                     <div className={`mt-1 text-xs max-h-20 overflow-auto ${darkMode ? "text-red-300" : "text-red-600"}`}>
-                        {customers.map(c => (
-                           <div key={c._id}>{c.firstName} {c.lastName} ({c._id})</div>
+                     <div
+                        className={`mt-1 text-xs max-h-20 overflow-auto ${
+                           darkMode ? "text-red-300" : "text-red-600"
+                        }`}
+                     >
+                        {customers.map((c) => (
+                           <div key={c._id}>
+                              {c.firstName} {c.lastName} ({c._id})
+                           </div>
                         ))}
                      </div>
                   </div>
                   <div>
-                     <p className={`text-xs font-medium ${darkMode ? "text-red-300" : "text-red-600"}`}>
+                     <p
+                        className={`text-xs font-medium ${
+                           darkMode ? "text-red-300" : "text-red-600"
+                        }`}
+                     >
                         Current services: {services.length}
                      </p>
-                     <div className={`mt-1 text-xs max-h-20 overflow-auto ${darkMode ? "text-red-300" : "text-red-600"}`}>
-                        {services.map(s => (
-                           <div key={s._id}>{s.name} ({s._id})</div>
+                     <div
+                        className={`mt-1 text-xs max-h-20 overflow-auto ${
+                           darkMode ? "text-red-300" : "text-red-600"
+                        }`}
+                     >
+                        {services.map((s) => (
+                           <div key={s._id}>
+                              {s.name} ({s._id})
+                           </div>
                         ))}
                      </div>
                   </div>

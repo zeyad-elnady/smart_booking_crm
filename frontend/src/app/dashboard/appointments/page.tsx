@@ -32,6 +32,9 @@ import type { Service } from "@/types/service";
 import { toast } from "react-hot-toast";
 
 interface AppointmentCustomer {
+   _id: string;
+   firstName: string;
+   lastName: string;
    name: string;
    initial: string;
 }
@@ -53,32 +56,40 @@ export default function Appointments() {
          // Get appointments and filter out any defaults
          const allAppointments = appointmentService.getAll();
          // Filter out default appointments with IDs 1 and 2
-         const userAppointments = allAppointments.filter(apt => apt._id !== '1' && apt._id !== '2');
-         
+         const userAppointments = allAppointments.filter(
+            (apt) => apt._id !== "1" && apt._id !== "2"
+         );
+
          // Debug log to check appointment structure
          if (userAppointments.length > 0) {
-            console.log('Appointment structure sample:', JSON.stringify(userAppointments[0], null, 2));
+            console.log(
+               "Appointment structure sample:",
+               JSON.stringify(userAppointments[0], null, 2)
+            );
          }
-         
+
          setAppointments(userAppointments);
       };
 
       loadAppointments();
       // Refresh appointments every minute
       const interval = setInterval(loadAppointments, 60000);
-      
+
       // Also refresh appointments when the component is focused (user returns to the page)
       const handleVisibilityChange = () => {
-         if (document.visibilityState === 'visible') {
+         if (document.visibilityState === "visible") {
             loadAppointments();
          }
       };
-      
-      document.addEventListener('visibilitychange', handleVisibilityChange);
-      
+
+      document.addEventListener("visibilitychange", handleVisibilityChange);
+
       return () => {
          clearInterval(interval);
-         document.removeEventListener('visibilitychange', handleVisibilityChange);
+         document.removeEventListener(
+            "visibilitychange",
+            handleVisibilityChange
+         );
       };
    }, []);
 
@@ -248,34 +259,43 @@ export default function Appointments() {
                                  <div className="flex-shrink-0">
                                     <div className="h-10 w-10 rounded-full bg-white border border-gray-200 flex items-center justify-center">
                                        <span className="text-gray-900 font-medium">
-                                          {typeof appointment.customer === "object" && appointment.customer !== null ? 
-                                             (appointment.customer.firstName ? 
-                                                appointment.customer.firstName[0] : 
-                                                appointment.customer.name ? 
-                                                   appointment.customer.name[0] : 
-                                                   "U") 
+                                          {typeof appointment.customer ===
+                                             "object" &&
+                                          appointment.customer !== null
+                                             ? appointment.customer.firstName
+                                                ? appointment.customer
+                                                     .firstName[0]
+                                                : appointment.customer.name
+                                                ? appointment.customer.name[0]
+                                                : "U"
                                              : "U"}
                                        </span>
                                     </div>
                                  </div>
                                  <div className="ml-4">
                                     <div className="text-sm font-medium text-white">
-                                       {typeof appointment.customer === "object" && appointment.customer !== null ? 
-                                          (appointment.customer.firstName && appointment.customer.lastName ? 
-                                             `${appointment.customer.firstName} ${appointment.customer.lastName}` :
-                                             appointment.customer.name ? 
-                                                appointment.customer.name : 
-                                                "Unknown Customer")
+                                       {typeof appointment.customer ===
+                                          "object" &&
+                                       appointment.customer !== null
+                                          ? appointment.customer.firstName &&
+                                            appointment.customer.lastName
+                                             ? `${appointment.customer.firstName} ${appointment.customer.lastName}`
+                                             : appointment.customer.name
+                                             ? appointment.customer.name
+                                             : "Unknown Customer"
                                           : "Unknown Customer"}
                                     </div>
                                     <div className="text-sm text-gray-400">
-                                       {typeof appointment.service === "object" && appointment.service !== null ? 
-                                          (appointment.service.name ? 
-                                             appointment.service.name : 
-                                             "Unknown Service") 
-                                          : (typeof appointment.service === "string" ? 
-                                             appointment.service : 
-                                             "Unknown Service")}
+                                       {typeof appointment.service ===
+                                          "object" &&
+                                       appointment.service !== null
+                                          ? appointment.service.name
+                                             ? appointment.service.name
+                                             : "Unknown Service"
+                                          : typeof appointment.service ===
+                                            "string"
+                                          ? appointment.service
+                                          : "Unknown Service"}
                                     </div>
                                  </div>
                               </div>
@@ -284,7 +304,9 @@ export default function Appointments() {
                                     {appointment.time} ({appointment.duration})
                                  </div>
                                  <span
-                                    className={`inline-flex items-center rounded-full px-2.5 py-1 text-xs font-medium bg-gradient-to-r ${getStatusColor(appointment.status)} text-white`}
+                                    className={`inline-flex items-center rounded-full px-2.5 py-1 text-xs font-medium bg-gradient-to-r ${getStatusColor(
+                                       appointment.status
+                                    )} text-white`}
                                  >
                                     {appointment.status}
                                  </span>
@@ -443,36 +465,48 @@ export default function Appointments() {
                                              onClick={() =>
                                                 handleAppointmentClick(apt)
                                              }
-                                             className={`p-2 rounded-md text-xs bg-gradient-to-r ${getStatusColor(apt.status)} bg-opacity-20 hover:bg-opacity-30 cursor-pointer transition-all`}
+                                             className={`p-2 rounded-md text-xs bg-gradient-to-r ${getStatusColor(
+                                                apt.status
+                                             )} bg-opacity-20 hover:bg-opacity-30 cursor-pointer transition-all`}
                                           >
                                              <div className="flex items-center space-x-1">
                                                 <div className="h-5 w-5 rounded-full bg-white border border-gray-200 flex items-center justify-center text-gray-900 text-xs">
-                                                   {typeof apt.customer === "object" && 
-                                                    apt.customer !== null ? (
-                                                      apt.customer.firstName ? 
-                                                        apt.customer.firstName[0] :
-                                                      apt.customer.name ? 
-                                                        apt.customer.name[0] : 
-                                                        "?"
-                                                    ) : "?"}
+                                                   {typeof apt.customer ===
+                                                      "object" &&
+                                                   apt.customer !== null
+                                                      ? apt.customer.firstName
+                                                         ? apt.customer
+                                                              .firstName[0]
+                                                         : apt.customer.name
+                                                         ? apt.customer.name[0]
+                                                         : "?"
+                                                      : "?"}
                                                 </div>
                                                 <p className="font-medium text-white truncate">
-                                                   {typeof apt.customer === "object" &&
-                                                   apt.customer !== null ? (
-                                                     apt.customer.firstName && apt.customer.lastName ?
-                                                       `${apt.customer.firstName} ${apt.customer.lastName}` :
-                                                     apt.customer.name ?
-                                                       apt.customer.name :
-                                                       "Unknown Customer"
-                                                   ) : "Unknown Customer"}
+                                                   {typeof apt.customer ===
+                                                      "object" &&
+                                                   apt.customer !== null
+                                                      ? apt.customer
+                                                           .firstName &&
+                                                        apt.customer.lastName
+                                                         ? `${apt.customer.firstName} ${apt.customer.lastName}`
+                                                         : apt.customer.name
+                                                         ? apt.customer.name
+                                                         : "Unknown Customer"
+                                                      : "Unknown Customer"}
                                                 </p>
                                              </div>
                                              <div className="mt-1 text-gray-300">
-                                                {apt.time} - {typeof apt.service === "object" && 
-                                                             apt.service !== null ?
-                                                              apt.service.name || "Unknown Service" : 
-                                                              typeof apt.service === "string" ? 
-                                                                apt.service : "Unknown Service"}
+                                                {apt.time} -{" "}
+                                                {typeof apt.service ===
+                                                   "object" &&
+                                                apt.service !== null
+                                                   ? apt.service.name ||
+                                                     "Unknown Service"
+                                                   : typeof apt.service ===
+                                                     "string"
+                                                   ? apt.service
+                                                   : "Unknown Service"}
                                              </div>
                                           </div>
                                        ))}
@@ -546,20 +580,31 @@ export default function Appointments() {
                                                                apt
                                                             )
                                                          }
-                                                         className={`p-1 rounded-sm text-xs bg-gradient-to-r ${getStatusColor(apt.status)} bg-opacity-20 hover:bg-opacity-30 cursor-pointer transition-all truncate`}
+                                                         className={`p-1 rounded-sm text-xs bg-gradient-to-r ${getStatusColor(
+                                                            apt.status
+                                                         )} bg-opacity-20 hover:bg-opacity-30 cursor-pointer transition-all truncate`}
                                                       >
                                                          <div className="flex items-center space-x-1">
                                                             <div className="h-3 w-3 rounded-full bg-white border border-gray-200 flex items-center justify-center"></div>
                                                             <p className="font-medium text-white truncate text-[10px]">
                                                                {apt.time}{" "}
-                                                               {typeof apt.customer === "object" &&
-                                                                apt.customer !== null ? (
-                                                                  apt.customer.firstName && apt.customer.lastName ?
-                                                                    `${apt.customer.firstName} ${apt.customer.lastName}` :
-                                                                  apt.customer.name ?
-                                                                    apt.customer.name :
-                                                                    "Unknown Customer"
-                                                                ) : "Unknown Customer"}
+                                                               {typeof apt.customer ===
+                                                                  "object" &&
+                                                               apt.customer !==
+                                                                  null
+                                                                  ? apt.customer
+                                                                       .firstName &&
+                                                                    apt.customer
+                                                                       .lastName
+                                                                     ? `${apt.customer.firstName} ${apt.customer.lastName}`
+                                                                     : apt
+                                                                          .customer
+                                                                          .name
+                                                                     ? apt
+                                                                          .customer
+                                                                          .name
+                                                                     : "Unknown Customer"
+                                                                  : "Unknown Customer"}
                                                             </p>
                                                          </div>
                                                       </div>
@@ -624,14 +669,14 @@ export default function Appointments() {
                   <div className="mb-4 flex items-center">
                      <div className="h-12 w-12 rounded-full bg-white border border-gray-200 flex items-center justify-center">
                         <span className="text-gray-900 font-medium text-lg">
-                           {typeof selectedAppointment.customer === "object" && 
-                            selectedAppointment.customer !== null ? (
-                              selectedAppointment.customer.firstName ? 
-                                selectedAppointment.customer.firstName[0] :
-                              selectedAppointment.customer.name ? 
-                                selectedAppointment.customer.name[0] : 
-                                "?"
-                            ) : "?"}
+                           {typeof selectedAppointment.customer === "object" &&
+                           selectedAppointment.customer !== null
+                              ? selectedAppointment.customer.firstName
+                                 ? selectedAppointment.customer.firstName[0]
+                                 : selectedAppointment.customer.name
+                                 ? selectedAppointment.customer.name[0]
+                                 : "?"
+                              : "?"}
                         </span>
                      </div>
                      <div className="ml-4">
@@ -641,24 +686,27 @@ export default function Appointments() {
                            }`}
                         >
                            {typeof selectedAppointment.customer === "object" &&
-                             selectedAppointment.customer !== null ? (
-                               selectedAppointment.customer.firstName && selectedAppointment.customer.lastName ?
-                                 `${selectedAppointment.customer.firstName} ${selectedAppointment.customer.lastName}` :
-                               selectedAppointment.customer.name ?
-                                 selectedAppointment.customer.name :
-                                 "Unknown Customer"
-                             ) : "Unknown Customer"}
+                           selectedAppointment.customer !== null
+                              ? selectedAppointment.customer.firstName &&
+                                selectedAppointment.customer.lastName
+                                 ? `${selectedAppointment.customer.firstName} ${selectedAppointment.customer.lastName}`
+                                 : selectedAppointment.customer.name
+                                 ? selectedAppointment.customer.name
+                                 : "Unknown Customer"
+                              : "Unknown Customer"}
                         </div>
                         <div
                            className={`${
                               darkMode ? "text-gray-400" : "text-gray-600"
                            }`}
                         >
-                           {typeof selectedAppointment.service === "object" && 
-                            selectedAppointment.service !== null ?
-                             selectedAppointment.service.name || "Unknown Service" : 
-                             typeof selectedAppointment.service === "string" ? 
-                               selectedAppointment.service : "Unknown Service"}
+                           {typeof selectedAppointment.service === "object" &&
+                           selectedAppointment.service !== null
+                              ? selectedAppointment.service.name ||
+                                "Unknown Service"
+                              : typeof selectedAppointment.service === "string"
+                              ? selectedAppointment.service
+                              : "Unknown Service"}
                         </div>
                      </div>
                   </div>
@@ -684,7 +732,9 @@ export default function Appointments() {
                         <div className="font-medium mb-1">Status</div>
                         <div>
                            <span
-                              className={`inline-flex items-center rounded-full px-2.5 py-1 text-xs font-medium bg-gradient-to-r ${getStatusColor(selectedAppointment.status)} text-white`}
+                              className={`inline-flex items-center rounded-full px-2.5 py-1 text-xs font-medium bg-gradient-to-r ${getStatusColor(
+                                 selectedAppointment.status
+                              )} text-white`}
                            >
                               {selectedAppointment.status}
                            </span>
