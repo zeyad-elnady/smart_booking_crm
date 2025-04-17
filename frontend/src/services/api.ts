@@ -34,7 +34,7 @@ const API = axios.create({
    headers: {
       "Content-Type": "application/json",
    },
-   timeout: 10000, // 10 seconds timeout
+   timeout: 30000, // 30 seconds timeout
 });
 
 // Debug the API base URL at startup
@@ -352,7 +352,16 @@ export interface AppointmentData {
    time: string;
    duration: string;
    notes?: string;
-   status?: "Waiting" | "Cancelled" | "Completed";
+   status?: "Pending" | "Confirmed" | "Canceled";
+   // Add optional info fields that can be used for fallback display
+   customerInfo?: {
+      name: string;
+      firstName: string;
+      lastName: string;
+   };
+   serviceInfo?: {
+      name: string;
+   };
 }
 
 export interface Appointment
@@ -367,28 +376,192 @@ export interface Appointment
 // Service API
 export const serviceAPI = {
    getServices: async () => {
-      const response = await API.get<Service[]>("/services");
-      return response.data;
+      try {
+         console.log(`Fetching services from ${API.defaults.baseURL}/services`);
+         const response = await API.get<Service[]>("/services");
+         return response.data;
+      } catch (error) {
+         console.error("Error fetching services:", error);
+         
+         // If API call fails, try to get from localStorage
+         const mockServices = localStorage.getItem("mockServices");
+         if (mockServices) {
+            console.log("Using mock service data from localStorage:", mockServices.substring(0, 100) + "...");
+            return JSON.parse(mockServices);
+         }
+         
+         throw error;
+      }
    },
 
    getServiceById: async (id: string) => {
-      const response = await API.get<Service>(`/services/${id}`);
-      return response.data;
+      try {
+         console.log(`Fetching service with ID ${id} from ${API.defaults.baseURL}/services/${id}`);
+         const response = await API.get<Service>(`/services/${id}`);
+         return response.data;
+      } catch (error) {
+         console.error(`Error fetching service ${id}:`, error);
+         
+         // If API call fails, try to get from localStorage
+         const mockServices = localStorage.getItem("mockServices");
+         if (mockServices) {
+            console.log("Using mock service data from localStorage");
+            const services = JSON.parse(mockServices);
+            const service = services.find((s: Service) => s._id === id);
+            if (service) {
+               return service;
+            }
+         }
+         
+         throw error;
+      }
    },
 
    createService: async (serviceData: ServiceData) => {
-      const response = await API.post<Service>("/services", serviceData);
-      return response.data;
+      try {
+         console.log("Creating service with data:", serviceData);
+         const response = await API.post<Service>("/services", serviceData);
+         
+         // Update local storage
+         try {
+            console.log("Service created. Updating localStorage...");
+            const mockServices = localStorage.getItem("mockServices");
+            let services = [];
+            
+            if (mockServices) {
+               services = JSON.parse(mockServices);
+            }
+            
+            const newService = {
+               ...response.data,
+               _id: response.data._id || `mock_${Date.now()}`,
+               createdAt: new Date().toISOString(),
+            };
+            
+            services.push(newService);
+            localStorage.setItem("mockServices", JSON.stringify(services));
+            console.log("Updated mockServices in localStorage. New count:", services.length);
+         } catch (e) {
+            console.error("Error updating localStorage:", e);
+         }
+         
+         return response.data;
+      } catch (error) {
+         console.error("Error creating service:", error);
+         
+         // If API call fails, save to localStorage
+         try {
+            console.log("API failed. Saving service to localStorage directly.");
+            const newService = {
+               ...serviceData,
+               _id: `mock_${Date.now()}`,
+               createdAt: new Date().toISOString(),
+            };
+            
+            const mockServices = localStorage.getItem("mockServices");
+            let services = [];
+            
+            if (mockServices) {
+               services = JSON.parse(mockServices);
+            }
+            
+            services.push(newService);
+            localStorage.setItem("mockServices", JSON.stringify(services));
+            console.log("Saved new service to localStorage. New count:", services.length);
+            
+            return newService;
+         } catch (e) {
+            console.error("Error saving to localStorage:", e);
+            throw error;
+         }
+      }
    },
 
    updateService: async (id: string, serviceData: Partial<ServiceData>) => {
-      const response = await API.put<Service>(`/services/${id}`, serviceData);
-      return response.data;
+      try {
+         const response = await API.put<Service>(`/services/${id}`, serviceData);
+         
+         // Update local storage
+         try {
+            const mockServices = localStorage.getItem("mockServices");
+            if (mockServices) {
+               const services = JSON.parse(mockServices);
+               const index = services.findIndex((s: Service) => s._id === id);
+               if (index !== -1) {
+                  services[index] = {
+                     ...services[index],
+                     ...serviceData,
+                     updatedAt: new Date().toISOString(),
+                  };
+                  localStorage.setItem("mockServices", JSON.stringify(services));
+               }
+            }
+         } catch (e) {
+            console.error("Error updating localStorage:", e);
+         }
+         
+         return response.data;
+      } catch (error) {
+         console.error(`Error updating service ${id}:`, error);
+         
+         // If API call fails, update localStorage
+         try {
+            const mockServices = localStorage.getItem("mockServices");
+            if (mockServices) {
+               const services = JSON.parse(mockServices);
+               const index = services.findIndex((s: Service) => s._id === id);
+               if (index !== -1) {
+                  services[index] = {
+                     ...services[index],
+                     ...serviceData,
+                     updatedAt: new Date().toISOString(),
+                  };
+                  localStorage.setItem("mockServices", JSON.stringify(services));
+                  return services[index];
+               }
+            }
+            throw new Error("Service not found in mock data");
+         } catch (e) {
+            console.error("Error updating localStorage:", e);
+            throw error;
+         }
+      }
    },
 
    deleteService: async (id: string) => {
-      const response = await API.delete(`/services/${id}`);
-      return response.data;
+      try {
+         const response = await API.delete(`/services/${id}`);
+         
+         // Update local storage
+         try {
+            const mockServices = localStorage.getItem("mockServices");
+            if (mockServices) {
+               const services = JSON.parse(mockServices);
+               const updatedServices = services.filter((s: Service) => s._id !== id);
+               localStorage.setItem("mockServices", JSON.stringify(updatedServices));
+            }
+         } catch (e) {
+            console.error("Error updating localStorage:", e);
+         }
+         
+         return response.data;
+      } catch (error) {
+         console.error(`Error deleting service ${id}:`, error);
+         
+         // If API call fails, update localStorage
+         try {
+            const mockServices = localStorage.getItem("mockServices");
+            if (mockServices) {
+               const services = JSON.parse(mockServices);
+               const updatedServices = services.filter((s: Service) => s._id !== id);
+               localStorage.setItem("mockServices", JSON.stringify(updatedServices));
+            }
+         } catch (e) {
+            console.error("Error updating localStorage:", e);
+         }
+         
+         throw error;
+      }
    },
 };
 
@@ -407,7 +580,7 @@ export const customerAPI = {
          // If API call fails, try to get from localStorage
          const mockCustomers = localStorage.getItem("mockCustomers");
          if (mockCustomers) {
-            console.log("Using mock customer data from localStorage");
+            console.log("Using mock customer data from localStorage:", mockCustomers.substring(0, 100) + "...");
             return JSON.parse(mockCustomers);
          }
 
@@ -446,16 +619,24 @@ export const customerAPI = {
 
          // Update local storage
          try {
+            console.log("Customer created. Updating localStorage...");
             const mockCustomers = localStorage.getItem("mockCustomers");
+            let customers = [];
+            
             if (mockCustomers) {
-               const customers = JSON.parse(mockCustomers);
-               customers.push({
-                  ...response.data,
-                  _id: response.data._id || `mock_${Date.now()}`,
-                  createdAt: new Date().toISOString(),
-               });
-               localStorage.setItem("mockCustomers", JSON.stringify(customers));
+               customers = JSON.parse(mockCustomers);
             }
+            
+            const newCustomer = {
+               ...response.data,
+               _id: response.data._id || `mock_${Date.now()}`,
+               createdAt: new Date().toISOString(),
+            };
+            
+            customers.push(newCustomer);
+            localStorage.setItem("mockCustomers", JSON.stringify(customers));
+            console.log("Updated mockCustomers in localStorage. New count:", customers.length);
+
          } catch (e) {
             console.error("Error updating local storage:", e);
          }
@@ -466,6 +647,7 @@ export const customerAPI = {
 
          // If API call fails, save to localStorage
          try {
+            console.log("API failed. Saving customer to localStorage directly.");
             const newCustomer = {
                ...data,
                _id: `mock_${Date.now()}`,
@@ -473,16 +655,15 @@ export const customerAPI = {
             };
 
             const mockCustomers = localStorage.getItem("mockCustomers");
+            let customers = [];
+            
             if (mockCustomers) {
-               const customers = JSON.parse(mockCustomers);
-               customers.push(newCustomer);
-               localStorage.setItem("mockCustomers", JSON.stringify(customers));
-            } else {
-               localStorage.setItem(
-                  "mockCustomers",
-                  JSON.stringify([newCustomer])
-               );
+               customers = JSON.parse(mockCustomers);
             }
+            
+            customers.push(newCustomer);
+            localStorage.setItem("mockCustomers", JSON.stringify(customers));
+            console.log("Saved new customer to localStorage. New count:", customers.length);
 
             return newCustomer;
          } catch (e) {

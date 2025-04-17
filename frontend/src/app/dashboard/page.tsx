@@ -11,12 +11,10 @@ import {
    UsersIcon,
 } from "@heroicons/react/24/outline";
 import { authAPI, User, dashboardAPI } from "@/services/api";
-import { appointmentAPI } from "@/services/api";
 import { useTheme } from "@/components/ThemeProvider";
 import { format } from "date-fns";
 
 export interface DashboardStats {
-   todaysAppointments: number;
    totalCustomers: number;
    revenueToday: string;
    averageWaitTime: string;
@@ -31,12 +29,6 @@ interface StatDefinition {
 }
 
 const statDefinitions: StatDefinition[] = [
-   {
-      name: "Today's Appointments",
-      key: "todaysAppointments",
-      icon: <CalendarIcon className="h-6 w-6" />,
-      color: "bg-blue-500",
-   },
    {
       name: "Total Customers",
       key: "totalCustomers",
@@ -56,15 +48,6 @@ const statDefinitions: StatDefinition[] = [
       color: "bg-orange-500",
    },
 ];
-
-// Define the type for appointments
-interface RecentAppointment {
-   _id: string;
-   customer: string;
-   service: string;
-   time: string;
-   status: string;
-}
 
 interface ApiDashboardStats {
    todaysAppointments: number;
@@ -88,10 +71,6 @@ export default function Dashboard() {
    const [refreshing, setRefreshing] = useState(false);
    const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
 
-   // Appointments state
-   const [appointments, setAppointments] = useState<RecentAppointment[]>([]);
-   const [loadingAppointments, setLoadingAppointments] = useState(true);
-
    const fetchStats = async () => {
       try {
          const response = await dashboardAPI.getStats();
@@ -99,7 +78,6 @@ export default function Dashboard() {
 
          // Transform API stats to match our interface
          const formattedStats: DashboardStats = {
-            todaysAppointments: apiStats.todaysAppointments || 0,
             totalCustomers: apiStats.totalCustomers || 0,
             revenueToday: `$${apiStats.revenueToday || 0}`,
             averageWaitTime: `${apiStats.averageWaitTime || 0} min`,
@@ -114,37 +92,8 @@ export default function Dashboard() {
       }
    };
 
-   const fetchRecentAppointments = async () => {
-      try {
-         setLoadingAppointments(true);
-         const data = await appointmentAPI.getRecentAppointments();
-         // Transform the data to match RecentAppointment interface
-         const transformedData: RecentAppointment[] = data.map(
-            (appointment) => ({
-               _id: appointment._id,
-               customer:
-                  typeof appointment.customer === "string"
-                     ? appointment.customer
-                     : appointment.customer._id,
-               service:
-                  typeof appointment.service === "string"
-                     ? appointment.service
-                     : appointment.service._id,
-               time: appointment.time,
-               status: appointment.status || "Waiting",
-            })
-         );
-         setAppointments(transformedData);
-         setLoadingAppointments(false);
-      } catch (error) {
-         console.error("Error fetching recent appointments:", error);
-         setLoadingAppointments(false);
-      }
-   };
-
    const handleRefreshStats = () => {
       fetchStats();
-      fetchRecentAppointments();
    };
 
    useEffect(() => {
@@ -219,14 +168,12 @@ export default function Dashboard() {
          }
       }
 
-      // Fetch dashboard stats and recent appointments on component mount
+      // Fetch dashboard stats on component mount
       fetchStats();
-      fetchRecentAppointments();
 
       // Set up interval to refresh stats every 60 seconds
       const intervalId = setInterval(() => {
          fetchStats();
-         fetchRecentAppointments();
       }, 60000);
 
       // Clean up interval on component unmount
@@ -482,142 +429,6 @@ export default function Dashboard() {
                         );
                      })}
                   </>
-               )}
-            </div>
-         </div>
-
-         {/* Recent Appointments */}
-         <div
-            className={`rounded-lg shadow-sm ${
-               darkMode
-                  ? "glass border border-white/10"
-                  : "bg-white border border-gray-200"
-            }`}
-         >
-            <div className="px-6 py-4">
-               <h3
-                  className={`text-lg font-medium ${
-                     darkMode ? "text-white" : "text-gray-900"
-                  }`}
-               >
-                  Recent Appointments
-               </h3>
-            </div>
-            <div
-               className={`border-t ${
-                  darkMode ? "border-white/10" : "border-gray-200"
-               }`}
-            >
-               {loadingAppointments ? (
-                  <div className="p-6 text-center">
-                     <div
-                        className={`inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-current border-r-transparent align-[-0.125em] ${
-                           darkMode ? "text-white/30" : "text-gray-300"
-                        }`}
-                        role="status"
-                     >
-                        <span className="!absolute !-m-px !h-px !w-px !overflow-hidden !whitespace-nowrap !border-0 !p-0 ![clip:rect(0,0,0,0)]">
-                           Loading...
-                        </span>
-                     </div>
-                  </div>
-               ) : appointments.length > 0 ? (
-                  <ul
-                     role="list"
-                     className={`divide-y ${
-                        darkMode ? "divide-white/10" : "divide-gray-200"
-                     }`}
-                  >
-                     {appointments.map((appointment) => (
-                        <li
-                           key={appointment._id}
-                           className={`px-6 py-4 ${
-                              darkMode ? "hover:bg-white/5" : "hover:bg-gray-50"
-                           } transition-colors`}
-                        >
-                           <div className="flex items-center justify-between">
-                              <div className="flex items-center">
-                                 <div className="flex-shrink-0">
-                                    <div
-                                       className={`h-10 w-10 rounded-full flex items-center justify-center ${
-                                          darkMode
-                                             ? "bg-gray-700"
-                                             : "bg-gray-100"
-                                       }`}
-                                    >
-                                       <span
-                                          className={`text-sm font-medium ${
-                                             darkMode
-                                                ? "text-white"
-                                                : "text-gray-900"
-                                          }`}
-                                       >
-                                          {appointment.customer.charAt(0)}
-                                       </span>
-                                    </div>
-                                 </div>
-                                 <div className="ml-4">
-                                    <div
-                                       className={`text-sm font-medium ${
-                                          darkMode
-                                             ? "text-white"
-                                             : "text-gray-900"
-                                       }`}
-                                    >
-                                       {appointment.customer}
-                                    </div>
-                                    <div
-                                       className={`text-sm ${
-                                          darkMode
-                                             ? "text-gray-400"
-                                             : "text-gray-500"
-                                       }`}
-                                    >
-                                       {appointment.service}
-                                    </div>
-                                 </div>
-                              </div>
-                              <div className="flex items-center space-x-4">
-                                 <div
-                                    className={`text-sm ${
-                                       darkMode
-                                          ? "text-gray-400"
-                                          : "text-gray-500"
-                                    }`}
-                                 >
-                                    {appointment.time}
-                                 </div>
-                                 <span
-                                    className={`inline-flex items-center rounded-full px-2.5 py-1 text-xs font-medium ${
-                                       darkMode
-                                          ? appointment.status === "Completed"
-                                             ? "bg-green-500/20 text-green-400"
-                                             : appointment.status ===
-                                               "Cancelled"
-                                             ? "bg-red-500/20 text-red-400"
-                                             : "bg-yellow-500/20 text-yellow-400"
-                                          : appointment.status === "Completed"
-                                          ? "bg-green-50 text-green-700 ring-1 ring-green-600/20"
-                                          : appointment.status === "Cancelled"
-                                          ? "bg-red-50 text-red-700 ring-1 ring-red-600/20"
-                                          : "bg-yellow-50 text-yellow-700 ring-1 ring-yellow-600/20"
-                                    }`}
-                                 >
-                                    {appointment.status}
-                                 </span>
-                              </div>
-                           </div>
-                        </li>
-                     ))}
-                  </ul>
-               ) : (
-                  <div
-                     className={`p-6 text-center ${
-                        darkMode ? "text-gray-400" : "text-gray-500"
-                     }`}
-                  >
-                     No recent appointments
-                  </div>
                )}
             </div>
          </div>

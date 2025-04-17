@@ -36,6 +36,7 @@ const appointmentSchema = new mongoose.Schema(
    },
    {
       timestamps: true,
+      bufferTimeoutMS: 30000,
    }
 );
 

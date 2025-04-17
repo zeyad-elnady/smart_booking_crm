@@ -1,7 +1,7 @@
 import { Customer } from "./customer";
 import { Service } from "./service";
 
-export type AppointmentStatus = "Waiting" | "Cancelled" | "Completed";
+export type AppointmentStatus = "Pending" | "Confirmed" | "Canceled";
 
 export interface AppointmentData {
    customer: string;
@@ -34,11 +34,11 @@ export interface AppointmentFormData {
 
 export const getStatusColor = (status: AppointmentStatus): string => {
    switch (status) {
-      case "Waiting":
-         return "from-blue-500 to-blue-600";
-      case "Cancelled":
+      case "Pending":
+         return "from-yellow-500 to-yellow-600";
+      case "Canceled":
          return "from-red-500 to-red-600";
-      case "Completed":
+      case "Confirmed":
          return "from-green-500 to-green-600";
       default:
          return "from-gray-500 to-gray-600";

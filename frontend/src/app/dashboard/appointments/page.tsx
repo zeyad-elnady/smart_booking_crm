@@ -29,6 +29,7 @@ import {
 import { appointmentService } from "@/lib/appointmentService";
 import type { Appointment } from "@/lib/appointmentService";
 import type { Service } from "@/types/service";
+import { toast } from "react-hot-toast";
 
 interface AppointmentCustomer {
    name: string;
@@ -49,14 +50,36 @@ export default function Appointments() {
    // Load appointments
    useEffect(() => {
       const loadAppointments = () => {
+         // Get appointments and filter out any defaults
          const allAppointments = appointmentService.getAll();
-         setAppointments(allAppointments);
+         // Filter out default appointments with IDs 1 and 2
+         const userAppointments = allAppointments.filter(apt => apt._id !== '1' && apt._id !== '2');
+         
+         // Debug log to check appointment structure
+         if (userAppointments.length > 0) {
+            console.log('Appointment structure sample:', JSON.stringify(userAppointments[0], null, 2));
+         }
+         
+         setAppointments(userAppointments);
       };
 
       loadAppointments();
       // Refresh appointments every minute
       const interval = setInterval(loadAppointments, 60000);
-      return () => clearInterval(interval);
+      
+      // Also refresh appointments when the component is focused (user returns to the page)
+      const handleVisibilityChange = () => {
+         if (document.visibilityState === 'visible') {
+            loadAppointments();
+         }
+      };
+      
+      document.addEventListener('visibilitychange', handleVisibilityChange);
+      
+      return () => {
+         clearInterval(interval);
+         document.removeEventListener('visibilitychange', handleVisibilityChange);
+      };
    }, []);
 
    // Generate week days
@@ -119,11 +142,31 @@ export default function Appointments() {
       try {
          await appointmentService.delete(appointmentId);
          setAppointments(
-            appointments.filter((apt) => apt.id !== appointmentId)
+            appointments.filter((apt) => apt._id !== appointmentId)
          );
          setSelectedAppointment(null); // Close modal if open
       } catch (error) {
          console.error("Error deleting appointment:", error);
+      }
+   };
+
+   const handleRefreshAppointments = () => {
+      // Clear any default appointments
+      const currentAppointments = appointmentService.getAll();
+      // Refresh the appointments list from storage
+      setAppointments(currentAppointments);
+   };
+
+   // Function to determine status color
+   const getStatusColor = (status: string) => {
+      switch (status) {
+         case "Confirmed":
+            return "from-green-500 to-green-600";
+         case "Canceled":
+            return "from-red-500 to-red-600";
+         case "Pending":
+         default:
+            return "from-yellow-500 to-yellow-600";
       }
    };
 
@@ -195,9 +238,9 @@ export default function Appointments() {
                </div>
                <div className="border-t border-white/10">
                   <ul role="list" className="divide-y divide-white/10">
-                     {appointments.map((appointment) => (
+                     {getAppointmentsForDay(new Date()).map((appointment) => (
                         <li
-                           key={appointment.id}
+                           key={appointment._id}
                            className="px-5 py-5 hover:bg-white/5 transition-colors"
                         >
                            <div className="flex items-center justify-between">
@@ -205,30 +248,34 @@ export default function Appointments() {
                                  <div className="flex-shrink-0">
                                     <div className="h-10 w-10 rounded-full bg-white border border-gray-200 flex items-center justify-center">
                                        <span className="text-gray-900 font-medium">
-                                          {typeof appointment.customer ===
-                                             "object" &&
-                                          "name" in appointment.customer
-                                             ? appointment.customer.name[0]
-                                             : "?"}
+                                          {typeof appointment.customer === "object" && appointment.customer !== null ? 
+                                             (appointment.customer.firstName ? 
+                                                appointment.customer.firstName[0] : 
+                                                appointment.customer.name ? 
+                                                   appointment.customer.name[0] : 
+                                                   "U") 
+                                             : "U"}
                                        </span>
                                     </div>
                                  </div>
                                  <div className="ml-4">
                                     <div className="text-sm font-medium text-white">
-                                       {typeof appointment.customer ===
-                                          "object" &&
-                                       "name" in appointment.customer
-                                          ? appointment.customer.name
+                                       {typeof appointment.customer === "object" && appointment.customer !== null ? 
+                                          (appointment.customer.firstName && appointment.customer.lastName ? 
+                                             `${appointment.customer.firstName} ${appointment.customer.lastName}` :
+                                             appointment.customer.name ? 
+                                                appointment.customer.name : 
+                                                "Unknown Customer")
                                           : "Unknown Customer"}
                                     </div>
                                     <div className="text-sm text-gray-400">
-                                       {typeof appointment.service ===
-                                          "object" &&
-                                       appointment.service !== null &&
-                                       "name" in appointment.service
-                                          ? (appointment.service as Service)
-                                               .name
-                                          : "Unknown Service"}
+                                       {typeof appointment.service === "object" && appointment.service !== null ? 
+                                          (appointment.service.name ? 
+                                             appointment.service.name : 
+                                             "Unknown Service") 
+                                          : (typeof appointment.service === "string" ? 
+                                             appointment.service : 
+                                             "Unknown Service")}
                                     </div>
                                  </div>
                               </div>
@@ -237,19 +284,19 @@ export default function Appointments() {
                                     {appointment.time} ({appointment.duration})
                                  </div>
                                  <span
-                                    className={`inline-flex items-center rounded-full px-2.5 py-1 text-xs font-medium bg-gradient-to-r ${appointment.statusColor} text-white`}
+                                    className={`inline-flex items-center rounded-full px-2.5 py-1 text-xs font-medium bg-gradient-to-r ${getStatusColor(appointment.status)} text-white`}
                                  >
                                     {appointment.status}
                                  </span>
                                  <Link
-                                    href={`/dashboard/appointments/edit/${appointment.id}`}
+                                    href={`/dashboard/appointments/edit/${appointment._id}`}
                                     className="text-indigo-400 hover:text-indigo-300 transition-colors"
                                  >
                                     Edit
                                  </Link>
                                  <button
                                     onClick={() =>
-                                       handleDeleteAppointment(appointment.id)
+                                       handleDeleteAppointment(appointment._id)
                                     }
                                     className={`transition-colors ${
                                        darkMode
@@ -396,23 +443,36 @@ export default function Appointments() {
                                              onClick={() =>
                                                 handleAppointmentClick(apt)
                                              }
-                                             className={`p-2 rounded-md text-xs bg-gradient-to-r ${apt.statusColor} bg-opacity-20 hover:bg-opacity-30 cursor-pointer transition-all`}
+                                             className={`p-2 rounded-md text-xs bg-gradient-to-r ${getStatusColor(apt.status)} bg-opacity-20 hover:bg-opacity-30 cursor-pointer transition-all`}
                                           >
                                              <div className="flex items-center space-x-1">
                                                 <div className="h-5 w-5 rounded-full bg-white border border-gray-200 flex items-center justify-center text-gray-900 text-xs">
-                                                   {apt.customer.initial}
+                                                   {typeof apt.customer === "object" && 
+                                                    apt.customer !== null ? (
+                                                      apt.customer.firstName ? 
+                                                        apt.customer.firstName[0] :
+                                                      apt.customer.name ? 
+                                                        apt.customer.name[0] : 
+                                                        "?"
+                                                    ) : "?"}
                                                 </div>
                                                 <p className="font-medium text-white truncate">
-                                                   {typeof apt.customer ===
-                                                      "object" &&
-                                                   apt.customer !== null &&
-                                                   "name" in apt.customer
-                                                      ? apt.customer.name
-                                                      : "Unknown Customer"}
+                                                   {typeof apt.customer === "object" &&
+                                                   apt.customer !== null ? (
+                                                     apt.customer.firstName && apt.customer.lastName ?
+                                                       `${apt.customer.firstName} ${apt.customer.lastName}` :
+                                                     apt.customer.name ?
+                                                       apt.customer.name :
+                                                       "Unknown Customer"
+                                                   ) : "Unknown Customer"}
                                                 </p>
                                              </div>
                                              <div className="mt-1 text-gray-300">
-                                                {apt.time} - {apt.service}
+                                                {apt.time} - {typeof apt.service === "object" && 
+                                                             apt.service !== null ?
+                                                              apt.service.name || "Unknown Service" : 
+                                                              typeof apt.service === "string" ? 
+                                                                apt.service : "Unknown Service"}
                                              </div>
                                           </div>
                                        ))}
@@ -486,17 +546,20 @@ export default function Appointments() {
                                                                apt
                                                             )
                                                          }
-                                                         className={`p-1 rounded-sm text-xs bg-gradient-to-r ${apt.statusColor} bg-opacity-20 hover:bg-opacity-30 cursor-pointer transition-all truncate`}
+                                                         className={`p-1 rounded-sm text-xs bg-gradient-to-r ${getStatusColor(apt.status)} bg-opacity-20 hover:bg-opacity-30 cursor-pointer transition-all truncate`}
                                                       >
                                                          <div className="flex items-center space-x-1">
                                                             <div className="h-3 w-3 rounded-full bg-white border border-gray-200 flex items-center justify-center"></div>
                                                             <p className="font-medium text-white truncate text-[10px]">
                                                                {apt.time}{" "}
-                                                               {
-                                                                  (
-                                                                     apt.customer as AppointmentCustomer
-                                                                  ).name
-                                                               }
+                                                               {typeof apt.customer === "object" &&
+                                                                apt.customer !== null ? (
+                                                                  apt.customer.firstName && apt.customer.lastName ?
+                                                                    `${apt.customer.firstName} ${apt.customer.lastName}` :
+                                                                  apt.customer.name ?
+                                                                    apt.customer.name :
+                                                                    "Unknown Customer"
+                                                                ) : "Unknown Customer"}
                                                             </p>
                                                          </div>
                                                       </div>
@@ -561,7 +624,14 @@ export default function Appointments() {
                   <div className="mb-4 flex items-center">
                      <div className="h-12 w-12 rounded-full bg-white border border-gray-200 flex items-center justify-center">
                         <span className="text-gray-900 font-medium text-lg">
-                           {selectedAppointment.customer.initial}
+                           {typeof selectedAppointment.customer === "object" && 
+                            selectedAppointment.customer !== null ? (
+                              selectedAppointment.customer.firstName ? 
+                                selectedAppointment.customer.firstName[0] :
+                              selectedAppointment.customer.name ? 
+                                selectedAppointment.customer.name[0] : 
+                                "?"
+                            ) : "?"}
                         </span>
                      </div>
                      <div className="ml-4">
@@ -570,14 +640,25 @@ export default function Appointments() {
                               darkMode ? "text-white" : "text-gray-900"
                            }`}
                         >
-                           {selectedAppointment.customer.name}
+                           {typeof selectedAppointment.customer === "object" &&
+                             selectedAppointment.customer !== null ? (
+                               selectedAppointment.customer.firstName && selectedAppointment.customer.lastName ?
+                                 `${selectedAppointment.customer.firstName} ${selectedAppointment.customer.lastName}` :
+                               selectedAppointment.customer.name ?
+                                 selectedAppointment.customer.name :
+                                 "Unknown Customer"
+                             ) : "Unknown Customer"}
                         </div>
                         <div
                            className={`${
                               darkMode ? "text-gray-400" : "text-gray-600"
                            }`}
                         >
-                           {selectedAppointment.service}
+                           {typeof selectedAppointment.service === "object" && 
+                            selectedAppointment.service !== null ?
+                             selectedAppointment.service.name || "Unknown Service" : 
+                             typeof selectedAppointment.service === "string" ? 
+                               selectedAppointment.service : "Unknown Service"}
                         </div>
                      </div>
                   </div>
@@ -603,7 +684,7 @@ export default function Appointments() {
                         <div className="font-medium mb-1">Status</div>
                         <div>
                            <span
-                              className={`inline-flex items-center rounded-full px-2.5 py-1 text-xs font-medium bg-gradient-to-r ${selectedAppointment.statusColor} text-white`}
+                              className={`inline-flex items-center rounded-full px-2.5 py-1 text-xs font-medium bg-gradient-to-r ${getStatusColor(selectedAppointment.status)} text-white`}
                            >
                               {selectedAppointment.status}
                            </span>
@@ -640,7 +721,7 @@ export default function Appointments() {
                         Close
                      </button>
                      <Link
-                        href={`/dashboard/appointments/edit/${selectedAppointment.id}`}
+                        href={`/dashboard/appointments/edit/${selectedAppointment._id}`}
                         className={`px-4 py-2 rounded-full text-sm font-medium ${
                            darkMode
                               ? "bg-purple-600 text-white hover:bg-purple-700"
@@ -651,7 +732,7 @@ export default function Appointments() {
                      </Link>
                      <button
                         onClick={() =>
-                           handleDeleteAppointment(selectedAppointment.id)
+                           handleDeleteAppointment(selectedAppointment._id)
                         }
                         className={`px-4 py-2 rounded-full text-sm font-medium ${
                            darkMode
