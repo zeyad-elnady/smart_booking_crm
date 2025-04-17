@@ -127,15 +127,39 @@ const deleteAppointment = async (req, res) => {
 // @access  Private
 const getRecentAppointments = async (req, res) => {
    try {
-      const appointments = await Appointment.find({})
+      console.log('Fetching recent appointments...');
+      
+      // Add a timeout to the query
+      const timeoutPromise = new Promise((_, reject) => {
+         setTimeout(() => {
+            reject(new Error('Query timeout after 25 seconds'));
+         }, 25000);
+      });
+      
+      // Create the database query with a reduced limit
+      const queryPromise = Appointment.find({})
          .sort({ date: -1, time: -1 }) // Sort by date and time in descending order
-         .limit(5) // Get only the 5 most recent appointments
+         .limit(3) // Get only the 3 most recent appointments instead of 5
          .populate("customer", "firstName lastName email")
          .populate("service", "name duration price");
-
+      
+      // Race the query against the timeout
+      const appointments = await Promise.race([queryPromise, timeoutPromise]);
+      
+      console.log(`Successfully retrieved ${appointments.length} recent appointments`);
       res.json(appointments);
    } catch (error) {
       console.error("Error fetching recent appointments:", error);
+      
+      // Check if it's a timeout error
+      if (error.message === 'Query timeout after 25 seconds' || 
+          error.message.includes('buffering timed out')) {
+         return res.status(500).json({
+            message: 'Database query timed out. Please try again later.',
+            error: error.message
+         });
+      }
+      
       res.status(500).json({ message: error.message });
    }
 };

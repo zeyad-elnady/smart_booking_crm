@@ -351,31 +351,32 @@ export default function AppointmentForm({
                         >
                            Status
                         </label>
-                        <select
-                           id="status"
-                           name="status"
-                           value={formData.status}
-                           onChange={(e) =>
-                              setFormData({
-                                 ...formData,
-                                 status: e.target
-                                    .value as AppointmentData["status"],
-                              })
-                           }
-                           className={`mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm ${
-                              validationErrors.status ? "border-red-500" : ""
-                           }`}
-                           required
-                        >
-                           <option value="Waiting">Waiting</option>
-                           <option value="Cancelled">Cancelled</option>
-                           <option value="Completed">Completed</option>
-                        </select>
-                        {validationErrors.status && (
-                           <p className="mt-1 text-sm text-red-600">
-                              {validationErrors.status}
-                           </p>
-                        )}
+                        <div className="mt-2">
+                           <select
+                              id="status"
+                              name="status"
+                              className={`block w-full rounded-md border-0 py-1.5 pl-3 pr-10 text-gray-900 ring-1 ring-inset ring-gray-300 focus:ring-2 focus:ring-indigo-600 sm:text-sm sm:leading-6 ${
+                                 validationErrors.status ? "ring-red-500" : ""
+                              }`}
+                              value={formData.status}
+                              onChange={(e) =>
+                                 setFormData({
+                                    ...formData,
+                                    status: e.target.value as AppointmentData["status"],
+                                 })
+                              }
+                           >
+                              <option value="">Select a status</option>
+                              <option value="Pending">Pending</option>
+                              <option value="Confirmed">Confirmed</option>
+                              <option value="Canceled">Canceled</option>
+                           </select>
+                           {validationErrors.status && (
+                              <p className="mt-2 text-sm text-red-600">
+                                 {validationErrors.status}
+                              </p>
+                           )}
+                        </div>
                      </div>
 
                      <div className="flex justify-end space-x-3 pt-4 border-t">

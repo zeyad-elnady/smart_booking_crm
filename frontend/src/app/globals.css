@@ -956,3 +956,8 @@ select option {
       @apply bg-clip-text text-transparent bg-gradient-to-r from-purple-400 to-purple-600;
    }
 }
+
+/* Add this at the end of your CSS file */
+.suppress-hydration-warning * {
+  suppress-hydration-warning: 1;
+}

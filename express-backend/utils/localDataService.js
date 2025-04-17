@@ -637,6 +637,11 @@ const remove = (collection, id) => {
  * @returns {boolean} Connection status
  */
 const isMongoConnected = () => {
+  // Use MongoDB instead of local storage
+  return true;
+  
+  // Original implementation commented out:
+  /*
   // Modified to always return false to use local storage only
   // This eliminates the MongoDB dependency for local development
   return false;
