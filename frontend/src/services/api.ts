@@ -1020,6 +1020,10 @@ export interface DashboardStats {
    totalCustomers: number;
    averageRevenue: number;
    averageWaitTime: number;
+   totalRevenue: number;
+   completedAppointments: number;
+   weeklyRevenue: number;
+   monthlyRevenue: number;
 }
 
 // Dashboard API
@@ -1031,47 +1035,6 @@ export const dashboardAPI = {
       } catch (error) {
          console.error("Error fetching dashboard stats:", error);
          throw error;
-      }
-   },
-
-   refreshStats: async (): Promise<DashboardStats> => {
-      try {
-         // For mock data, count customers from localStorage
-         const storedMockCustomers = localStorage.getItem("mockCustomers");
-         if (storedMockCustomers) {
-            const customers = JSON.parse(storedMockCustomers);
-
-            // Create refreshed mock stats
-            const mockStats: DashboardStats = {
-               totalCustomers: customers.length,
-               averageRevenue: Math.floor(Math.random() * 300) + 50,
-               averageWaitTime: Math.floor(Math.random() * 15) + 5,
-            };
-
-            // Store updated stats
-            localStorage.setItem(
-               "mockDashboardStats",
-               JSON.stringify(mockStats)
-            );
-            console.log(
-               "Refreshed mock dashboard stats based on customer count:",
-               mockStats
-            );
-            return mockStats;
-         }
-
-         const response = await API.get<DashboardStats>(
-            "/dashboard/stats?refresh=true"
-         );
-         return response.data;
-      } catch (error) {
-         console.error("Error refreshing dashboard stats:", error);
-         // Return mock data if API fails (fallback for development)
-         return {
-            totalCustomers: 0,
-            averageRevenue: 0,
-            averageWaitTime: 0,
-         };
       }
    },
 };

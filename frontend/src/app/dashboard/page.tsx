@@ -14,11 +14,14 @@ import { authAPI, User, dashboardAPI } from "@/services/api";
 import { useTheme } from "@/components/ThemeProvider";
 import { format } from "date-fns";
 
-export interface DashboardStats {
+interface DashboardStats {
+   averageWaitTime: number;
+   totalRevenue: number;
+   averageRevenue: number;
    totalCustomers: number;
-   averageRevenue: string;
-   averageWaitTime: string;
-   [key: string]: number | string;
+   completedAppointments: number;
+   weeklyRevenue: number;
+   monthlyRevenue: number;
 }
 
 interface StatDefinition {
@@ -26,26 +29,50 @@ interface StatDefinition {
    key: keyof DashboardStats;
    icon: React.ReactNode;
    color: string;
+   prefix?: string;
+   suffix?: string;
 }
 
 const statDefinitions: StatDefinition[] = [
    {
-      name: "Total Customers",
-      key: "totalCustomers",
-      icon: <UsersIcon className="h-6 w-6" />,
-      color: "bg-purple-500",
+      name: "Daily Revenue",
+      key: "totalRevenue",
+      icon: <CurrencyDollarIcon className="h-6 w-6" />,
+      color: "bg-blue-500",
+      prefix: "$",
    },
    {
-      name: "Average Revenue",
-      key: "averageRevenue",
+      name: "Weekly Revenue",
+      key: "weeklyRevenue",
       icon: <CurrencyDollarIcon className="h-6 w-6" />,
       color: "bg-green-500",
+      prefix: "$",
+   },
+   {
+      name: "Monthly Revenue",
+      key: "monthlyRevenue",
+      icon: <CurrencyDollarIcon className="h-6 w-6" />,
+      color: "bg-purple-500",
+      prefix: "$",
    },
    {
       name: "Average Wait Time",
       key: "averageWaitTime",
       icon: <ClockIcon className="h-6 w-6" />,
       color: "bg-orange-500",
+      suffix: " min",
+   },
+   {
+      name: "Total Customers",
+      key: "totalCustomers",
+      icon: <UsersIcon className="h-6 w-6" />,
+      color: "bg-teal-500",
+   },
+   {
+      name: "Completed Today",
+      key: "completedAppointments",
+      icon: <CalendarIcon className="h-6 w-6" />,
+      color: "bg-pink-500",
    },
 ];
 
@@ -65,31 +92,60 @@ export default function Dashboard() {
    const [hasServiceLink, setHasServiceLink] = useState(false);
 
    // Stats state
-   const [stats, setStats] = useState<DashboardStats | null>(null);
+   const [stats, setStats] = useState<DashboardStats>({
+      averageWaitTime: 0,
+      totalRevenue: 0,
+      averageRevenue: 0,
+      totalCustomers: 0,
+      completedAppointments: 0,
+      weeklyRevenue: 0,
+      monthlyRevenue: 0,
+   });
    const [loading, setLoading] = useState(true);
    const [refreshing, setRefreshing] = useState(false);
    const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
 
    const fetchStats = async () => {
       try {
-         const response = await dashboardAPI.getStats();
-         const apiStats = response as unknown as ApiDashboardStats;
+         setLoading(true);
+         setRefreshing(true);
 
-         // Transform API stats to match our interface
+         const response = await dashboardAPI.getStats();
+
+         if (!response || typeof response !== "object") {
+            throw new Error("Invalid response from server");
+         }
+
          const formattedStats: DashboardStats = {
-            totalCustomers: apiStats.totalCustomers || 0,
-            averageRevenue: `$${(apiStats.averageRevenue || 0).toFixed(2)}`,
-            averageWaitTime: `${(apiStats.averageWaitTime || 0).toFixed(
-               0
-            )} min`,
+            totalCustomers: response.totalCustomers || 0,
+            averageRevenue: response.averageRevenue || 0,
+            averageWaitTime: response.averageWaitTime || 0,
+            totalRevenue: response.totalRevenue || 0,
+            completedAppointments: response.completedAppointments || 0,
+            weeklyRevenue: response.weeklyRevenue || 0,
+            monthlyRevenue: response.monthlyRevenue || 0,
          };
+
+         console.log("Received stats:", response);
+         console.log("Formatted stats:", formattedStats);
 
          setStats(formattedStats);
          setLastUpdated(new Date());
-         setLoading(false);
       } catch (error) {
-         console.error("Error fetching stats:", error);
+         console.error("Error fetching dashboard stats:", error);
+         // Show error in stats
+         setStats({
+            totalCustomers: 0,
+            averageRevenue: 0,
+            averageWaitTime: 0,
+            totalRevenue: 0,
+            completedAppointments: 0,
+            weeklyRevenue: 0,
+            monthlyRevenue: 0,
+         });
+      } finally {
          setLoading(false);
+         setRefreshing(false);
       }
    };
 
@@ -196,10 +252,20 @@ export default function Dashboard() {
       setShowServicePrompt(false);
    };
 
-   const formatStatValue = (value: number | string | undefined): string => {
+   const formatStatValue = (
+      value: number | string | undefined,
+      stat: StatDefinition
+   ): string => {
       if (value === undefined) return "-";
-      if (typeof value === "number") return value.toString();
-      return value;
+
+      let formattedValue =
+         typeof value === "number"
+            ? stat.prefix === "$"
+               ? value.toFixed(2)
+               : value.toString()
+            : value;
+
+      return `${stat.prefix || ""}${formattedValue}${stat.suffix || ""}`;
    };
 
    if (!mounted) return null;
@@ -381,7 +447,7 @@ export default function Dashboard() {
                {loading ? (
                   // Loading skeleton
                   <>
-                     {[...Array(4)].map((_, i) => (
+                     {[...Array(7)].map((_, i) => (
                         <div
                            key={i}
                            className="glass p-6 rounded-xl h-40 animate-pulse"
@@ -393,42 +459,23 @@ export default function Dashboard() {
                   </>
                ) : (
                   <>
-                     {statDefinitions.map((stat, index) => {
-                        // Determine CSS class for card background based on color
-                        let cardBgClass = "";
-                        if (stat.color.includes("blue"))
-                           cardBgClass = "card-blue-bg";
-                        else if (stat.color.includes("purple"))
-                           cardBgClass = "card-purple-bg";
-                        else if (stat.color.includes("green"))
-                           cardBgClass = "card-green-bg";
-                        else if (stat.color.includes("amber"))
-                           cardBgClass = "card-amber-bg";
-
-                        // Get stat value
-                        const value = stats ? stats[stat.key] : 0;
-
-                        return (
-                           <div
-                              key={stat.key}
-                              className={`glass rounded-xl p-6 ${cardBgClass}`}
-                           >
-                              <div className="flex items-center mb-4">
-                                 <div
-                                    className={`p-3 rounded-lg bg-gradient-to-br ${stat.color} mr-3`}
-                                 >
-                                    {stat.icon}
-                                 </div>
-                                 <h3 className="stat-label text-sm font-medium">
-                                    {stat.name}
-                                 </h3>
+                     {statDefinitions.map((stat) => (
+                        <div key={stat.key} className={`glass rounded-xl p-6`}>
+                           <div className="flex items-center mb-4">
+                              <div
+                                 className={`p-3 rounded-lg bg-gradient-to-br ${stat.color} mr-3`}
+                              >
+                                 {stat.icon}
                               </div>
-                              <div className="stat-value text-4xl">
-                                 {formatStatValue(value)}
-                              </div>
+                              <h3 className="stat-label text-sm font-medium">
+                                 {stat.name}
+                              </h3>
                            </div>
-                        );
-                     })}
+                           <div className="stat-value text-4xl font-bold">
+                              {formatStatValue(stats[stat.key], stat)}
+                           </div>
+                        </div>
+                     ))}
                   </>
                )}
             </div>
