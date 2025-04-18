@@ -7,22 +7,18 @@ import {
    ArrowPathIcon,
    PlusIcon,
    TrashIcon,
-   MagnifyingGlassIcon,
-   ClockIcon,
-   CurrencyDollarIcon,
    PencilIcon,
-   TagIcon,
 } from "@heroicons/react/24/outline";
 import { serviceAPI } from "@/services/api";
 import { Service } from "@/types/service";
 import { useTheme } from "@/components/ThemeProvider";
 import LoadingSpinner from "@/components/LoadingSpinner";
 import { deleteService } from "@/services/serviceService";
+import { useRouter } from "next/navigation";
 
 export default function Services() {
+   const router = useRouter();
    const [services, setServices] = useState<Service[]>([]);
-   const [filteredServices, setFilteredServices] = useState<Service[]>([]);
-   const [searchQuery, setSearchQuery] = useState("");
    const [loading, setLoading] = useState(true);
    const [error, setError] = useState<string | null>(null);
    const { darkMode } = useTheme();
@@ -32,7 +28,6 @@ export default function Services() {
          setLoading(true);
          const data = await serviceAPI.getServices();
          setServices(data);
-         setFilteredServices(data);
          toast.success("Services refreshed successfully");
       } catch (err: any) {
          console.error("Services refresh error:", err);
@@ -78,31 +73,12 @@ export default function Services() {
       }
    };
 
-   const handleSearch = (query: string) => {
-      setSearchQuery(query);
-      if (!query.trim()) {
-         setFilteredServices(services);
-         return;
-      }
-      const lowercaseQuery = query.toLowerCase();
-      const filtered = services.filter(
-         (service) =>
-            service.name.toLowerCase().includes(lowercaseQuery) ||
-            (service.description?.toLowerCase() || "").includes(
-               lowercaseQuery
-            ) ||
-            (service.category?.toLowerCase() || "").includes(lowercaseQuery)
-      );
-      setFilteredServices(filtered);
-   };
-
    useEffect(() => {
       const fetchServices = async () => {
          try {
             setLoading(true);
             const data = await serviceAPI.getServices();
             setServices(data);
-            setFilteredServices(data);
          } catch (err: any) {
             console.error("Services load error:", err);
             setError(err.response?.data?.message || "Failed to load services");
@@ -162,61 +138,21 @@ export default function Services() {
             </div>
          </div>
 
-         <div
-            className={`flex items-center space-x-4 ${
-               darkMode ? "text-white" : "text-gray-900"
-            }`}
-         >
-            <div className="relative flex-1">
-               <input
-                  type="text"
-                  placeholder="Search services..."
-                  value={searchQuery}
-                  onChange={(e) => handleSearch(e.target.value)}
-                  className={`w-full px-4 py-2 rounded-lg border focus:ring-2 transition-colors ${
-                     darkMode
-                        ? "bg-gray-800/50 border-gray-700 text-white placeholder-gray-400 focus:ring-purple-500/20"
-                        : "bg-white border-gray-300 text-gray-900 placeholder-gray-500 focus:ring-purple-500/20"
-                  }`}
-               />
-            </div>
-         </div>
-
          {loading ? (
             <div className="flex justify-center items-center py-8">
                <LoadingSpinner />
             </div>
          ) : error ? (
-            <div
-               className={`text-center py-8 ${
-                  darkMode ? "text-red-400" : "text-red-600"
-               }`}
-            >
-               {error}
-            </div>
-         ) : filteredServices.length === 0 ? (
+            <div className="text-center py-8 text-red-500">{error}</div>
+         ) : services.length === 0 ? (
             <div className="text-center py-8">
                <p className={darkMode ? "text-gray-400" : "text-gray-500"}>
-                  {searchQuery
-                     ? "No services found matching your search."
-                     : "No services found."}
+                  No services found.
                </p>
-               {!searchQuery && (
-                  <Link
-                     href="/dashboard/services/add"
-                     className={`mt-2 inline-block ${
-                        darkMode
-                           ? "text-purple-400 hover:text-purple-300"
-                           : "text-purple-600 hover:text-purple-500"
-                     }`}
-                  >
-                     Add your first service
-                  </Link>
-               )}
             </div>
          ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-               {filteredServices.map((service) => (
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+               {services.map((service) => (
                   <div
                      key={service._id}
                      className={`rounded-lg border transition-all hover:shadow-lg ${
@@ -247,13 +183,6 @@ export default function Services() {
                                  </h3>
                                  {service.category && (
                                     <div className="flex items-center text-sm space-x-1">
-                                       <TagIcon
-                                          className={`h-4 w-4 ${
-                                             darkMode
-                                                ? "text-gray-400"
-                                                : "text-gray-600"
-                                          }`}
-                                       />
                                        <span
                                           className={
                                              darkMode
@@ -285,12 +214,10 @@ export default function Services() {
                            }`}
                         >
                            <div className="flex items-center space-x-2">
-                              <ClockIcon className="h-4 w-4" />
-                              <span>{service.duration} minutes</span>
+                              <span>Duration: {service.duration} minutes</span>
                            </div>
                            <div className="flex items-center space-x-2">
-                              <CurrencyDollarIcon className="h-4 w-4" />
-                              <span>${service.price}</span>
+                              <span>Price: ${service.price}</span>
                            </div>
                         </div>
 

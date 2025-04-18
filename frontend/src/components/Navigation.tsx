@@ -27,7 +27,6 @@ const navigationLinks = [
    },
    { name: "Customers", href: "/dashboard/customers", icon: UserGroupIcon },
    { name: "Services", href: "/dashboard/services", icon: Squares2X2Icon },
-   { name: "Analytics", href: "/dashboard/analytics", icon: ChartBarIcon },
    { name: "Settings", href: "/dashboard/settings", icon: Cog6ToothIcon },
 ];
 

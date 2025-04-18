@@ -16,7 +16,7 @@ import { format } from "date-fns";
 
 export interface DashboardStats {
    totalCustomers: number;
-   revenueToday: string;
+   averageRevenue: string;
    averageWaitTime: string;
    [key: string]: number | string;
 }
@@ -36,8 +36,8 @@ const statDefinitions: StatDefinition[] = [
       color: "bg-purple-500",
    },
    {
-      name: "Revenue Today",
-      key: "revenueToday",
+      name: "Average Revenue",
+      key: "averageRevenue",
       icon: <CurrencyDollarIcon className="h-6 w-6" />,
       color: "bg-green-500",
    },
@@ -50,9 +50,8 @@ const statDefinitions: StatDefinition[] = [
 ];
 
 interface ApiDashboardStats {
-   todaysAppointments: number;
    totalCustomers: number;
-   revenueToday: number;
+   averageRevenue: number;
    averageWaitTime: number;
 }
 
@@ -79,8 +78,10 @@ export default function Dashboard() {
          // Transform API stats to match our interface
          const formattedStats: DashboardStats = {
             totalCustomers: apiStats.totalCustomers || 0,
-            revenueToday: `$${apiStats.revenueToday || 0}`,
-            averageWaitTime: `${apiStats.averageWaitTime || 0} min`,
+            averageRevenue: `$${(apiStats.averageRevenue || 0).toFixed(2)}`,
+            averageWaitTime: `${(apiStats.averageWaitTime || 0).toFixed(
+               0
+            )} min`,
          };
 
          setStats(formattedStats);

@@ -726,9 +726,41 @@ export const customerAPI = {
       }
    },
 
-   deleteCustomer: async (id: string) => {
-      const response = await API.delete(`/customers/${id}`);
-      return response.data;
+   deleteCustomer: async (id: string, confirm: boolean = false) => {
+      try {
+         // Construct the URL with proper query parameter format
+         const url = confirm
+            ? `/customers/${id}?confirm=true`
+            : `/customers/${id}`;
+         console.log("Delete URL:", url);
+
+         const response = await API.delete(url);
+         console.log("Delete response:", response.data);
+
+         // Handle mock data updates
+         if (response.data.success || response.status === 200) {
+            try {
+               const mockCustomers = localStorage.getItem("mockCustomers");
+               if (mockCustomers) {
+                  const customers = JSON.parse(mockCustomers);
+                  const updatedCustomers = customers.filter(
+                     (c: Customer) => c._id !== id
+                  );
+                  localStorage.setItem(
+                     "mockCustomers",
+                     JSON.stringify(updatedCustomers)
+                  );
+               }
+            } catch (e) {
+               console.error("Error updating localStorage:", e);
+            }
+         }
+
+         return response.data;
+      } catch (error) {
+         console.error(`Error deleting customer ${id}:`, error);
+         throw error;
+      }
    },
 };
 
@@ -985,9 +1017,8 @@ export const authAPI = {
 
 // Dashboard statistics interface
 export interface DashboardStats {
-   appointmentsToday: number;
    totalCustomers: number;
-   revenueToday: number;
+   averageRevenue: number;
    averageWaitTime: number;
 }
 
@@ -995,62 +1026,11 @@ export interface DashboardStats {
 export const dashboardAPI = {
    getStats: async (): Promise<DashboardStats> => {
       try {
-         // Get current mock customer count from localStorage
-         let totalCustomers = 0;
-         try {
-            const storedMockCustomers = localStorage.getItem("mockCustomers");
-            if (storedMockCustomers) {
-               const customers = JSON.parse(storedMockCustomers);
-               totalCustomers = customers.length;
-            }
-         } catch (e) {
-            console.error("Error getting mock customer count:", e);
-         }
-
-         // Check if we have stored mock stats in localStorage
-         const storedMockStats = localStorage.getItem("mockDashboardStats");
-         if (storedMockStats) {
-            console.log("Using stored mock dashboard stats from localStorage");
-            // Update the customer count to reflect the current localStorage
-            const stats = JSON.parse(storedMockStats);
-            stats.totalCustomers = totalCustomers; // Always update with current count
-            localStorage.setItem("mockDashboardStats", JSON.stringify(stats));
-            return stats;
-         }
-
-         // Try to get real data from API
-         try {
-            const response = await API.get<DashboardStats>("/dashboard/stats");
-            return response.data;
-         } catch (apiError) {
-            console.error("Error fetching dashboard stats from API:", apiError);
-
-            // Create new mock stats with accurate customer count
-            const mockStats: DashboardStats = {
-               appointmentsToday: Math.floor(Math.random() * 5),
-               totalCustomers: totalCustomers,
-               revenueToday: Math.floor(Math.random() * 300) + 50,
-               averageWaitTime: Math.floor(Math.random() * 15) + 5,
-            };
-
-            // Store mock stats for later use
-            localStorage.setItem(
-               "mockDashboardStats",
-               JSON.stringify(mockStats)
-            );
-
-            return mockStats;
-         }
+         const response = await API.get("/dashboard/stats");
+         return response.data;
       } catch (error) {
-         console.error("Error in getStats:", error);
-
-         // Final fallback
-         return {
-            appointmentsToday: 0,
-            totalCustomers: 0,
-            revenueToday: 0,
-            averageWaitTime: 0,
-         };
+         console.error("Error fetching dashboard stats:", error);
+         throw error;
       }
    },
 
@@ -1063,9 +1043,8 @@ export const dashboardAPI = {
 
             // Create refreshed mock stats
             const mockStats: DashboardStats = {
-               appointmentsToday: Math.floor(Math.random() * 5),
                totalCustomers: customers.length,
-               revenueToday: Math.floor(Math.random() * 300) + 50,
+               averageRevenue: Math.floor(Math.random() * 300) + 50,
                averageWaitTime: Math.floor(Math.random() * 15) + 5,
             };
 
@@ -1089,10 +1068,9 @@ export const dashboardAPI = {
          console.error("Error refreshing dashboard stats:", error);
          // Return mock data if API fails (fallback for development)
          return {
-            appointmentsToday: Math.floor(Math.random() * 5),
             totalCustomers: 0,
-            revenueToday: Math.floor(Math.random() * 300) + 50,
-            averageWaitTime: Math.floor(Math.random() * 15) + 5,
+            averageRevenue: 0,
+            averageWaitTime: 0,
          };
       }
    },

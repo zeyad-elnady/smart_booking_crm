@@ -101,7 +101,7 @@ export const createAppointment = async (
 };
 
 /**
- * Updates an existing appointment in IndexedDB
+ * Updates an existing appointment in IndexedDB and syncs with server if online
  */
 export const updateAppointment = async (
    id: string,
@@ -119,11 +119,37 @@ export const updateAppointment = async (
          pendingSync: true,
       };
 
+      // Save to IndexedDB first
       await indexedDBService.saveAppointment(updatedAppointment);
+
+      // If online, sync with server immediately
+      if (navigator.onLine) {
+         try {
+            const serverResponse = await axios.put(
+               `/appointments/${id}`,
+               appointmentData
+            );
+            const serverAppointment = serverResponse.data;
+
+            // Update the local appointment with server data
+            const finalAppointment = {
+               ...serverAppointment,
+               pendingSync: false,
+            };
+            await indexedDBService.saveAppointment(finalAppointment);
+
+            return finalAppointment;
+         } catch (serverError) {
+            console.error("Error syncing with server:", serverError);
+            toast.error("Updated locally, will sync when online");
+            return updatedAppointment;
+         }
+      }
+
       toast.success("Appointment updated locally");
       return updatedAppointment;
    } catch (error) {
-      console.error("Error updating appointment in IndexedDB:", error);
+      console.error("Error updating appointment:", error);
       throw error;
    }
 };

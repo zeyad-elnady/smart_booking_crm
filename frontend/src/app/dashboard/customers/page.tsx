@@ -17,11 +17,11 @@ import { format } from "date-fns";
 import { useRouter } from "next/navigation";
 import { useTheme } from "@/components/ThemeProvider";
 import LoadingSpinner from "@/components/LoadingSpinner";
+import { toast } from "react-hot-toast";
 
 export default function Customers() {
    const router = useRouter();
    const [customers, setCustomers] = useState<Customer[]>([]);
-   const [searchTerm, setSearchTerm] = useState("");
    const [loading, setLoading] = useState(true);
    const [isMockData, setIsMockData] = useState(false);
    const [error, setError] = useState<string | null>(null);
@@ -95,43 +95,35 @@ export default function Customers() {
       router.push(`/dashboard/customers/edit/${customerId}`);
    };
 
-   const handleDeleteClick = async (customerId: string) => {
+   const handleDeleteClick = async (
+      customerId: string,
+      confirmation: boolean = false
+   ) => {
       try {
-         // First call to get confirmation data
-         const confirmationData = await customerAPI.deleteCustomer(customerId);
+         const response = await customerAPI.deleteCustomer(
+            customerId,
+            confirmation
+         );
 
-         if (confirmationData.affectedAppointments) {
-            // Show confirmation dialog
-            const confirmed = window.confirm(
-               `This customer has ${confirmationData.affectedAppointments} associated appointments. ` +
-                  `Deleting this customer will also delete all associated appointments. ` +
-                  `Are you sure you want to proceed?`
+         if (response.affectedAppointments && !confirmation) {
+            const confirmDelete = window.confirm(
+               `This customer has ${response.affectedAppointments} appointments. Deleting this customer will also delete all associated appointments. Are you sure you want to proceed?`
             );
 
-            if (confirmed) {
-               // Delete the customer
-               await customerAPI.deleteCustomer(customerId);
-               // Refresh the customer list after deletion
-               fetchCustomers();
+            if (confirmDelete) {
+               return handleDeleteClick(customerId, true);
             }
-         } else {
-            // If no appointments, proceed with deletion
-            await customerAPI.deleteCustomer(customerId);
-            // Refresh the customer list after deletion
-            fetchCustomers();
+            return;
          }
+
+         // Refresh the customer list after successful deletion
+         await fetchCustomers();
+         toast.success("Customer deleted successfully");
       } catch (error) {
          console.error("Failed to delete customer:", error);
+         toast.error("Failed to delete customer");
       }
    };
-
-   const filteredCustomers = customers.filter(
-      (customer) =>
-         `${customer.firstName} ${customer.lastName}`
-            .toLowerCase()
-            .includes(searchTerm.toLowerCase()) ||
-         customer.email.toLowerCase().includes(searchTerm.toLowerCase())
-   );
 
    return (
       <div className="space-y-6 animate-fadeIn">
@@ -161,13 +153,27 @@ export default function Customers() {
                   </div>
                )}
             </div>
-            <div className="mt-4 sm:ml-16 sm:mt-0 sm:flex-none">
+            <div className="mt-4 sm:ml-16 sm:mt-0 sm:flex-none flex items-center space-x-4">
+               <button
+                  onClick={handleRefresh}
+                  disabled={loading}
+                  className={`inline-flex items-center rounded-lg px-4 py-2 text-sm font-semibold shadow-sm transition-all hover:scale-105 ${
+                     darkMode
+                        ? "bg-purple-600 text-white hover:bg-purple-700 disabled:bg-purple-400"
+                        : "bg-white text-gray-900 border border-gray-300 hover:bg-gray-50 disabled:bg-gray-100"
+                  }`}
+               >
+                  <ArrowPathIcon
+                     className={`h-5 w-5 mr-1 ${loading ? "animate-spin" : ""}`}
+                  />
+                  {loading ? "Refreshing..." : "Refresh"}
+               </button>
                <Link
                   href="/dashboard/customers/add"
                   className={`inline-flex items-center gap-x-2 rounded-md px-3.5 py-2.5 text-sm font-semibold shadow-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 ${
                      darkMode
                         ? "bg-purple-600 text-white hover:bg-purple-500 focus-visible:outline-purple-600"
-                        : "bg-purple-600 text-white hover:bg-purple-500 focus-visible:outline-purple-600"
+                        : "bg-white text-gray-900 border border-gray-300 hover:bg-gray-50 focus-visible:outline-gray-600"
                   }`}
                >
                   <UserPlusIcon
@@ -176,27 +182,6 @@ export default function Customers() {
                   />
                   Add Customer
                </Link>
-            </div>
-         </div>
-
-         {/* Search and Filter Section */}
-         <div
-            className={`flex items-center space-x-4 ${
-               darkMode ? "text-white" : "text-gray-900"
-            }`}
-         >
-            <div className="relative flex-1">
-               <input
-                  type="text"
-                  placeholder="Search customers..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className={`w-full px-4 py-2 rounded-lg border focus:ring-2 transition-colors ${
-                     darkMode
-                        ? "bg-gray-800/50 border-gray-700 text-white placeholder-gray-400 focus:ring-purple-500/20"
-                        : "bg-white border-gray-300 text-gray-900 placeholder-gray-500 focus:ring-purple-500/20"
-                  }`}
-               />
             </div>
          </div>
 
@@ -215,7 +200,7 @@ export default function Customers() {
             </div>
          ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-               {filteredCustomers.map((customer) => (
+               {customers.map((customer) => (
                   <div
                      key={customer._id}
                      className={`rounded-lg border transition-all hover:shadow-lg ${

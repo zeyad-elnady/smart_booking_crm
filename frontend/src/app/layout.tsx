@@ -1,9 +1,9 @@
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";
-import CustomToaster from "@/components/CustomToaster";
 import ThemeProvider from "@/components/ThemeProvider";
 import { DarkModeProvider } from "@/context/DarkModeContext";
+import { Toaster } from "@/components/ui/toast";
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -21,20 +21,11 @@ export default function RootLayout({
       <html lang="en" suppressHydrationWarning>
          <body className={inter.className} suppressHydrationWarning>
             <DarkModeProvider>
-               <ThemeProvider>{children}</ThemeProvider>
+               <ThemeProvider>
+                  <main>{children}</main>
+                  <Toaster />
+               </ThemeProvider>
             </DarkModeProvider>
-            <CustomToaster
-               position="top-right"
-               toastOptions={{
-                  className: "",
-                  style: {
-                     border: "1px solid #713200",
-                     padding: "16px",
-                     color: "#713200",
-                  },
-                  duration: 5000,
-               }}
-            />
          </body>
       </html>
    );

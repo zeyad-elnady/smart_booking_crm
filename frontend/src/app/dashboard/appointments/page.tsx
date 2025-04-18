@@ -14,6 +14,7 @@ import {
    ChatBubbleLeftIcon,
    TrashIcon,
    PencilIcon,
+   ChevronDownIcon,
 } from "@heroicons/react/24/outline";
 import { useTheme } from "@/components/ThemeProvider";
 import {
@@ -34,9 +35,15 @@ import {
 import {
    fetchAppointments,
    deleteAppointment,
+   updateAppointment,
 } from "@/services/appointmentService";
-import type { Appointment } from "@/types/appointment";
-import type { Customer, Service } from "@/services/api";
+import type {
+   Appointment,
+   AppointmentStatus,
+   AppointmentData,
+} from "@/types/appointment";
+import type { Customer } from "@/types/customer";
+import type { Service } from "@/types/service";
 import type { Service as ServiceType } from "@/types/service";
 import { toast } from "react-hot-toast";
 import { testConnections } from "@/services/api";
@@ -51,6 +58,13 @@ interface AppointmentCustomer {
    name: string;
 }
 
+const statusOptions: AppointmentStatus[] = [
+   "Pending",
+   "Confirmed",
+   "Canceled",
+   "Completed",
+];
+
 export default function Appointments() {
    const { darkMode } = useTheme();
    const [viewMode, setViewMode] = useState("list"); // 'list' or 'calendar'
@@ -62,6 +76,7 @@ export default function Appointments() {
       useState<Appointment | null>(null);
    const [appointments, setAppointments] = useState<Appointment[]>([]);
    const [loading, setLoading] = useState(false);
+   const [openStatusMenu, setOpenStatusMenu] = useState<string | null>(null);
 
    // Initialize IndexedDB and load appointments
    useEffect(() => {
@@ -172,12 +187,16 @@ export default function Appointments() {
    const getStatusColor = (status: string | undefined): string => {
       switch (status) {
          case "Confirmed":
-            return "from-green-500 to-green-600";
+            return "bg-green-500 text-white hover:bg-green-600";
          case "Canceled":
-            return "from-red-500 to-red-600";
+            return "bg-red-500 text-white hover:bg-red-600";
+         case "Completed":
+            return "bg-blue-500 text-white hover:bg-blue-600";
          case "Pending":
          default:
-            return "from-yellow-500 to-yellow-600";
+            return darkMode
+               ? "bg-amber-500 text-white hover:bg-amber-600"
+               : "bg-amber-100 text-amber-800 hover:bg-amber-200";
       }
    };
 
@@ -246,6 +265,58 @@ export default function Appointments() {
       }
 
       return "Unknown Service";
+   };
+
+   const handleStatusChange = async (
+      appointmentId: string,
+      newStatus: AppointmentStatus
+   ) => {
+      try {
+         setLoading(true);
+         const appointment = appointments.find(
+            (apt) => apt._id === appointmentId
+         );
+         if (!appointment) return;
+
+         // Create the update data with all required fields
+         const updatedAppointment: AppointmentData = {
+            customer:
+               typeof appointment.customer === "object" &&
+               appointment.customer !== null
+                  ? (appointment.customer as Customer)._id
+                  : (appointment.customer as string),
+            service:
+               typeof appointment.service === "object" &&
+               appointment.service !== null
+                  ? (appointment.service as Service)._id
+                  : (appointment.service as string),
+            date: appointment.date,
+            time: appointment.time,
+            duration: appointment.duration,
+            status: newStatus,
+            notes: appointment.notes || "",
+            customerInfo: appointment.customerInfo,
+            serviceInfo: appointment.serviceInfo,
+         };
+
+         // Update the appointment
+         const result = await updateAppointment(
+            appointmentId,
+            updatedAppointment
+         );
+
+         // Refresh the appointments list to get the latest data
+         const refreshedAppointments = await fetchAppointments();
+         setAppointments(refreshedAppointments);
+
+         toast.success("Appointment status updated successfully");
+      } catch (error) {
+         console.error("Error updating appointment status:", error);
+         toast.error("Failed to update appointment status");
+      } finally {
+         setLoading(false);
+         setOpenStatusMenu(null);
+      }
    };
 
    return (
@@ -370,12 +441,73 @@ export default function Appointments() {
                                  </p>
                               </div>
                            </div>
-                           <div
-                              className={`px-2.5 py-1 rounded-full text-xs font-medium bg-gradient-to-r ${getStatusColor(
-                                 appointment.status
-                              )} bg-opacity-20`}
-                           >
-                              {appointment.status}
+                           <div className="relative">
+                              <button
+                                 onClick={(e) => {
+                                    e.stopPropagation();
+                                    setOpenStatusMenu(
+                                       openStatusMenu === appointment._id
+                                          ? null
+                                          : appointment._id
+                                    );
+                                 }}
+                                 className={`px-3 py-1.5 rounded-full text-xs font-medium transition-colors ${
+                                    appointment.status === "Confirmed"
+                                       ? "bg-green-500 text-white hover:bg-green-600"
+                                       : appointment.status === "Canceled"
+                                       ? "bg-red-500 text-white hover:bg-red-600"
+                                       : appointment.status === "Completed"
+                                       ? "bg-blue-500 text-white hover:bg-blue-600"
+                                       : darkMode
+                                       ? "bg-amber-500 text-white hover:bg-amber-600"
+                                       : "bg-amber-100 text-amber-800 hover:bg-amber-200"
+                                 } flex items-center gap-1 shadow-sm`}
+                              >
+                                 {appointment.status}
+                                 <ChevronDownIcon className="h-3 w-3" />
+                              </button>
+
+                              {openStatusMenu === appointment._id && (
+                                 <div
+                                    className={`absolute right-0 mt-1 w-32 rounded-md shadow-lg z-50 ${
+                                       darkMode
+                                          ? "bg-gray-800 border border-gray-700"
+                                          : "bg-white border border-gray-200"
+                                    }`}
+                                 >
+                                    <div className="py-1">
+                                       {statusOptions.map((status) => (
+                                          <button
+                                             key={status}
+                                             onClick={(e) => {
+                                                e.stopPropagation();
+                                                handleStatusChange(
+                                                   appointment._id,
+                                                   status
+                                                );
+                                             }}
+                                             className="block w-full text-left px-2 py-1.5"
+                                          >
+                                             <span
+                                                className={`inline-block w-full px-2 py-1 rounded text-xs font-medium ${
+                                                   status === "Confirmed"
+                                                      ? "bg-green-500 text-white hover:bg-green-600"
+                                                      : status === "Canceled"
+                                                      ? "bg-red-500 text-white hover:bg-red-600"
+                                                      : status === "Completed"
+                                                      ? "bg-blue-500 text-white hover:bg-blue-600"
+                                                      : darkMode
+                                                      ? "bg-amber-500 text-white hover:bg-amber-600"
+                                                      : "bg-amber-100 text-amber-800 hover:bg-amber-200"
+                                                }`}
+                                             >
+                                                {status}
+                                             </span>
+                                          </button>
+                                       ))}
+                                    </div>
+                                 </div>
+                              )}
                            </div>
                         </div>
 
@@ -572,9 +704,17 @@ export default function Appointments() {
                                              onClick={() =>
                                                 handleAppointmentClick(apt)
                                              }
-                                             className={`p-2 rounded-md text-xs bg-gradient-to-r ${getStatusColor(
-                                                apt.status
-                                             )} bg-opacity-20 hover:bg-opacity-30 cursor-pointer transition-all`}
+                                             className={`p-2 rounded-md text-xs cursor-pointer transition-colors shadow-sm ${
+                                                apt.status === "Confirmed"
+                                                   ? "bg-green-500 text-white hover:bg-green-600"
+                                                   : apt.status === "Canceled"
+                                                   ? "bg-red-500 text-white hover:bg-red-600"
+                                                   : apt.status === "Completed"
+                                                   ? "bg-blue-500 text-white hover:bg-blue-600"
+                                                   : darkMode
+                                                   ? "bg-amber-500 text-white hover:bg-amber-600"
+                                                   : "bg-amber-100 text-amber-800 hover:bg-amber-200"
+                                             }`}
                                           >
                                              <div className="flex items-center space-x-1">
                                                 <div className="h-5 w-5 rounded-full bg-white border border-gray-200 flex items-center justify-center text-gray-900 text-xs">
@@ -659,9 +799,20 @@ export default function Appointments() {
                                                                apt
                                                             )
                                                          }
-                                                         className={`p-1 rounded-sm text-xs bg-gradient-to-r ${getStatusColor(
-                                                            apt.status
-                                                         )} bg-opacity-20 hover:bg-opacity-30 cursor-pointer transition-all truncate`}
+                                                         className={`p-1 rounded-sm text-xs cursor-pointer transition-colors shadow-sm ${
+                                                            apt.status ===
+                                                            "Confirmed"
+                                                               ? "bg-green-500 text-white hover:bg-green-600"
+                                                               : apt.status ===
+                                                                 "Canceled"
+                                                               ? "bg-red-500 text-white hover:bg-red-600"
+                                                               : apt.status ===
+                                                                 "Completed"
+                                                               ? "bg-blue-500 text-white hover:bg-blue-600"
+                                                               : darkMode
+                                                               ? "bg-amber-500 text-white hover:bg-amber-600"
+                                                               : "bg-amber-100 text-amber-800 hover:bg-amber-200"
+                                                         } truncate`}
                                                       >
                                                          <div className="flex items-center space-x-1">
                                                             <div className="h-3 w-3 rounded-full bg-white border border-gray-200 flex items-center justify-center"></div>
@@ -771,9 +922,13 @@ export default function Appointments() {
                         <div className="font-medium mb-1">Status</div>
                         <div>
                            <span
-                              className={`inline-flex items-center rounded-full px-2.5 py-1 text-xs font-medium bg-gradient-to-r ${getStatusColor(
-                                 selectedAppointment.status
-                              )} text-white`}
+                              className={`inline-flex items-center rounded-full px-3 py-1.5 text-xs font-medium shadow-sm ${
+                                 selectedAppointment.status === "Confirmed"
+                                    ? "bg-green-500 text-white"
+                                    : selectedAppointment.status === "Canceled"
+                                    ? "bg-red-500 text-white"
+                                    : "bg-amber-500 text-white"
+                              }`}
                            >
                               {selectedAppointment.status}
                            </span>
