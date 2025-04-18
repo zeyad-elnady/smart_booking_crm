@@ -1,7 +1,11 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { PlusIcon, MagnifyingGlassIcon } from "@heroicons/react/24/outline";
+import {
+   PlusIcon,
+   MagnifyingGlassIcon,
+   ArrowPathIcon,
+} from "@heroicons/react/24/outline";
 import Link from "next/link";
 import { customerAPI, Customer } from "@/services/api";
 import { format } from "date-fns";
@@ -129,16 +133,30 @@ export default function Customers() {
                   </div>
                )}
             </div>
-            <div className="mt-4 sm:ml-16 sm:mt-0 sm:flex-none">
+            <div className="mt-4 sm:ml-16 sm:mt-0 sm:flex-none space-x-4">
+               <button
+                  onClick={handleRefresh}
+                  disabled={loading}
+                  className={`inline-flex items-center rounded-lg px-4 py-2 text-sm font-semibold shadow-sm transition-all hover:scale-105 ${
+                     darkMode
+                        ? "bg-purple-600 text-white hover:bg-purple-700 disabled:bg-purple-400"
+                        : "bg-white text-gray-900 border border-gray-300 hover:bg-gray-50 disabled:bg-gray-100"
+                  }`}
+               >
+                  <ArrowPathIcon
+                     className={`h-5 w-5 mr-1 ${loading ? "animate-spin" : ""}`}
+                  />
+                  {loading ? "Refreshing..." : "Refresh"}
+               </button>
                <Link
                   href="/dashboard/customers/add"
-                  className={`block rounded-lg px-4 py-2 text-center text-sm font-semibold shadow-sm transition-all hover:scale-105 flex items-center ${
+                  className={`inline-flex items-center rounded-lg px-4 py-2 text-sm font-semibold shadow-sm transition-all hover:scale-105 ${
                      darkMode
                         ? "bg-purple-600 text-white hover:bg-purple-700"
                         : "bg-white text-gray-900 border border-gray-300 hover:bg-gray-50"
                   }`}
                >
-                  <PlusIcon className="h-5 w-5 inline-block mr-1" />
+                  <PlusIcon className="h-5 w-5 mr-1" />
                   Add Customer
                </Link>
             </div>
@@ -302,19 +320,6 @@ export default function Customers() {
                      : "No customers found. Add your first customer!"}
                </div>
             )}
-         </div>
-
-         <div className="flex justify-center">
-            <button
-               onClick={handleRefresh}
-               className={`px-4 py-2 text-sm font-semibold rounded-lg shadow-sm transition-all ${
-                  darkMode
-                     ? "bg-purple-600 text-white hover:bg-purple-700"
-                     : "bg-white text-gray-900 border border-gray-300 hover:bg-gray-50"
-               }`}
-            >
-               Refresh Customer List
-            </button>
          </div>
       </div>
    );

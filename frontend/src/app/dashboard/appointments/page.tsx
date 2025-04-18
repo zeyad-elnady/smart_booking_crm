@@ -9,6 +9,7 @@ import {
    ChevronLeftIcon,
    ChevronRightIcon,
    XMarkIcon,
+   ArrowPathIcon,
 } from "@heroicons/react/24/outline";
 import { useTheme } from "@/components/ThemeProvider";
 import {
@@ -30,11 +31,14 @@ import {
    fetchAppointments,
    deleteAppointment,
 } from "@/services/appointmentService";
-import type { Appointment, Customer, Service } from "@/services/api";
+import type { Appointment } from "@/types/appointment";
+import type { Customer, Service } from "@/services/api";
 import type { Service as ServiceType } from "@/types/service";
 import { toast } from "react-hot-toast";
 import { testConnections } from "@/services/api";
 import { indexedDBService } from "@/services/indexedDB";
+import { useDarkMode } from "@/context/DarkModeContext";
+import LoadingSpinner from "@/components/LoadingSpinner";
 
 interface AppointmentCustomer {
    _id: string;
@@ -53,39 +57,31 @@ export default function Appointments() {
    const [selectedAppointment, setSelectedAppointment] =
       useState<Appointment | null>(null);
    const [appointments, setAppointments] = useState<Appointment[]>([]);
-   const [isLoading, setIsLoading] = useState(true);
+   const [loading, setLoading] = useState(false);
 
    // Initialize IndexedDB and load appointments
    useEffect(() => {
       const initializeAndLoad = async () => {
          try {
-            setIsLoading(true);
+            setLoading(true);
             // Initialize IndexedDB
             await indexedDBService.initDB();
 
             // Load appointments
-            const allAppointments = await fetchAppointments();
-            // Filter out default appointments with IDs 1 and 2
-            const userAppointments = allAppointments.filter(
-               (apt: Appointment) => apt._id !== "1" && apt._id !== "2"
-            );
-            setAppointments(userAppointments);
+            const currentAppointments = await fetchAppointments();
+            setAppointments(currentAppointments);
          } catch (error) {
             console.error(
-               "Error initializing and loading appointments:",
+               "Error initializing IndexedDB or loading appointments:",
                error
             );
             toast.error("Failed to load appointments");
          } finally {
-            setIsLoading(false);
+            setLoading(false);
          }
       };
 
       initializeAndLoad();
-      // Refresh appointments every minute
-      const interval = setInterval(initializeAndLoad, 60000);
-
-      return () => clearInterval(interval);
    }, []);
 
    // Generate week days
@@ -157,11 +153,14 @@ export default function Appointments() {
    };
 
    const handleRefreshAppointments = async () => {
+      setLoading(true);
       try {
          const currentAppointments = await fetchAppointments();
          setAppointments(currentAppointments);
       } catch (error) {
          console.error("Error refreshing appointments:", error);
+      } finally {
+         setLoading(false);
       }
    };
 
@@ -245,15 +244,6 @@ export default function Appointments() {
       return "Unknown Service";
    };
 
-   // Add loading state to the UI
-   if (isLoading) {
-      return (
-         <div className="flex items-center justify-center min-h-screen">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900 dark:border-white"></div>
-         </div>
-      );
-   }
-
    return (
       <div className="space-y-6 animate-fadeIn">
          <div className="sm:flex sm:items-center">
@@ -266,7 +256,7 @@ export default function Appointments() {
                   status and details.
                </p>
             </div>
-            <div className="mt-4 sm:ml-16 sm:mt-0 sm:flex-none space-x-3">
+            <div className="mt-4 sm:ml-16 sm:mt-0 sm:flex-none flex items-center space-x-4">
                <div className="inline-flex rounded-full shadow-sm">
                   <button
                      type="button"
@@ -299,19 +289,39 @@ export default function Appointments() {
                      <CalendarIcon className="h-5 w-5" />
                   </button>
                </div>
-               <Link
-                  href="/dashboard/appointments/add"
-                  className={`block rounded-full px-4 py-2 text-center text-sm font-semibold shadow-sm transition-all hover:scale-105 flex items-center ${
+               <button
+                  onClick={handleRefreshAppointments}
+                  disabled={loading}
+                  className={`inline-flex items-center rounded-lg px-4 py-2 text-sm font-semibold shadow-sm transition-all hover:scale-105 ${
                      darkMode
-                        ? "bg-purple-600 text-white hover:bg-purple-700"
-                        : "bg-white text-gray-900 hover:bg-gray-50 border border-gray-200"
+                        ? "bg-purple-600 text-white hover:bg-purple-700 disabled:bg-purple-400"
+                        : "bg-white text-gray-900 border border-gray-300 hover:bg-gray-50 disabled:bg-gray-100"
                   }`}
                >
-                  <PlusIcon className="h-5 w-5 inline-block mr-1" />
+                  <ArrowPathIcon
+                     className={`h-5 w-5 mr-1 ${loading ? "animate-spin" : ""}`}
+                  />
+                  {loading ? "Refreshing..." : "Refresh"}
+               </button>
+               <Link
+                  href="/dashboard/appointments/add"
+                  className={`inline-flex items-center rounded-lg px-4 py-2 text-sm font-semibold shadow-sm transition-all hover:scale-105 ${
+                     darkMode
+                        ? "bg-purple-600 text-white hover:bg-purple-700"
+                        : "bg-white text-gray-900 border border-gray-300 hover:bg-gray-50"
+                  }`}
+               >
+                  <PlusIcon className="h-5 w-5 mr-1" />
                   Add Appointment
                </Link>
             </div>
          </div>
+
+         {loading && (
+            <div className="flex justify-center items-center">
+               <LoadingSpinner />
+            </div>
+         )}
 
          {viewMode === "list" ? (
             <div className="glass border border-white/10 rounded-xl shadow-lg">

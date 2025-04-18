@@ -10,37 +10,42 @@ export interface AppointmentData {
    time: string;
    duration: string;
    notes?: string;
-   status: AppointmentStatus;
+   status?: AppointmentStatus;
+   customerInfo?: {
+      name: string;
+      firstName: string;
+      lastName: string;
+   };
+   serviceInfo?: {
+      name: string;
+   };
 }
 
-export interface Appointment
-   extends Omit<AppointmentData, "customer" | "service"> {
+export interface Appointment extends AppointmentData {
    _id: string;
-   customer: Customer | string;
-   service: Service | string;
    createdAt?: string;
    updatedAt?: string;
+   pendingSync?: boolean;
+   pendingDelete?: boolean;
 }
 
 export interface AppointmentFormData {
-   customerId: string;
-   serviceId: string;
+   customer: string;
+   service: string;
    date: string;
    time: string;
-   duration: string;
    notes?: string;
-   status: AppointmentStatus;
+   status?: AppointmentStatus;
 }
 
 export const getStatusColor = (status: AppointmentStatus): string => {
    switch (status) {
-      case "Pending":
-         return "from-yellow-500 to-yellow-600";
-      case "Canceled":
-         return "from-red-500 to-red-600";
       case "Confirmed":
-         return "from-green-500 to-green-600";
+         return "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300";
+      case "Canceled":
+         return "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300";
+      case "Pending":
       default:
-         return "from-gray-500 to-gray-600";
+         return "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-300";
    }
 };

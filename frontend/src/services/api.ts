@@ -1,5 +1,10 @@
-import axios from "axios";
+import axios, { AxiosError } from "axios";
 import axiosInstance from "./axiosConfig";
+import {
+   Appointment,
+   AppointmentData,
+   AppointmentStatus,
+} from "@/types/appointment";
 
 // Determine the correct hostname for API calls
 const getApiHost = () => {
@@ -343,33 +348,6 @@ export interface Customer extends CustomerData {
    _id: string;
    createdAt?: string;
    updatedAt?: string;
-}
-
-// Appointment types
-export interface AppointmentData {
-   customer: string; // customer ID (required)
-   service: string; // service ID (required)
-   date: string; // required, will be converted to Date by axios interceptor
-   time: string; // required
-   duration: string; // required
-   notes?: string; // optional
-   status?: "Pending" | "Confirmed" | "Canceled"; // optional, defaults to "Pending"
-   customerInfo?: {
-      name: string;
-      firstName: string;
-      lastName: string;
-   };
-   serviceInfo?: {
-      name: string;
-   };
-}
-
-export interface Appointment extends AppointmentData {
-   _id: string;
-   createdAt?: string;
-   updatedAt?: string;
-   pendingSync?: boolean; // For offline functionality
-   pendingDelete?: boolean; // For offline functionality
 }
 
 // Service API
@@ -1122,6 +1100,19 @@ export const dashboardAPI = {
 
 export default API;
 
+const handleAxiosError = (error: unknown) => {
+   if (axios.isAxiosError(error)) {
+      const axiosError = error as AxiosError;
+      if (axiosError.response?.data) {
+         return new Error(JSON.stringify(axiosError.response.data));
+      }
+      return new Error(axiosError.message);
+   }
+   return error instanceof Error
+      ? error
+      : new Error("An unknown error occurred");
+};
+
 export const createAppointment = async (
    appointmentData: AppointmentData
 ): Promise<Appointment> => {
@@ -1132,8 +1123,7 @@ export const createAppointment = async (
       );
       return response.data;
    } catch (error) {
-      console.error("Error creating appointment:", error);
-      throw error;
+      throw handleAxiosError(error);
    }
 };
 

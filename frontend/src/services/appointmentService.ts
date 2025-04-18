@@ -129,7 +129,7 @@ export const updateAppointment = async (
 };
 
 /**
- * Deletes an appointment from IndexedDB
+ * Deletes an appointment from both IndexedDB and server
  */
 export const deleteAppointment = async (id: string): Promise<void> => {
    try {
@@ -138,21 +138,50 @@ export const deleteAppointment = async (id: string): Promise<void> => {
          throw new Error("Appointment not found");
       }
 
-      // If it's a local appointment that hasn't been synced, delete it directly
-      if (appointment._id.startsWith("local_")) {
-         await indexedDBService.deleteAppointment(id);
+      // If online, try to delete from server first
+      if (navigator.onLine) {
+         try {
+            await axios.delete(`/appointments/${id}`);
+            // If server deletion successful, delete from IndexedDB
+            await indexedDBService.deleteAppointment(id);
+            toast.success("Appointment deleted successfully");
+         } catch (serverError) {
+            console.error("Error deleting from server:", serverError);
+            // If it's a local appointment that hasn't been synced, delete it directly
+            if (appointment._id.startsWith("local_")) {
+               await indexedDBService.deleteAppointment(id);
+               toast.success("Local appointment deleted");
+            } else {
+               // For server-synced appointments that failed to delete, mark for deletion
+               await indexedDBService.saveAppointment({
+                  ...appointment,
+                  pendingDelete: true,
+                  pendingSync: true,
+               });
+               toast.error(
+                  "Appointment marked for deletion, will sync when online"
+               );
+            }
+         }
       } else {
-         // For server-synced appointments, mark for deletion
-         await indexedDBService.saveAppointment({
-            ...appointment,
-            pendingDelete: true,
-            pendingSync: true,
-         });
+         // If offline, mark for deletion or delete local
+         if (appointment._id.startsWith("local_")) {
+            await indexedDBService.deleteAppointment(id);
+            toast.success("Local appointment deleted");
+         } else {
+            await indexedDBService.saveAppointment({
+               ...appointment,
+               pendingDelete: true,
+               pendingSync: true,
+            });
+            toast.error(
+               "Appointment marked for deletion, will sync when online"
+            );
+         }
       }
-
-      toast.success("Appointment deleted locally");
    } catch (error) {
-      console.error("Error deleting appointment from IndexedDB:", error);
+      console.error("Error deleting appointment:", error);
+      toast.error("Failed to delete appointment");
       throw error;
    }
 };
