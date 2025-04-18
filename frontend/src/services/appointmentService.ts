@@ -1,5 +1,5 @@
 import axios from "../services/axiosConfig";
-import { Appointment, AppointmentData } from "./api";
+import { Appointment, AppointmentData } from "@/types/appointment";
 import { indexedDBService } from "./indexedDB";
 import { toast } from "react-hot-toast";
 
@@ -206,20 +206,108 @@ export const fetchAppointmentById = async (
  * or when user explicitly requests a sync
  */
 export const syncAppointments = async (): Promise<void> => {
-   // This function would be implemented later when server sync is needed
-   // It would handle:
-   // 1. Uploading appointments with pendingSync = true
-   // 2. Deleting appointments with pendingDelete = true
-   // 3. Updating local appointments with server responses
-   // 4. Handling conflicts
+   if (!isOnline()) {
+      toast.error("Cannot sync appointments while offline");
+      return;
+   }
+
+   try {
+      // Get all appointments from IndexedDB
+      const localAppointments = await indexedDBService.getAllAppointments();
+
+      // Handle appointments marked for deletion
+      const appointmentsToDelete = localAppointments.filter(
+         (appointment) => appointment.pendingDelete
+      );
+      for (const appointment of appointmentsToDelete) {
+         try {
+            if (!appointment._id.startsWith("local_")) {
+               await axios.delete(`/appointments/${appointment._id}`);
+            }
+            await indexedDBService.deleteAppointment(appointment._id);
+         } catch (error) {
+            console.error(
+               `Failed to delete appointment ${appointment._id}:`,
+               error
+            );
+         }
+      }
+
+      // Handle appointments that need to be synced
+      const appointmentsToSync = localAppointments.filter(
+         (appointment) => appointment.pendingSync && !appointment.pendingDelete
+      );
+      for (const appointment of appointmentsToSync) {
+         try {
+            let serverAppointment;
+            if (
+               appointment._id.startsWith("local_") ||
+               appointment._id.startsWith("temp_")
+            ) {
+               // This is a new appointment that hasn't been synced yet
+               const { _id, pendingSync, pendingDelete, ...appointmentData } =
+                  appointment;
+               const response = await axios.post(
+                  "/appointments",
+                  appointmentData
+               );
+               serverAppointment = response.data;
+               await indexedDBService.deleteAppointment(appointment._id);
+            } else {
+               // This is an existing appointment that needs to be updated
+               const { pendingSync, pendingDelete, ...appointmentData } =
+                  appointment;
+               const response = await axios.put(
+                  `/appointments/${appointment._id}`,
+                  appointmentData
+               );
+               serverAppointment = response.data;
+            }
+
+            // Save the server response to IndexedDB
+            await indexedDBService.saveAppointment({
+               ...serverAppointment,
+               pendingSync: false,
+               pendingDelete: false,
+            });
+         } catch (error) {
+            console.error(
+               `Failed to sync appointment ${appointment._id}:`,
+               error
+            );
+         }
+      }
+
+      // Fetch all appointments from server to ensure we have the latest data
+      const response = await axios.get("/appointments");
+      const serverAppointments = response.data;
+
+      // Update IndexedDB with server data
+      await indexedDBService.bulkSaveAppointments(
+         serverAppointments.map((appointment: Appointment) => ({
+            ...appointment,
+            pendingSync: false,
+            pendingDelete: false,
+         }))
+      );
+
+      toast.success("Appointments synced successfully");
+   } catch (error) {
+      console.error("Error syncing appointments:", error);
+      toast.error("Failed to sync appointments");
+      throw error;
+   }
 };
 
 // Add event listeners for online/offline status
 if (typeof window !== "undefined") {
    window.addEventListener("online", () => {
       toast.success("Internet connection restored");
-      // Could trigger sync here if desired
-      // syncAppointments();
+      // Automatically trigger sync when connection is restored
+      syncAppointments().catch((error) => {
+         console.error("Failed to sync appointments:", error);
+         toast.error("Failed to sync appointments");
+      });
    });
 
    window.addEventListener("offline", () => {

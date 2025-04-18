@@ -10,6 +10,10 @@ import {
    ChevronRightIcon,
    XMarkIcon,
    ArrowPathIcon,
+   ClockIcon,
+   ChatBubbleLeftIcon,
+   TrashIcon,
+   PencilIcon,
 } from "@heroicons/react/24/outline";
 import { useTheme } from "@/components/ThemeProvider";
 import {
@@ -324,72 +328,119 @@ export default function Appointments() {
          )}
 
          {viewMode === "list" ? (
-            <div className="glass border border-white/10 rounded-xl shadow-lg">
-               <div className="px-5 py-5">
-                  <h3 className="text-lg font-medium leading-6 text-white gradient-text">
-                     Today's Schedule
-                  </h3>
-               </div>
-               <div className="border-t border-white/10">
-                  <ul role="list" className="divide-y divide-white/10">
-                     {getAppointmentsForDay(new Date()).map((appointment) => (
-                        <li
-                           key={appointment._id}
-                           className="px-5 py-5 hover:bg-white/5 transition-colors"
-                        >
-                           <div className="flex items-center justify-between">
-                              <div className="flex items-center">
-                                 <div className="flex-shrink-0">
-                                    <div className="h-10 w-10 rounded-full bg-white border border-gray-200 flex items-center justify-center">
-                                       <span className="text-gray-900 font-medium">
-                                          {getCustomerInitial(appointment)}
-                                       </span>
-                                    </div>
-                                 </div>
-                                 <div className="ml-4">
-                                    <div className="text-sm font-medium text-white">
-                                       {getCustomerName(appointment)}
-                                    </div>
-                                    <div className="text-sm text-gray-400">
-                                       {getServiceName(appointment)}
-                                    </div>
-                                 </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+               {appointments.map((appointment) => (
+                  <div
+                     key={appointment._id}
+                     onClick={() => handleAppointmentClick(appointment)}
+                     className={`rounded-lg border transition-all hover:shadow-lg cursor-pointer ${
+                        darkMode
+                           ? "bg-gray-800/50 border-gray-700 hover:bg-gray-800/70"
+                           : "bg-white border-gray-200 hover:bg-gray-50"
+                     }`}
+                  >
+                     <div className="p-6">
+                        <div className="flex items-center justify-between mb-4">
+                           <div className="flex items-center space-x-3">
+                              <div
+                                 className={`h-12 w-12 rounded-full flex items-center justify-center text-lg font-semibold ${
+                                    darkMode
+                                       ? "bg-purple-600/20 text-purple-400"
+                                       : "bg-purple-100 text-purple-600"
+                                 }`}
+                              >
+                                 {getCustomerInitial(appointment)}
                               </div>
-                              <div className="flex items-center space-x-4">
-                                 <div className="text-sm text-gray-400">
-                                    {appointment.time}
-                                 </div>
-                                 <span
-                                    className={`inline-flex items-center rounded-full px-2.5 py-1 text-xs font-medium bg-gradient-to-r ${getStatusColor(
-                                       appointment.status
-                                    )} text-white`}
-                                 >
-                                    {appointment.status}
-                                 </span>
-                                 <Link
-                                    href={`/dashboard/appointments/edit/${appointment._id}`}
-                                    className="text-indigo-400 hover:text-indigo-300 transition-colors"
-                                 >
-                                    Edit
-                                 </Link>
-                                 <button
-                                    onClick={() =>
-                                       handleDeleteAppointment(appointment._id)
-                                    }
-                                    className={`transition-colors ${
-                                       darkMode
-                                          ? "text-red-400 hover:text-red-300"
-                                          : "text-red-600 hover:text-red-700"
+                              <div>
+                                 <h3
+                                    className={`text-lg font-semibold ${
+                                       darkMode ? "text-white" : "text-gray-900"
                                     }`}
                                  >
-                                    Delete
-                                 </button>
+                                    {getCustomerName(appointment)}
+                                 </h3>
+                                 <p
+                                    className={`text-sm ${
+                                       darkMode
+                                          ? "text-gray-400"
+                                          : "text-gray-600"
+                                    }`}
+                                 >
+                                    {getServiceName(appointment)}
+                                 </p>
                               </div>
                            </div>
-                        </li>
-                     ))}
-                  </ul>
-               </div>
+                           <div
+                              className={`px-2.5 py-1 rounded-full text-xs font-medium bg-gradient-to-r ${getStatusColor(
+                                 appointment.status
+                              )} bg-opacity-20`}
+                           >
+                              {appointment.status}
+                           </div>
+                        </div>
+
+                        <div
+                           className={`space-y-2 text-sm ${
+                              darkMode ? "text-gray-400" : "text-gray-600"
+                           }`}
+                        >
+                           <div className="flex items-center space-x-2">
+                              <CalendarIcon className="h-4 w-4" />
+                              <span>
+                                 {format(
+                                    parseISO(appointment.date),
+                                    "MMMM d, yyyy"
+                                 )}
+                              </span>
+                           </div>
+                           <div className="flex items-center space-x-2">
+                              <ClockIcon className="h-4 w-4" />
+                              <span>{appointment.time}</span>
+                           </div>
+                           {appointment.notes && (
+                              <div className="flex items-start space-x-2 mt-2">
+                                 <ChatBubbleLeftIcon className="h-4 w-4 mt-0.5" />
+                                 <span className="text-sm line-clamp-2">
+                                    {appointment.notes}
+                                 </span>
+                              </div>
+                           )}
+                        </div>
+
+                        <div
+                           className={`flex items-center justify-end space-x-2 mt-4 pt-4 border-t ${
+                              darkMode ? "border-gray-700" : "border-gray-200"
+                           }`}
+                        >
+                           <Link
+                              href={`/dashboard/appointments/${appointment._id}`}
+                              className={`inline-flex items-center px-3 py-1.5 text-sm font-medium rounded-md ${
+                                 darkMode
+                                    ? "text-purple-400 hover:text-purple-300 bg-purple-600/10 hover:bg-purple-600/20"
+                                    : "text-purple-600 hover:text-purple-500 bg-purple-50 hover:bg-purple-100"
+                              }`}
+                           >
+                              <PencilIcon className="h-4 w-4 mr-1.5" />
+                              Edit
+                           </Link>
+                           <button
+                              onClick={(e) => {
+                                 e.stopPropagation();
+                                 handleDeleteAppointment(appointment._id);
+                              }}
+                              className={`inline-flex items-center px-3 py-1.5 text-sm font-medium rounded-md ${
+                                 darkMode
+                                    ? "text-red-400 hover:text-red-300 bg-red-600/10 hover:bg-red-600/20"
+                                    : "text-red-600 hover:text-red-500 bg-red-50 hover:bg-red-100"
+                              }`}
+                           >
+                              <TrashIcon className="h-4 w-4 mr-1.5" />
+                              Delete
+                           </button>
+                        </div>
+                     </div>
+                  </div>
+               ))}
             </div>
          ) : (
             <div className="glass border border-white/10 rounded-xl shadow-lg overflow-hidden">

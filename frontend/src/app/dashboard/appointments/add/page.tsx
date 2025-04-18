@@ -7,13 +7,7 @@ import {
    UserPlusIcon,
    PlusCircleIcon,
 } from "@heroicons/react/24/outline";
-import {
-   customerAPI,
-   serviceAPI,
-   Customer,
-   Service,
-   AppointmentData,
-} from "@/services/api";
+import { customerAPI, serviceAPI, Customer, Service } from "@/services/api";
 import CustomDropdown from "@/components/CustomDropdown";
 import { useRouter } from "next/navigation";
 import { toast } from "react-hot-toast";
@@ -21,7 +15,8 @@ import { fetchCustomers } from "@/services/customerService";
 import { fetchServices } from "@/services/serviceService";
 import { useTheme } from "@/components/ThemeProvider";
 import { createAppointment } from "@/services/appointmentService";
-import * as appointmentAPI from "@/services/api";
+import { appointmentAPI } from "@/services/api";
+import { AppointmentData } from "@/types/appointment";
 
 // Custom style to fix dropdown behavior
 const customStyles = `
@@ -348,16 +343,13 @@ export default function AddAppointment() {
             return;
          }
 
-         console.log("Selected service:", selectedService);
-         console.log("Service duration:", selectedService.duration);
-
          // Prepare appointment data
          const appointmentData: AppointmentData = {
             customer: formData.customerId,
             service: formData.serviceId,
             date: formData.date,
             time: formData.time,
-            duration: String(selectedService.duration), // Ensure duration is a string
+            duration: String(selectedService.duration),
             status: formData.status as "Pending" | "Confirmed" | "Canceled",
             notes: formData.notes || "",
             customerInfo: {
@@ -370,26 +362,17 @@ export default function AddAppointment() {
             },
          };
 
-         console.log("Final appointment data:", appointmentData);
-
-         // First, create in IndexedDB for offline support
-         await createAppointment(appointmentData);
-
-         // Then, if online, sync with server
          if (navigator.onLine) {
-            try {
-               const serverResponse = await appointmentAPI.createAppointment(
-                  appointmentData
-               );
-               console.log("Server response:", serverResponse);
-
-               if (serverResponse) {
-                  toast.success("Appointment created and synced with server");
-               }
-            } catch (error: any) {
-               console.error("Server error:", error.response?.data || error);
-               throw error; // Re-throw to be caught by outer catch block
-            }
+            // If online, create on server first
+            const serverResponse = await appointmentAPI.createAppointment(
+               appointmentData
+            );
+            console.log("Server response:", serverResponse);
+            toast.success("Appointment created successfully");
+         } else {
+            // If offline, only create in IndexedDB
+            await createAppointment(appointmentData);
+            toast.success("Appointment saved locally (offline mode)");
          }
 
          // Navigate back to appointments list

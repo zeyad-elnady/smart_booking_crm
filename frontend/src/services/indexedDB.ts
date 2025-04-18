@@ -1,7 +1,8 @@
-import { Appointment } from "./api";
+import type { Appointment } from "@/types/appointment";
+import { appointmentAPI } from "./api";
 
 const DB_NAME = "smartBookingCRM";
-const DB_VERSION = 1;
+const DB_VERSION = 2;
 const APPOINTMENTS_STORE = "appointments";
 
 export class IndexedDBService {

@@ -1,4 +1,6 @@
 const Service = require("../models/Service");
+const Appointment = require("../models/Appointment");
+const mongoose = require("mongoose");
 
 // @desc    Get all services
 // @route   GET /api/services
@@ -119,16 +121,53 @@ const updateService = async (req, res) => {
 // @access  Private
 const deleteService = async (req, res) => {
    try {
-      const service = await Service.findByIdAndDelete(req.params.id);
+      const { id } = req.params;
+      const { confirm } = req.query;
 
+      // First check if service exists
+      const service = await Service.findById(id);
       if (!service) {
          return res.status(404).json({ message: "Service not found" });
       }
 
-      res.json({ message: "Service removed" });
+      // If no confirmation provided, return the count of affected appointments
+      if (!confirm) {
+         const appointmentCount = await Appointment.countDocuments({
+            service: id,
+         });
+         return res.status(200).json({
+            message: "Confirmation required",
+            affectedAppointments: appointmentCount,
+            service: service,
+         });
+      }
+
+      // If confirmation is provided, proceed with deletion
+      if (confirm === "true") {
+         try {
+            // Delete all appointments associated with this service
+            await Appointment.deleteMany({ service: id });
+
+            // Delete the service
+            await Service.findByIdAndDelete(id);
+
+            res.status(200).json({
+               message:
+                  "Service and associated appointments deleted successfully",
+            });
+         } catch (error) {
+            console.error("Error during deletion:", error);
+            throw error;
+         }
+      } else {
+         res.status(400).json({ message: "Invalid confirmation" });
+      }
    } catch (error) {
       console.error("Error deleting service:", error);
-      res.status(500).json({ message: error.message });
+      res.status(500).json({
+         message: "Error deleting service",
+         error: error.message,
+      });
    }
 };
 

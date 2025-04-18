@@ -8,11 +8,16 @@ import {
    PlusIcon,
    TrashIcon,
    MagnifyingGlassIcon,
+   ClockIcon,
+   CurrencyDollarIcon,
+   PencilIcon,
+   TagIcon,
 } from "@heroicons/react/24/outline";
 import { serviceAPI } from "@/services/api";
 import { Service } from "@/types/service";
-import { useDarkMode } from "@/context/DarkModeContext";
-import LoadingSpinner from "../../../components/LoadingSpinner";
+import { useTheme } from "@/components/ThemeProvider";
+import LoadingSpinner from "@/components/LoadingSpinner";
+import { deleteService } from "@/services/serviceService";
 
 export default function Services() {
    const [services, setServices] = useState<Service[]>([]);
@@ -20,7 +25,7 @@ export default function Services() {
    const [searchQuery, setSearchQuery] = useState("");
    const [loading, setLoading] = useState(true);
    const [error, setError] = useState<string | null>(null);
-   const { darkMode } = useDarkMode();
+   const { darkMode } = useTheme();
 
    const handleRefresh = async () => {
       try {
@@ -38,32 +43,37 @@ export default function Services() {
       }
    };
 
-   const handleDelete = async (serviceId: string) => {
-      if (!confirm("Are you sure you want to delete this service?")) return;
-
+   const handleDeleteService = async (id: string) => {
       try {
-         await serviceAPI.deleteService(serviceId);
-         const updatedServices = services.filter(
-            (service) => service._id !== serviceId
-         );
-         setServices(updatedServices);
-         setFilteredServices(
-            updatedServices.filter(
-               (service) =>
-                  service.name
-                     .toLowerCase()
-                     .includes(searchQuery.toLowerCase()) ||
-                  (service.description?.toLowerCase() || "").includes(
-                     searchQuery.toLowerCase()
-                  ) ||
-                  (service.category?.toLowerCase() || "").includes(
-                     searchQuery.toLowerCase()
-                  )
-            )
-         );
-         toast.success("Service deleted successfully");
-      } catch (err: any) {
-         console.error("Service delete error:", err);
+         // First call to get confirmation data
+         const confirmationData = await deleteService(id);
+
+         if (confirmationData.affectedAppointments) {
+            // Show confirmation dialog
+            const confirmed = window.confirm(
+               `This service has ${confirmationData.affectedAppointments} associated appointments. ` +
+                  `Deleting this service will also delete all associated appointments. ` +
+                  `Are you sure you want to proceed?`
+            );
+
+            if (confirmed) {
+               // Second call to confirm deletion
+               await deleteService(id, true);
+               toast.success(
+                  "Service and associated appointments deleted successfully"
+               );
+               // Refresh the services list
+               handleRefresh();
+            }
+         } else {
+            // If no appointments, proceed with deletion
+            await deleteService(id, true);
+            toast.success("Service deleted successfully");
+            // Refresh the services list
+            handleRefresh();
+         }
+      } catch (error) {
+         console.error("Error deleting service:", error);
          toast.error("Failed to delete service");
       }
    };
@@ -86,34 +96,44 @@ export default function Services() {
       setFilteredServices(filtered);
    };
 
-   const fetchInitialServices = async () => {
-      try {
-         setLoading(true);
-         const data = await serviceAPI.getServices();
-         setServices(data);
-         setFilteredServices(data);
-      } catch (err: any) {
-         console.error("Services load error:", err);
-         setError(err.response?.data?.message || "Failed to load services");
-      } finally {
-         setLoading(false);
-      }
-   };
-
    useEffect(() => {
-      fetchInitialServices();
+      const fetchServices = async () => {
+         try {
+            setLoading(true);
+            const data = await serviceAPI.getServices();
+            setServices(data);
+            setFilteredServices(data);
+         } catch (err: any) {
+            console.error("Services load error:", err);
+            setError(err.response?.data?.message || "Failed to load services");
+         } finally {
+            setLoading(false);
+         }
+      };
+
+      fetchServices();
    }, []);
 
    return (
       <div className="space-y-6 animate-fadeIn">
          <div className="sm:flex sm:items-center">
             <div className="sm:flex-auto">
-               <h1 className="text-2xl font-semibold text-white">Services</h1>
-               <p className="mt-2 text-sm text-gray-300">
+               <h1
+                  className={`text-2xl font-semibold ${
+                     darkMode ? "text-white" : "text-gray-900"
+                  }`}
+               >
+                  Services
+               </h1>
+               <p
+                  className={`mt-2 text-sm ${
+                     darkMode ? "text-white/80" : "text-gray-600"
+                  }`}
+               >
                   A list of all services available in your business.
                </p>
             </div>
-            <div className="mt-4 sm:ml-16 sm:mt-0 sm:flex-none flex items-center space-x-4">
+            <div className="mt-4 sm:ml-16 sm:mt-0 sm:flex-none space-x-4">
                <button
                   onClick={handleRefresh}
                   disabled={loading}
@@ -142,41 +162,40 @@ export default function Services() {
             </div>
          </div>
 
-         <div className="glass border border-white/10 rounded-xl p-4">
-            <div className="relative">
-               <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
-                  <MagnifyingGlassIcon className="h-5 w-5 text-gray-400" />
-               </div>
+         <div
+            className={`flex items-center space-x-4 ${
+               darkMode ? "text-white" : "text-gray-900"
+            }`}
+         >
+            <div className="relative flex-1">
                <input
                   type="text"
                   placeholder="Search services..."
                   value={searchQuery}
                   onChange={(e) => handleSearch(e.target.value)}
-                  className={`block w-full rounded-lg border pl-10 p-2.5 text-sm ${
+                  className={`w-full px-4 py-2 rounded-lg border focus:ring-2 transition-colors ${
                      darkMode
-                        ? "bg-gray-800/50 border-gray-600 text-white placeholder-gray-400"
-                        : "bg-white border-gray-300 text-gray-900 placeholder-gray-500"
+                        ? "bg-gray-800/50 border-gray-700 text-white placeholder-gray-400 focus:ring-purple-500/20"
+                        : "bg-white border-gray-300 text-gray-900 placeholder-gray-500 focus:ring-purple-500/20"
                   }`}
                />
             </div>
          </div>
 
-         {loading && (
-            <div className="flex justify-center items-center">
+         {loading ? (
+            <div className="flex justify-center items-center py-8">
                <LoadingSpinner />
             </div>
-         )}
-
-         {error && !loading && (
+         ) : error ? (
             <div
-               className={`mt-4 ${darkMode ? "text-red-400" : "text-red-600"}`}
+               className={`text-center py-8 ${
+                  darkMode ? "text-red-400" : "text-red-600"
+               }`}
             >
-               Error: {error}
+               {error}
             </div>
-         )}
-
-         {!loading && !error && filteredServices.length === 0 && (
-            <div className="text-center mt-8">
+         ) : filteredServices.length === 0 ? (
+            <div className="text-center py-8">
                <p className={darkMode ? "text-gray-400" : "text-gray-500"}>
                   {searchQuery
                      ? "No services found matching your search."
@@ -187,68 +206,121 @@ export default function Services() {
                      href="/dashboard/services/add"
                      className={`mt-2 inline-block ${
                         darkMode
-                           ? "text-indigo-400 hover:text-indigo-300"
-                           : "text-blue-600 hover:underline"
+                           ? "text-purple-400 hover:text-purple-300"
+                           : "text-purple-600 hover:text-purple-500"
                      }`}
                   >
                      Add your first service
                   </Link>
                )}
             </div>
-         )}
-
-         {!loading && !error && filteredServices.length > 0 && (
-            <div className="space-y-4">
+         ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                {filteredServices.map((service) => (
                   <div
                      key={service._id}
-                     className="glass border border-white/10 rounded-lg p-4 hover:bg-white/5 transition-colors"
+                     className={`rounded-lg border transition-all hover:shadow-lg ${
+                        darkMode
+                           ? "bg-gray-800/50 border-gray-700 hover:bg-gray-800/70"
+                           : "bg-white border-gray-200 hover:bg-gray-50"
+                     }`}
                   >
-                     <div className="flex items-center justify-between">
-                        <div className="flex items-center space-x-4">
-                           <div className="h-10 w-10 rounded-full bg-purple-600 flex items-center justify-center text-white font-medium">
-                              {service.name.charAt(0).toUpperCase()}
-                           </div>
-                           <div>
-                              <div className="text-sm font-medium text-white">
-                                 {service.name}
+                     <div className="p-6">
+                        <div className="flex items-center justify-between mb-4">
+                           <div className="flex items-center space-x-3">
+                              <div
+                                 className={`h-12 w-12 rounded-full flex items-center justify-center text-lg font-semibold ${
+                                    darkMode
+                                       ? "bg-purple-600/20 text-purple-400"
+                                       : "bg-purple-100 text-purple-600"
+                                 }`}
+                              >
+                                 {service.name[0].toUpperCase()}
                               </div>
-                              <div className="text-sm text-gray-400">
-                                 {service.description}
+                              <div>
+                                 <h3
+                                    className={`text-lg font-semibold ${
+                                       darkMode ? "text-white" : "text-gray-900"
+                                    }`}
+                                 >
+                                    {service.name}
+                                 </h3>
+                                 {service.category && (
+                                    <div className="flex items-center text-sm space-x-1">
+                                       <TagIcon
+                                          className={`h-4 w-4 ${
+                                             darkMode
+                                                ? "text-gray-400"
+                                                : "text-gray-600"
+                                          }`}
+                                       />
+                                       <span
+                                          className={
+                                             darkMode
+                                                ? "text-gray-400"
+                                                : "text-gray-600"
+                                          }
+                                       >
+                                          {service.category}
+                                       </span>
+                                    </div>
+                                 )}
                               </div>
                            </div>
                         </div>
-                        <div className="flex items-center space-x-6">
-                           <div className="text-right">
-                              <div className="text-sm text-gray-400">
-                                 {service.duration} minutes
-                              </div>
-                              <div className="text-sm font-medium text-white">
-                                 ${service.price}
-                              </div>
+
+                        {service.description && (
+                           <p
+                              className={`text-sm mb-4 ${
+                                 darkMode ? "text-gray-400" : "text-gray-600"
+                              }`}
+                           >
+                              {service.description}
+                           </p>
+                        )}
+
+                        <div
+                           className={`space-y-2 mb-4 text-sm ${
+                              darkMode ? "text-gray-400" : "text-gray-600"
+                           }`}
+                        >
+                           <div className="flex items-center space-x-2">
+                              <ClockIcon className="h-4 w-4" />
+                              <span>{service.duration} minutes</span>
                            </div>
-                           <div className="flex items-center space-x-4">
-                              <Link
-                                 href={`/dashboard/services/${service._id}`}
-                                 className={`text-sm font-medium ${
-                                    darkMode
-                                       ? "text-indigo-400 hover:text-indigo-300"
-                                       : "text-blue-600 hover:text-blue-900"
-                                 }`}
-                              >
-                                 Edit
-                              </Link>
-                              <button
-                                 onClick={() => handleDelete(service._id)}
-                                 className={`text-sm font-medium ${
-                                    darkMode
-                                       ? "text-red-400 hover:text-red-300"
-                                       : "text-red-600 hover:text-red-700"
-                                 }`}
-                              >
-                                 Delete
-                              </button>
+                           <div className="flex items-center space-x-2">
+                              <CurrencyDollarIcon className="h-4 w-4" />
+                              <span>${service.price}</span>
                            </div>
+                        </div>
+
+                        <div
+                           className={`flex items-center justify-end space-x-2 mt-4 pt-4 border-t ${
+                              darkMode ? "border-gray-700" : "border-gray-200"
+                           }`}
+                        >
+                           <Link
+                              href={`/dashboard/services/${service._id}`}
+                              className={`inline-flex items-center px-3 py-1.5 text-sm font-medium rounded-md ${
+                                 darkMode
+                                    ? "text-purple-400 hover:text-purple-300 bg-purple-600/10 hover:bg-purple-600/20"
+                                    : "text-purple-600 hover:text-purple-500 bg-purple-50 hover:bg-purple-100"
+                              }`}
+                           >
+                              <PencilIcon className="h-4 w-4 mr-1.5" />
+                              Edit
+                           </Link>
+                           <button
+                              onClick={() => handleDeleteService(service._id)}
+                              className={`inline-flex items-center px-3 py-1.5 text-sm font-medium rounded-md ${
+                                 darkMode
+                                    ? "text-red-400 hover:text-red-300 bg-red-600/10 hover:bg-red-600/20"
+                                    : "text-red-600 hover:text-red-500 bg-red-50 hover:bg-red-100"
+                              }`}
+                           >
+                              <TrashIcon className="h-4 w-4 mr-1.5" />
+                              Delete
+                           </button>
                         </div>
                      </div>
                   </div>

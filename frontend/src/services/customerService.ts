@@ -99,6 +99,20 @@ export const updateCustomer = async (
    }
 };
 
+interface AppointmentCustomer {
+   _id: string;
+   firstName: string;
+   lastName: string;
+   email: string;
+   phone?: string;
+}
+
+interface DeleteCustomerResponse {
+   message: string;
+   affectedAppointments?: number;
+   customer?: Customer;
+}
+
 /**
  * Deletes a customer and all associated appointments
  * @param id The customer ID
@@ -106,20 +120,21 @@ export const updateCustomer = async (
  */
 export const deleteCustomer = async (
    id: string
-): Promise<{ message: string }> => {
+): Promise<DeleteCustomerResponse> => {
    try {
-      // Delete the customer from the server
-      const response = await API.delete<{ message: string }>(
+      const response = await API.delete<DeleteCustomerResponse>(
          `/customers/${id}`
       );
 
       // Clear associated appointments from IndexedDB
-      const appointments = await indexedDBService.getAllAppointments();
-      const customerAppointments = appointments.filter((apt: Appointment) =>
-         typeof apt.customer === "string"
-            ? apt.customer === id
-            : apt.customer._id === id
-      );
+      const appointments: Appointment[] =
+         await indexedDBService.getAllAppointments();
+      const customerAppointments = appointments.filter((apt) => {
+         const customer = apt.customer;
+         return typeof customer === "string"
+            ? customer === id
+            : (customer as { _id: string })._id === id;
+      });
 
       // Delete each appointment from IndexedDB
       for (const apt of customerAppointments) {
@@ -135,7 +150,11 @@ export const deleteCustomer = async (
       return response.data;
    } catch (error: unknown) {
       console.error(`Error deleting customer ${id}:`, error);
-      toast.error("Failed to delete customer");
-      throw new Error("Failed to delete customer");
+      if (error instanceof Error) {
+         toast.error(error.message);
+      } else {
+         toast.error("Failed to delete customer");
+      }
+      throw error;
    }
 };

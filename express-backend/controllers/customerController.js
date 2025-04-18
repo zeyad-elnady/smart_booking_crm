@@ -1,6 +1,7 @@
 const Customer = require("../models/Customer");
 const Appointment = require("../models/Appointment");
 const localDataService = require("../utils/localDataService");
+const mongoose = require("mongoose");
 
 // @desc    Get all customers
 // @route   GET /api/customers
@@ -280,6 +281,7 @@ const updateCustomer = async (req, res) => {
 const deleteCustomer = async (req, res) => {
    try {
       const customerId = req.params.id;
+      const { confirm } = req.query;
 
       // Check if MongoDB is connected
       if (localDataService.isMongoConnected()) {
@@ -289,27 +291,62 @@ const deleteCustomer = async (req, res) => {
             return res.status(404).json({ message: "Customer not found" });
          }
 
-         // First delete all appointments associated with this customer
-         await Appointment.deleteMany({ customer: customerId });
+         // If no confirmation provided, return the count of affected appointments
+         if (!confirm) {
+            const appointmentCount = await Appointment.countDocuments({
+               customer: customerId,
+            });
+            return res.status(200).json({
+               message: "Confirmation required",
+               affectedAppointments: appointmentCount,
+               customer: customer,
+            });
+         }
 
-         // Then delete the customer
-         await customer.deleteOne();
+         // If confirmation is provided, proceed with deletion
+         if (confirm === "true") {
+            // Start a session for transaction
+            const session = await mongoose.startSession();
+            session.startTransaction();
 
-         // Also delete from local storage for consistency
-         localDataService.remove("customers", customerId);
+            try {
+               // Delete all appointments associated with this customer
+               await Appointment.deleteMany(
+                  { customer: customerId },
+                  { session }
+               );
 
-         // Delete associated appointments from local storage
-         const localAppointments = localDataService.find("appointments");
-         const customerAppointments = localAppointments.filter(
-            (apt) => apt.customer === customerId
-         );
-         customerAppointments.forEach((apt) => {
-            localDataService.remove("appointments", apt._id);
-         });
+               // Delete the customer
+               await Customer.findByIdAndDelete(customerId, { session });
 
-         return res.json({
-            message: "Customer and associated appointments removed",
-         });
+               // Also delete from local storage for consistency
+               localDataService.remove("customers", customerId);
+
+               // Delete associated appointments from local storage
+               const localAppointments = localDataService.find("appointments");
+               const customerAppointments = localAppointments.filter(
+                  (apt) => apt.customer === customerId
+               );
+               customerAppointments.forEach((apt) => {
+                  localDataService.remove("appointments", apt._id);
+               });
+
+               // Commit the transaction
+               await session.commitTransaction();
+               session.endSession();
+
+               return res.json({
+                  message: "Customer and associated appointments removed",
+               });
+            } catch (error) {
+               // If any error occurs, rollback the transaction
+               await session.abortTransaction();
+               session.endSession();
+               throw error;
+            }
+         } else {
+            return res.status(400).json({ message: "Invalid confirmation" });
+         }
       } else {
          // Use local data service as fallback
          console.log("MongoDB disconnected, using local data storage");
@@ -320,53 +357,50 @@ const deleteCustomer = async (req, res) => {
             return res.status(404).json({ message: "Customer not found" });
          }
 
-         // First remove all appointments associated with this customer
-         const appointments = localDataService.find("appointments");
-         appointments.forEach((appointment) => {
-            if (appointment.customer === customerId) {
-               localDataService.remove("appointments", appointment._id);
-            }
-         });
-
-         // Then remove the customer
-         const success = localDataService.remove("customers", customerId);
-
-         if (!success) {
-            return res.status(400).json({ message: "Error removing customer" });
+         // If no confirmation provided, return the count of affected appointments
+         if (!confirm) {
+            const appointments = localDataService.find("appointments");
+            const appointmentCount = appointments.filter(
+               (apt) => apt.customer === customerId
+            ).length;
+            return res.status(200).json({
+               message: "Confirmation required",
+               affectedAppointments: appointmentCount,
+               customer: customer,
+            });
          }
 
-         return res.json({
-            message: "Customer and associated appointments removed",
-         });
+         // If confirmation is provided, proceed with deletion
+         if (confirm === "true") {
+            // First remove all appointments associated with this customer
+            const appointments = localDataService.find("appointments");
+            appointments.forEach((appointment) => {
+               if (appointment.customer === customerId) {
+                  localDataService.remove("appointments", appointment._id);
+               }
+            });
+
+            // Then remove the customer
+            const success = localDataService.remove("customers", customerId);
+
+            if (!success) {
+               return res
+                  .status(400)
+                  .json({ message: "Error removing customer" });
+            }
+
+            return res.json({
+               message: "Customer and associated appointments removed",
+            });
+         } else {
+            return res.status(400).json({ message: "Invalid confirmation" });
+         }
       }
    } catch (error) {
       console.error("Error deleting customer:", error);
-
-      // Try to delete from local storage on error
-      try {
-         const customerId = req.params.id;
-
-         // First remove all appointments associated with this customer
-         const appointments = localDataService.find("appointments");
-         appointments.forEach((appointment) => {
-            if (appointment.customer === customerId) {
-               localDataService.remove("appointments", appointment._id);
-            }
-         });
-
-         // Then remove the customer
-         const success = localDataService.remove("customers", customerId);
-
-         if (!success) {
-            return res.status(400).json({ message: "Error removing customer" });
-         }
-
-         return res.json({
-            message: "Customer and associated appointments removed",
-         });
-      } catch (localError) {
-         return res.status(400).json({ message: error.message });
-      }
+      return res
+         .status(500)
+         .json({ message: "Error deleting customer", error: error.message });
    }
 };
 
