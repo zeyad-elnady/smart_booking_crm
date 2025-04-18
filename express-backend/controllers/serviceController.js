@@ -68,11 +68,20 @@ const createService = async (req, res) => {
          });
       }
 
+      // Convert price to number and validate
+      const numericPrice = Number(price);
+      if (isNaN(numericPrice) || numericPrice < 0) {
+         return res.status(400).json({
+            message: "Price must be a valid non-negative number",
+            receivedData: req.body,
+         });
+      }
+
       const service = await Service.create({
          name,
          description,
          duration,
-         price,
+         price: numericPrice,
          category,
          isActive: isActive !== undefined ? isActive : true,
       });
@@ -100,10 +109,29 @@ const createService = async (req, res) => {
 // @access  Private
 const updateService = async (req, res) => {
    try {
-      const service = await Service.findByIdAndUpdate(req.params.id, req.body, {
-         new: true,
-         runValidators: true,
-      });
+      const { price, ...otherFields } = req.body;
+
+      // If price is being updated, convert it to number and validate
+      let updateData = { ...otherFields };
+      if (price !== undefined) {
+         const numericPrice = Number(price);
+         if (isNaN(numericPrice) || numericPrice < 0) {
+            return res.status(400).json({
+               message: "Price must be a valid non-negative number",
+               receivedData: req.body,
+            });
+         }
+         updateData.price = numericPrice;
+      }
+
+      const service = await Service.findByIdAndUpdate(
+         req.params.id,
+         updateData,
+         {
+            new: true,
+            runValidators: true,
+         }
+      );
 
       if (!service) {
          return res.status(404).json({ message: "Service not found" });

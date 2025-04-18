@@ -323,7 +323,7 @@ export interface ServiceData {
    name: string;
    description: string;
    duration: string;
-   price: string;
+   price: number;
    category: string;
    isActive: boolean;
 }
@@ -407,7 +407,7 @@ export const serviceAPI = {
             name: String(serviceData.name).trim(),
             description: String(serviceData.description).trim(),
             duration: String(serviceData.duration),
-            price: String(serviceData.price),
+            price: Number(serviceData.price),
             category: String(serviceData.category).trim(),
             isActive: Boolean(serviceData.isActive),
          };
@@ -1164,7 +1164,7 @@ export const testConnections = async () => {
                name: "Test Service",
                description: "Test service description",
                duration: "30",
-               price: "50.00",
+               price: 50.0,
                category: "Test",
                isActive: true,
             };

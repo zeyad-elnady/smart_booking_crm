@@ -1,62 +1,69 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { toast } from "react-hot-toast";
-import Link from "next/link";
-import { ArrowLeftIcon } from "@heroicons/react/24/outline";
 import { useTheme } from "@/components/ThemeProvider";
-import {
-   Appointment,
-   AppointmentStatus,
-   AppointmentData,
-} from "@/types/appointment";
-import { Customer } from "@/types/customer";
-import { Service } from "@/types/service";
+import { toast } from "react-hot-toast";
+import { useForm } from "react-hook-form";
+import React from "react";
+
 import {
    fetchAppointmentById,
    updateAppointment,
 } from "@/services/appointmentService";
 import { fetchCustomers } from "@/services/customerService";
 import { fetchServices } from "@/services/serviceService";
+import type { Customer } from "@/types/customer";
+import type { Service } from "@/types/service";
+import type { Appointment, AppointmentStatus } from "@/types/appointment";
 
-// Define a type for the API response
+interface EditAppointmentProps {
+   params: Promise<{ id: string }>;
+}
+
+// Define the response type that includes populated fields
 interface AppointmentResponse
    extends Omit<Appointment, "customer" | "service"> {
    customer: Customer;
    service: Service;
+   status: AppointmentStatus;
 }
 
-export default function EditAppointment({
-   params,
-}: {
-   params: { id: string };
-}) {
+interface FormData {
+   customer: string;
+   service: string;
+   date: string;
+   time: string;
+   duration: string;
+   notes: string;
+   status: AppointmentStatus;
+}
+
+const EditAppointment = ({ params }: EditAppointmentProps) => {
    const router = useRouter();
    const { darkMode } = useTheme();
+   const id = React.use(params).id;
+
+   const {
+      register,
+      handleSubmit,
+      setValue,
+      formState: { errors },
+   } = useForm<FormData>();
+
    const [loading, setLoading] = useState(false);
    const [customers, setCustomers] = useState<Customer[]>([]);
    const [services, setServices] = useState<Service[]>([]);
-   const [formData, setFormData] = useState<AppointmentData>({
-      customer: "",
-      service: "",
-      date: "",
-      time: "",
-      duration: "0",
-      notes: "",
-      status: "Pending",
-   });
-   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
 
    useEffect(() => {
       const loadData = async () => {
+         setLoading(true);
          try {
-            setLoading(true);
-            // Load the appointment data
-            const appointment = await fetchAppointmentById(params.id);
+            const appointment = await fetchAppointmentById(id);
             if (appointment) {
                const typedAppointment =
                   appointment as unknown as AppointmentResponse;
+
                // Load customers and services
                const [customersData, servicesData] = await Promise.all([
                   fetchCustomers(),
@@ -66,77 +73,36 @@ export default function EditAppointment({
                setCustomers(customersData);
                setServices(servicesData);
 
-               // Set form data
-               setFormData({
-                  customer: typedAppointment.customer._id,
-                  service: typedAppointment.service._id,
-                  date: typedAppointment.date,
-                  time: typedAppointment.time,
-                  duration: typedAppointment.duration.toString(),
-                  notes: typedAppointment.notes || "",
-                  status: typedAppointment.status as AppointmentStatus,
-               });
+               // Set form values
+               setValue("customer", typedAppointment.customer._id);
+               setValue("service", typedAppointment.service._id);
+               setValue("date", typedAppointment.date);
+               setValue("time", typedAppointment.time);
+               setValue("duration", typedAppointment.duration.toString());
+               setValue("notes", typedAppointment.notes || "");
+               setValue("status", typedAppointment.status as AppointmentStatus);
+            } else {
+               throw new Error("Appointment not found");
             }
          } catch (error) {
-            console.error("Error loading data:", error);
-            toast.error("Failed to load appointment data");
+            toast.error("Error loading appointment");
+            console.error("Error loading appointment:", error);
          } finally {
             setLoading(false);
          }
       };
 
       loadData();
-   }, [params.id, router]);
+   }, [id, setValue]);
 
-   const handleChange = (
-      e: React.ChangeEvent<
-         HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement
-      >
-   ) => {
-      const { name, value } = e.target;
-      setFormData((prev) => ({
-         ...prev,
-         [name]: value,
-      }));
-      if (formErrors[name]) {
-         setFormErrors((prev: any) => ({ ...prev, [name]: undefined }));
-      }
-   };
-
-   const validateForm = () => {
-      const errors: any = {};
-      if (!formData.customer) errors.customer = "Customer is required";
-      if (!formData.service) errors.service = "Service is required";
-      if (!formData.date) errors.date = "Date is required";
-      if (!formData.time) errors.time = "Time is required";
-
-      // Date validation
-      if (formData.date) {
-         const selectedDate = new Date(formData.date);
-         const today = new Date();
-         today.setHours(0, 0, 0, 0);
-      }
-
-      return errors;
-   };
-
-   const handleSubmit = async (e: React.FormEvent) => {
-      e.preventDefault();
-      const errors = validateForm();
-      if (Object.keys(errors).length > 0) {
-         setFormErrors(errors);
-         return;
-      }
-
+   const onSubmit = async (data: FormData) => {
       try {
          setLoading(true);
 
          // Find selected service and customer
-         const selectedService = services.find(
-            (s) => s._id === formData.service
-         );
+         const selectedService = services.find((s) => s._id === data.service);
          const selectedCustomer = customers.find(
-            (c) => c._id === formData.customer
+            (c) => c._id === data.customer
          );
 
          if (!selectedService || !selectedCustomer) {
@@ -144,21 +110,11 @@ export default function EditAppointment({
             return;
          }
 
-         const appointmentDate = new Date(`${formData.date}T${formData.time}`);
-         const formattedData = {
-            ...formData,
-            duration: formData.duration.toString(),
-            date: appointmentDate.toISOString(),
-         };
+         const appointmentDate = new Date(`${data.date}T${data.time}`);
 
-         const appointmentData: AppointmentData = {
-            customer: formattedData.customer,
-            service: formattedData.service,
-            date: formattedData.date,
-            time: formattedData.time,
-            duration: formattedData.duration,
-            status: formattedData.status as AppointmentStatus,
-            notes: formattedData.notes || "",
+         const appointmentData = {
+            ...data,
+            date: appointmentDate.toISOString(),
             customerInfo: {
                name: `${selectedCustomer.firstName} ${selectedCustomer.lastName}`,
                firstName: selectedCustomer.firstName,
@@ -169,272 +125,186 @@ export default function EditAppointment({
             },
          };
 
-         await updateAppointment(params.id, appointmentData);
+         await updateAppointment(id, appointmentData);
          toast.success("Appointment updated successfully");
          router.push("/dashboard/appointments");
       } catch (error) {
+         toast.error("Error updating appointment");
          console.error("Error updating appointment:", error);
-         toast.error("Failed to update appointment");
       } finally {
          setLoading(false);
       }
    };
 
+   if (loading) {
+      return <div>Loading...</div>;
+   }
+
    return (
-      <div className="p-6">
-         <div className="mb-6 flex items-center">
-            <button
-               onClick={() => router.back()}
-               className={`mr-4 rounded-full p-2 transition ${
-                  darkMode ? "hover:bg-white/10" : "hover:bg-gray-200"
-               }`}
-            >
-               <ArrowLeftIcon
-                  className={`h-6 w-6 ${
-                     darkMode ? "text-white" : "text-gray-800"
-                  }`}
-               />
-            </button>
-            <h1
-               className={`text-2xl font-bold ${
-                  darkMode ? "text-white" : "text-gray-800"
-               }`}
-            >
-               Edit Appointment
-            </h1>
-         </div>
-
-         <div
-            className={`rounded-xl border p-6 ${
-               darkMode
-                  ? "bg-gray-800/30 border-white/10"
-                  : "bg-white border-gray-200 shadow-sm"
-            }`}
-         >
-            <form onSubmit={handleSubmit} className="space-y-6">
-               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div>
-                     <label
-                        className={`block mb-2 text-sm font-medium ${
-                           darkMode ? "text-gray-200" : "text-gray-700"
-                        }`}
-                     >
-                        Customer <span className="text-pink-500">*</span>
-                     </label>
-                     <select
-                        name="customer"
-                        value={formData.customer}
-                        onChange={handleChange}
-                        className={`w-full px-4 py-2 rounded-lg border focus:ring-1 focus:ring-gray-200 transition-colors ${
-                           darkMode
-                              ? "bg-gray-800 border-gray-700 text-white hover:bg-gray-700"
-                              : "bg-white border-gray-300 text-gray-900 hover:bg-gray-50"
-                        }`}
-                     >
-                        <option value="">Select a customer</option>
-                        {customers.map((customer) => (
-                           <option key={customer._id} value={customer._id}>
-                              {customer.firstName} {customer.lastName}
-                           </option>
-                        ))}
-                     </select>
-                     {formErrors.customer && (
-                        <p
-                           className={`mt-1 text-sm ${
-                              darkMode ? "text-red-400" : "text-red-500"
-                           }`}
-                        >
-                           {formErrors.customer}
-                        </p>
-                     )}
-                  </div>
-
-                  <div>
-                     <label
-                        className={`block mb-2 text-sm font-medium ${
-                           darkMode ? "text-gray-200" : "text-gray-700"
-                        }`}
-                     >
-                        Service <span className="text-pink-500">*</span>
-                     </label>
-                     <select
-                        name="service"
-                        value={formData.service}
-                        onChange={handleChange}
-                        className={`w-full px-4 py-2 rounded-lg border focus:ring-1 focus:ring-gray-200 transition-colors ${
-                           darkMode
-                              ? "bg-gray-800 border-gray-700 text-white hover:bg-gray-700"
-                              : "bg-white border-gray-300 text-gray-900 hover:bg-gray-50"
-                        }`}
-                     >
-                        <option value="">Select a service</option>
-                        {services.map((service) => (
-                           <option key={service._id} value={service._id}>
-                              {service.name}
-                           </option>
-                        ))}
-                     </select>
-                     {formErrors.service && (
-                        <p
-                           className={`mt-1 text-sm ${
-                              darkMode ? "text-red-400" : "text-red-500"
-                           }`}
-                        >
-                           {formErrors.service}
-                        </p>
-                     )}
-                  </div>
-               </div>
-
-               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div>
-                     <label
-                        className={`block mb-2 text-sm font-medium ${
-                           darkMode ? "text-gray-200" : "text-gray-700"
-                        }`}
-                     >
-                        Date <span className="text-pink-500">*</span>
-                     </label>
-                     <input
-                        type="date"
-                        name="date"
-                        value={formData.date}
-                        onChange={handleChange}
-                        className={`w-full px-4 py-2 rounded-lg border focus:ring-1 focus:ring-gray-200 transition-colors ${
-                           darkMode
-                              ? "bg-gray-800 border-gray-700 text-white hover:bg-gray-700"
-                              : "bg-white border-gray-300 text-gray-900 hover:bg-gray-50"
-                        }`}
-                     />
-                     {formErrors.date && (
-                        <p
-                           className={`mt-1 text-sm ${
-                              darkMode ? "text-red-400" : "text-red-500"
-                           }`}
-                        >
-                           {formErrors.date}
-                        </p>
-                     )}
-                  </div>
-
-                  <div>
-                     <label
-                        className={`block mb-2 text-sm font-medium ${
-                           darkMode ? "text-gray-200" : "text-gray-700"
-                        }`}
-                     >
-                        Time <span className="text-pink-500">*</span>
-                     </label>
-                     <input
-                        type="time"
-                        name="time"
-                        value={formData.time}
-                        onChange={handleChange}
-                        className={`w-full px-4 py-2 rounded-lg border focus:ring-1 focus:ring-gray-200 transition-colors ${
-                           darkMode
-                              ? "bg-gray-800 border-gray-700 text-white hover:bg-gray-700"
-                              : "bg-white border-gray-300 text-gray-900 hover:bg-gray-50"
-                        }`}
-                     />
-                     {formErrors.time && (
-                        <p
-                           className={`mt-1 text-sm ${
-                              darkMode ? "text-red-400" : "text-red-500"
-                           }`}
-                        >
-                           {formErrors.time}
-                        </p>
-                     )}
-                  </div>
-               </div>
-
-               <div>
-                  <label
-                     className={`block mb-2 text-sm font-medium ${
-                        darkMode ? "text-gray-200" : "text-gray-700"
-                     }`}
-                  >
-                     Duration <span className="text-pink-500">*</span>
-                  </label>
-                  <input
-                     type="text"
-                     name="duration"
-                     value={formData.duration}
-                     onChange={handleChange}
-                     className={`w-full px-4 py-2 rounded-lg border focus:ring-1 focus:ring-gray-200 transition-colors ${
-                        darkMode
-                           ? "bg-gray-800 border-gray-700 text-white hover:bg-gray-700"
-                           : "bg-white border-gray-300 text-gray-900 hover:bg-gray-50"
-                     }`}
-                  />
-                  {formErrors.duration && (
-                     <p
-                        className={`mt-1 text-sm ${
-                           darkMode ? "text-red-400" : "text-red-500"
-                        }`}
-                     >
-                        {formErrors.duration}
-                     </p>
-                  )}
-               </div>
-
-               <div>
-                  <label
-                     className={`block mb-2 text-sm font-medium ${
-                        darkMode ? "text-gray-200" : "text-gray-700"
-                     }`}
-                  >
-                     Status
-                  </label>
-                  <select
-                     name="status"
-                     value={formData.status}
-                     onChange={handleChange}
-                     className={`w-full px-4 py-2 rounded-lg border focus:ring-1 focus:ring-gray-200 transition-colors ${
-                        darkMode
-                           ? "bg-gray-800 border-gray-700 text-white hover:bg-gray-700"
-                           : "bg-white border-gray-300 text-gray-900 hover:bg-gray-50"
-                     }`}
-                  >
-                     <option value="Pending">Pending</option>
-                     <option value="Confirmed">Confirmed</option>
-                     <option value="Canceled">Canceled</option>
-                  </select>
-               </div>
-
-               <div>
-                  <label
-                     className={`block mb-2 text-sm font-medium ${
-                        darkMode ? "text-gray-200" : "text-gray-700"
-                     }`}
-                  >
-                     Notes
-                  </label>
-                  <textarea
-                     name="notes"
-                     value={formData.notes}
-                     onChange={handleChange}
-                     className={`w-full px-4 py-2 rounded-lg border focus:ring-1 focus:ring-gray-200 transition-colors ${
-                        darkMode
-                           ? "bg-gray-800 border-gray-700 text-white hover:bg-gray-700"
-                           : "bg-white border-gray-300 text-gray-900 hover:bg-gray-50"
-                     }`}
-                  />
-               </div>
-
-               <button
-                  type="submit"
-                  disabled={loading}
-                  className={`w-full px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-                     darkMode
-                        ? "bg-gradient-to-r from-indigo-600 to-indigo-700 text-white hover:from-indigo-700 hover:to-indigo-800"
-                        : "bg-white text-gray-900 border border-gray-300 hover:bg-gray-50"
+      <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
+         <div className="space-y-4">
+            <div>
+               <label htmlFor="customer" className="block text-sm font-medium">
+                  Customer
+               </label>
+               <select
+                  id="customer"
+                  {...register("customer", {
+                     required: "Customer is required",
+                  })}
+                  className={`mt-1 block w-full rounded-md ${
+                     darkMode ? "bg-gray-800" : "bg-white"
                   }`}
                >
-                  {loading ? "Updating..." : "Update Appointment"}
-               </button>
-            </form>
+                  <option value="">Select a customer</option>
+                  {customers.map((customer) => (
+                     <option key={customer._id} value={customer._id}>
+                        {customer.firstName} {customer.lastName}
+                     </option>
+                  ))}
+               </select>
+               {errors.customer && (
+                  <p className="text-red-500 text-sm">
+                     {errors.customer.message}
+                  </p>
+               )}
+            </div>
+
+            <div>
+               <label htmlFor="service" className="block text-sm font-medium">
+                  Service
+               </label>
+               <select
+                  id="service"
+                  {...register("service", { required: "Service is required" })}
+                  className={`mt-1 block w-full rounded-md ${
+                     darkMode ? "bg-gray-800" : "bg-white"
+                  }`}
+               >
+                  <option value="">Select a service</option>
+                  {services.map((service) => (
+                     <option key={service._id} value={service._id}>
+                        {service.name}
+                     </option>
+                  ))}
+               </select>
+               {errors.service && (
+                  <p className="text-red-500 text-sm">
+                     {errors.service.message}
+                  </p>
+               )}
+            </div>
+
+            <div>
+               <label htmlFor="date" className="block text-sm font-medium">
+                  Date
+               </label>
+               <input
+                  type="date"
+                  id="date"
+                  {...register("date", { required: "Date is required" })}
+                  className={`mt-1 block w-full rounded-md ${
+                     darkMode ? "bg-gray-800" : "bg-white"
+                  }`}
+               />
+               {errors.date && (
+                  <p className="text-red-500 text-sm">{errors.date.message}</p>
+               )}
+            </div>
+
+            <div>
+               <label htmlFor="time" className="block text-sm font-medium">
+                  Time
+               </label>
+               <input
+                  type="time"
+                  id="time"
+                  {...register("time", { required: "Time is required" })}
+                  className={`mt-1 block w-full rounded-md ${
+                     darkMode ? "bg-gray-800" : "bg-white"
+                  }`}
+               />
+               {errors.time && (
+                  <p className="text-red-500 text-sm">{errors.time.message}</p>
+               )}
+            </div>
+
+            <div>
+               <label htmlFor="duration" className="block text-sm font-medium">
+                  Duration (minutes)
+               </label>
+               <input
+                  type="number"
+                  id="duration"
+                  {...register("duration", {
+                     required: "Duration is required",
+                  })}
+                  className={`mt-1 block w-full rounded-md ${
+                     darkMode ? "bg-gray-800" : "bg-white"
+                  }`}
+               />
+               {errors.duration && (
+                  <p className="text-red-500 text-sm">
+                     {errors.duration.message}
+                  </p>
+               )}
+            </div>
+
+            <div>
+               <label htmlFor="status" className="block text-sm font-medium">
+                  Status
+               </label>
+               <select
+                  id="status"
+                  {...register("status", { required: "Status is required" })}
+                  className={`mt-1 block w-full rounded-md ${
+                     darkMode ? "bg-gray-800" : "bg-white"
+                  }`}
+               >
+                  <option value="Pending">Pending</option>
+                  <option value="Confirmed">Confirmed</option>
+                  <option value="Completed">Completed</option>
+                  <option value="Cancelled">Cancelled</option>
+               </select>
+               {errors.status && (
+                  <p className="text-red-500 text-sm">
+                     {errors.status.message}
+                  </p>
+               )}
+            </div>
+
+            <div>
+               <label htmlFor="notes" className="block text-sm font-medium">
+                  Notes
+               </label>
+               <textarea
+                  id="notes"
+                  {...register("notes")}
+                  className={`mt-1 block w-full rounded-md ${
+                     darkMode ? "bg-gray-800" : "bg-white"
+                  }`}
+               />
+            </div>
          </div>
-      </div>
+
+         <div className="flex justify-end space-x-4">
+            <button
+               type="button"
+               onClick={() => router.back()}
+               className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50"
+            >
+               Cancel
+            </button>
+            <button
+               type="submit"
+               disabled={loading}
+               className="px-4 py-2 text-sm font-medium text-white bg-blue-600 border border-transparent rounded-md hover:bg-blue-700"
+            >
+               {loading ? "Updating..." : "Update Appointment"}
+            </button>
+         </div>
+      </form>
    );
-}
+};
+
+export default EditAppointment;

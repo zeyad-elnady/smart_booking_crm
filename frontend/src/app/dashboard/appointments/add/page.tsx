@@ -162,121 +162,35 @@ export default function AddAppointment() {
    useEffect(() => {
       const loadData = async () => {
          try {
-            // First, let's log the localStorage contents for debugging
-            if (typeof localStorage !== "undefined") {
-               console.log("LocalStorage keys:", Object.keys(localStorage));
+            const [customersData, servicesData] = await Promise.all([
+               fetchCustomers(),
+               fetchServices(),
+            ]);
 
-               // Log all customer-related storage
-               const mockCustomersData = localStorage.getItem("mockCustomers");
-               console.log("mockCustomers data exists:", !!mockCustomersData);
-
-               // Use customerAPI directly to get customers - this already has localStorage fallback
-               try {
-                  const fetchedCustomers = await customerAPI.getCustomers();
-                  console.log("Fetched customers via API:", fetchedCustomers);
-                  setCustomers(fetchedCustomers || []);
-               } catch (error) {
-                  console.error("Error fetching customers via API:", error);
-
-                  // If API fails, use default mock data as last resort
-                  const mockCustomers = [
-                     {
-                        _id: "101",
-                        firstName: "John",
-                        lastName: "Doe",
-                        email: "john@example.com",
-                        phone: "123-456-7890",
-                     },
-                     {
-                        _id: "102",
-                        firstName: "Jane",
-                        lastName: "Smith",
-                        email: "jane@example.com",
-                        phone: "234-567-8901",
-                     },
-                     {
-                        _id: "103",
-                        firstName: "Robert",
-                        lastName: "Johnson",
-                        email: "robert@example.com",
-                        phone: "345-678-9012",
-                     },
-                  ];
-
-                  // Only use mock data if localStorage has no data
-                  const storedCustomers = localStorage.getItem("mockCustomers");
-                  if (storedCustomers) {
-                     const parsedCustomers = JSON.parse(storedCustomers);
-                     console.log("Using stored customers:", parsedCustomers);
-                     setCustomers(parsedCustomers);
-                  } else {
-                     console.log("Using default mock customers");
-                     setCustomers(mockCustomers);
-                  }
-               }
-
-               // Similar approach for services
-               const mockServicesData = localStorage.getItem("mockServices");
-               console.log("mockServices data exists:", !!mockServicesData);
-
-               // Use serviceAPI directly to get services - this already has localStorage fallback
-               try {
-                  const fetchedServices = await serviceAPI.getServices();
-                  console.log("Fetched services via API:", fetchedServices);
-                  setServices(fetchedServices || []);
-               } catch (error) {
-                  console.error("Error fetching services via API:", error);
-
-                  // If API fails, use default mock data as last resort
-                  const mockServices = [
-                     {
-                        _id: "201",
-                        name: "Haircut",
-                        description: "Basic haircut service",
-                        duration: "30",
-                        price: "25",
-                        category: "Hair",
-                        isActive: true,
-                     },
-                     {
-                        _id: "202",
-                        name: "Manicure",
-                        description: "Basic manicure service",
-                        duration: "45",
-                        price: "35",
-                        category: "Nails",
-                        isActive: true,
-                     },
-                     {
-                        _id: "203",
-                        name: "Massage",
-                        description: "Relaxation massage",
-                        duration: "60",
-                        price: "80",
-                        category: "Spa",
-                        isActive: true,
-                     },
-                  ];
-
-                  // Only use mock data if localStorage has no data
-                  const storedServices = localStorage.getItem("mockServices");
-                  if (storedServices) {
-                     const parsedServices = JSON.parse(storedServices);
-                     console.log("Using stored services:", parsedServices);
-                     setServices(parsedServices);
-                  } else {
-                     console.log("Using default mock services");
-                     setServices(mockServices);
-                  }
-               }
-            }
+            setCustomers(customersData);
+            // Convert price to number for each service
+            setServices(
+               servicesData.map(
+                  (service: {
+                     _id: string;
+                     name: string;
+                     description: string;
+                     duration: string;
+                     price: string;
+                     category: string;
+                     isActive: boolean;
+                  }) => ({
+                     ...service,
+                     price: Number(service.price),
+                  })
+               )
+            );
          } catch (error) {
             console.error("Error loading data:", error);
-            toast.error(
-               "Failed to load required data. Please try refreshing the page."
-            );
+            toast.error("Failed to load data");
          }
       };
+
       loadData();
    }, []);
 
