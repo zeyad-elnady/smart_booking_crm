@@ -22,6 +22,8 @@ export interface AppointmentData {
    };
    serviceInfo?: {
       name: string;
+      price: number;
+      duration: string;
    };
 }
 

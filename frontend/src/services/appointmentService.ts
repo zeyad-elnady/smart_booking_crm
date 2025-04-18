@@ -219,9 +219,36 @@ export const fetchAppointmentById = async (
    id: string
 ): Promise<Appointment | null> => {
    try {
-      return await indexedDBService.getAppointmentById(id);
+      // Try to fetch from server first if online
+      if (navigator.onLine) {
+         try {
+            const response = await axios.get(`/appointments/${id}`);
+            const serverAppointment = response.data;
+
+            // Update IndexedDB with server data
+            await indexedDBService.saveAppointment({
+               ...serverAppointment,
+               pendingSync: false,
+               pendingDelete: false,
+            });
+
+            return serverAppointment;
+         } catch (serverError) {
+            console.error(
+               "Error fetching from server, falling back to IndexedDB:",
+               serverError
+            );
+         }
+      }
+
+      // Fallback to IndexedDB
+      const localAppointment = await indexedDBService.getAppointmentById(id);
+      if (!localAppointment) {
+         throw new Error("Appointment not found");
+      }
+      return localAppointment;
    } catch (error) {
-      console.error("Error fetching appointment from IndexedDB:", error);
+      console.error("Error fetching appointment:", error);
       throw error;
    }
 };

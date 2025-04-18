@@ -32,7 +32,7 @@ export default function EditService({ params }: { params: { id: string } }) {
                name: service.name,
                description: service.description || "",
                duration: service.duration,
-               price: service.price,
+               price: service.price.toString(),
                category: service.category,
                isActive: service.isActive,
             });
@@ -82,7 +82,11 @@ export default function EditService({ params }: { params: { id: string } }) {
 
       try {
          setLoading(true);
-         await updateService(params.id, formData);
+         const submitData = {
+            ...formData,
+            price: Number(formData.price),
+         };
+         await updateService(params.id, submitData);
          toast.success("Service updated successfully");
          router.push("/dashboard/services");
       } catch (error) {

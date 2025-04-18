@@ -7,25 +7,38 @@ import {
    UserPlusIcon,
    PlusCircleIcon,
 } from "@heroicons/react/24/outline";
-import {
-   customerAPI,
-   serviceAPI,
-   Customer,
-   Service,
-   AppointmentData,
-   Appointment,
-} from "@/services/api";
+import { customerAPI, serviceAPI, Customer, Service } from "@/services/api";
 import { useRouter } from "next/navigation";
 import { toast } from "react-hot-toast";
-import { appointmentService } from "@/lib/appointmentService";
 import { useTheme } from "@/components/ThemeProvider";
 import * as React from "react";
+import type { Appointment } from "@/types/appointment";
 
-export default function EditAppointment({ params }: { params: { id: string } }) {
-   // Properly unwrap the params object using React.use()
-   const unwrappedParams = React.use(params as any);
-   const appointmentId = unwrappedParams.id as string;
-   
+interface AppointmentData {
+   customer: string;
+   service: string;
+   date: string;
+   time: string;
+   duration: string;
+   status: "Waiting" | "Cancelled" | "Completed";
+   notes: string;
+   customerInfo?: {
+      name: string;
+      firstName: string;
+      lastName: string;
+   };
+   serviceInfo?: {
+      name: string;
+   };
+}
+
+export default function EditAppointment({
+   params,
+}: {
+   params: { id: string };
+}) {
+   const appointmentId = params.id;
+
    const router = useRouter();
    const [customers, setCustomers] = useState<Customer[]>([]);
    const [services, setServices] = useState<Service[]>([]);
@@ -49,7 +62,7 @@ export default function EditAppointment({ params }: { params: { id: string } }) 
       const loadData = async () => {
          try {
             setLoading(true);
-            
+
             // Load customers
             try {
                const fetchedCustomers = await customerAPI.getCustomers();
@@ -57,12 +70,12 @@ export default function EditAppointment({ params }: { params: { id: string } }) 
                setCustomers(fetchedCustomers || []);
             } catch (error) {
                console.error("Error fetching customers:", error);
-               const storedCustomers = localStorage.getItem('mockCustomers');
+               const storedCustomers = localStorage.getItem("mockCustomers");
                if (storedCustomers) {
                   setCustomers(JSON.parse(storedCustomers));
                }
             }
-            
+
             // Load services
             try {
                const fetchedServices = await serviceAPI.getServices();
@@ -70,33 +83,41 @@ export default function EditAppointment({ params }: { params: { id: string } }) 
                setServices(fetchedServices || []);
             } catch (error) {
                console.error("Error fetching services:", error);
-               const storedServices = localStorage.getItem('mockServices');
+               const storedServices = localStorage.getItem("mockServices");
                if (storedServices) {
                   setServices(JSON.parse(storedServices));
                }
             }
-            
+
             // Get the appointment
             try {
                // Get directly from localStorage
-               const storedAppointments = localStorage.getItem('storedAppointments');
+               const storedAppointments =
+                  localStorage.getItem("storedAppointments");
                if (storedAppointments) {
                   const appointments = JSON.parse(storedAppointments);
-                  const foundAppointment = appointments.find((a: any) => a._id === appointmentId);
-                  
+                  const foundAppointment = appointments.find(
+                     (a: any) => a._id === appointmentId
+                  );
+
                   if (foundAppointment) {
-                     console.log("Fetched appointment from localStorage:", foundAppointment);
+                     console.log(
+                        "Fetched appointment from localStorage:",
+                        foundAppointment
+                     );
                      setAppointment(foundAppointment);
-                     
+
                      // Set form data from appointment
-                     const customerId = typeof foundAppointment.customer === 'object' 
-                        ? foundAppointment.customer._id 
-                        : foundAppointment.customer;
-                        
-                     const serviceId = typeof foundAppointment.service === 'object'
-                        ? foundAppointment.service._id
-                        : foundAppointment.service;
-                        
+                     const customerId =
+                        typeof foundAppointment.customer === "object"
+                           ? foundAppointment.customer._id
+                           : foundAppointment.customer;
+
+                     const serviceId =
+                        typeof foundAppointment.service === "object"
+                           ? foundAppointment.service._id
+                           : foundAppointment.service;
+
                      setFormData({
                         customerId,
                         serviceId,
@@ -119,17 +140,21 @@ export default function EditAppointment({ params }: { params: { id: string } }) 
             }
          } catch (error) {
             console.error("Error loading data:", error);
-            toast.error("Failed to load required data. Please try refreshing the page.");
+            toast.error(
+               "Failed to load required data. Please try refreshing the page."
+            );
          } finally {
             setLoading(false);
          }
       };
-      
+
       loadData();
    }, [appointmentId, router]);
 
    const handleChange = (
-      e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>
+      e: React.ChangeEvent<
+         HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement
+      >
    ) => {
       const { name, value } = e.target;
       setFormData((prev) => ({
@@ -149,15 +174,21 @@ export default function EditAppointment({ params }: { params: { id: string } }) 
       setLoading(true);
       try {
          // Find the selected customer and service details
-         const selectedCustomer = customers.find(c => c._id === formData.customerId);
-         const selectedService = services.find(s => s._id === formData.serviceId);
-         
+         const selectedCustomer = customers.find(
+            (c) => c._id === formData.customerId
+         );
+         const selectedService = services.find(
+            (s) => s._id === formData.serviceId
+         );
+
          if (!selectedCustomer || !selectedService) {
-            toast.error("Selected customer or service not found. Please try again.");
+            toast.error(
+               "Selected customer or service not found. Please try again."
+            );
             setLoading(false);
             return;
          }
-         
+
          // Format data for update with customer and service info
          const appointmentData: Partial<AppointmentData> = {
             customer: formData.customerId.trim(),
@@ -171,21 +202,23 @@ export default function EditAppointment({ params }: { params: { id: string } }) 
             customerInfo: {
                name: `${selectedCustomer.firstName} ${selectedCustomer.lastName}`,
                firstName: selectedCustomer.firstName,
-               lastName: selectedCustomer.lastName
+               lastName: selectedCustomer.lastName,
             },
             serviceInfo: {
-               name: selectedService.name
-            }
+               name: selectedService.name,
+            },
          };
 
          console.log("Updating appointment with data:", appointmentData);
-         
+
          // Update the appointment directly using localStorage
-         const storedAppointments = localStorage.getItem('storedAppointments');
+         const storedAppointments = localStorage.getItem("storedAppointments");
          if (storedAppointments) {
             const appointments = JSON.parse(storedAppointments);
-            const index = appointments.findIndex((a: any) => a._id === appointmentId);
-            
+            const index = appointments.findIndex(
+               (a: any) => a._id === appointmentId
+            );
+
             if (index !== -1) {
                // Create updated appointment object
                const updatedAppointment = {
@@ -197,29 +230,36 @@ export default function EditAppointment({ params }: { params: { id: string } }) 
                      name: `${selectedCustomer.firstName} ${selectedCustomer.lastName}`,
                      firstName: selectedCustomer.firstName,
                      lastName: selectedCustomer.lastName,
-                     email: selectedCustomer.email || ""
+                     email: selectedCustomer.email || "",
                   },
                   service: {
                      _id: selectedService._id,
                      name: selectedService.name,
                      duration: selectedService.duration,
-                     price: selectedService.price
+                     price: selectedService.price,
                   },
                   // Set status color based on status
-                  statusColor: formData.status === "Confirmed" 
-                     ? "from-green-500 to-green-600" 
-                     : formData.status === "Canceled" 
-                        ? "from-red-500 to-red-600" 
-                        : "from-yellow-500 to-yellow-600" // Pending (default)
+                  statusColor:
+                     formData.status === "Confirmed"
+                        ? "from-green-500 to-green-600"
+                        : formData.status === "Canceled"
+                        ? "from-red-500 to-red-600"
+                        : "from-yellow-500 to-yellow-600", // Pending (default)
                };
-               
+
                // Update in array
                appointments[index] = updatedAppointment;
-               
+
                // Save back to localStorage
-               localStorage.setItem('storedAppointments', JSON.stringify(appointments));
-               console.log("Appointment updated in localStorage:", updatedAppointment);
-               
+               localStorage.setItem(
+                  "storedAppointments",
+                  JSON.stringify(appointments)
+               );
+               console.log(
+                  "Appointment updated in localStorage:",
+                  updatedAppointment
+               );
+
                toast.success("Appointment updated successfully");
                router.push("/dashboard/appointments");
             } else {
@@ -281,7 +321,10 @@ export default function EditAppointment({ params }: { params: { id: string } }) 
       return (
          <div className="flex items-center justify-center h-screen">
             <div className="text-center">
-               <div className="spinner-border animate-spin inline-block w-8 h-8 border-4 rounded-full text-indigo-500 border-t-transparent" role="status">
+               <div
+                  className="spinner-border animate-spin inline-block w-8 h-8 border-4 rounded-full text-indigo-500 border-t-transparent"
+                  role="status"
+               >
                   <span className="visually-hidden">Loading...</span>
                </div>
                <p className="mt-2 text-gray-300">Loading appointment data...</p>
@@ -470,7 +513,8 @@ export default function EditAppointment({ params }: { params: { id: string } }) 
                            darkMode ? "text-gray-200" : "text-gray-700"
                         }`}
                      >
-                        Duration (minutes) <span className="text-pink-500">*</span>
+                        Duration (minutes){" "}
+                        <span className="text-pink-500">*</span>
                      </label>
                      <input
                         type="number"
@@ -493,7 +537,7 @@ export default function EditAppointment({ params }: { params: { id: string } }) 
                         </p>
                      )}
                   </div>
-                  
+
                   <div>
                      <label
                         className={`block mb-2 text-sm font-medium ${
@@ -572,4 +616,4 @@ export default function EditAppointment({ params }: { params: { id: string } }) 
          </div>
       </div>
    );
-} 
+}

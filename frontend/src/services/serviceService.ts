@@ -5,7 +5,7 @@ export interface Service {
    name: string;
    description: string;
    duration: string;
-   price: string;
+   price: number;
    category: string;
    isActive: boolean;
 }
@@ -20,7 +20,7 @@ export interface ServiceData {
    name: string;
    description: string;
    duration: string;
-   price: string;
+   price: number;
    category: string;
    isActive?: boolean;
 }
@@ -68,8 +68,17 @@ export const createService = async (
    serviceData: ServiceData
 ): Promise<Service> => {
    try {
-      const response = await API.post("/services", serviceData);
-      return response.data;
+      // Ensure price is a number
+      const data = {
+         ...serviceData,
+         price: Number(serviceData.price),
+      };
+
+      const response = await API.post("/services", data);
+      return {
+         ...response.data,
+         price: Number(response.data.price), // Ensure returned price is a number
+      };
    } catch (error: unknown) {
       console.error("Error creating service:", error);
       const apiError = error as ApiError;

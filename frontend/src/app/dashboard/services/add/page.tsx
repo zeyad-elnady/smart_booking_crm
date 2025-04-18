@@ -50,9 +50,16 @@ export default function AddService() {
             return;
          }
 
+         // Parse price as a number and validate
+         const numericPrice = Number(price);
+         if (isNaN(numericPrice) || numericPrice < 0) {
+            toast.error("Price must be a valid non-negative number");
+            return;
+         }
+
          const serviceData = {
             name: name.trim(),
-            price: price.toString(),
+            price: numericPrice,
             duration: duration.toString(),
             description: description.trim(),
             category: "General",

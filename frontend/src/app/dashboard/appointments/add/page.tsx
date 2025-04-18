@@ -16,7 +16,7 @@ import { fetchServices } from "@/services/serviceService";
 import { useTheme } from "@/components/ThemeProvider";
 import { createAppointment } from "@/services/appointmentService";
 import { appointmentAPI } from "@/services/api";
-import { AppointmentData } from "@/types/appointment";
+import { AppointmentData, AppointmentStatus } from "@/types/appointment";
 
 // Custom style to fix dropdown behavior
 const customStyles = `
@@ -230,20 +230,11 @@ export default function AddAppointment() {
       }
    };
 
-   const handleSubmit = async (e: React.FormEvent) => {
+   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
       e.preventDefault();
       setLoading(true);
 
       try {
-         // Validate form data
-         const errors = validateForm();
-         if (Object.keys(errors).length > 0) {
-            setFormErrors(errors);
-            setLoading(false);
-            return;
-         }
-
-         // Find selected service and customer
          const selectedService = services.find(
             (s) => s._id === formData.serviceId
          );
@@ -252,20 +243,18 @@ export default function AddAppointment() {
          );
 
          if (!selectedService || !selectedCustomer) {
-            toast.error("Please select both a service and a customer");
-            setLoading(false);
+            toast.error("Please select both customer and service");
             return;
          }
 
-         // Prepare appointment data
          const appointmentData: AppointmentData = {
             customer: formData.customerId,
             service: formData.serviceId,
             date: formData.date,
             time: formData.time,
-            duration: String(selectedService.duration),
-            status: formData.status as "Pending" | "Confirmed" | "Canceled",
-            notes: formData.notes || "",
+            duration: selectedService.duration,
+            notes: formData.notes,
+            status: "Pending" as AppointmentStatus,
             customerInfo: {
                name: `${selectedCustomer.firstName} ${selectedCustomer.lastName}`,
                firstName: selectedCustomer.firstName,
@@ -273,30 +262,17 @@ export default function AddAppointment() {
             },
             serviceInfo: {
                name: selectedService.name,
+               price: selectedService.price,
+               duration: selectedService.duration,
             },
          };
 
-         if (navigator.onLine) {
-            // If online, create on server first
-            const serverResponse = await appointmentAPI.createAppointment(
-               appointmentData
-            );
-            console.log("Server response:", serverResponse);
-            toast.success("Appointment created successfully");
-         } else {
-            // If offline, only create in IndexedDB
-            await createAppointment(appointmentData);
-            toast.success("Appointment saved locally (offline mode)");
-         }
-
-         // Navigate back to appointments list
+         await appointmentAPI.createAppointment(appointmentData);
+         toast.success("Appointment created successfully");
          router.push("/dashboard/appointments");
-         router.refresh(); // Force refresh the appointments list
       } catch (error: any) {
          console.error("Error creating appointment:", error);
-         toast.error(
-            error.response?.data?.message || "Failed to create appointment"
-         );
+         toast.error(error.message || "Failed to create appointment");
       } finally {
          setLoading(false);
       }

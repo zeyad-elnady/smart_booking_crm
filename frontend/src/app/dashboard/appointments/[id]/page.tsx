@@ -18,7 +18,7 @@ import type { Service } from "@/types/service";
 import type { Appointment, AppointmentStatus } from "@/types/appointment";
 
 interface EditAppointmentProps {
-   params: Promise<{ id: string }>;
+   params: { id: string };
 }
 
 // Define the response type that includes populated fields
@@ -42,7 +42,7 @@ interface FormData {
 const EditAppointment = ({ params }: EditAppointmentProps) => {
    const router = useRouter();
    const { darkMode } = useTheme();
-   const id = React.use(params).id;
+   const { id } = params;
 
    const {
       register,
@@ -122,6 +122,8 @@ const EditAppointment = ({ params }: EditAppointmentProps) => {
             },
             serviceInfo: {
                name: selectedService.name,
+               price: selectedService.price,
+               duration: selectedService.duration,
             },
          };
 
