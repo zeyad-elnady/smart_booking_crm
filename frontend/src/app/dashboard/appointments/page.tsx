@@ -26,17 +26,21 @@ import {
    addMonths,
    subMonths,
 } from "date-fns";
-import { appointmentService } from "@/lib/appointmentService";
-import type { Appointment } from "@/lib/appointmentService";
-import type { Service } from "@/types/service";
+import {
+   fetchAppointments,
+   deleteAppointment,
+} from "@/services/appointmentService";
+import type { Appointment, Customer, Service } from "@/services/api";
+import type { Service as ServiceType } from "@/types/service";
 import { toast } from "react-hot-toast";
+import { testConnections } from "@/services/api";
+import { indexedDBService } from "@/services/indexedDB";
 
 interface AppointmentCustomer {
    _id: string;
    firstName: string;
    lastName: string;
    name: string;
-   initial: string;
 }
 
 export default function Appointments() {
@@ -49,48 +53,39 @@ export default function Appointments() {
    const [selectedAppointment, setSelectedAppointment] =
       useState<Appointment | null>(null);
    const [appointments, setAppointments] = useState<Appointment[]>([]);
+   const [isLoading, setIsLoading] = useState(true);
 
-   // Load appointments
+   // Initialize IndexedDB and load appointments
    useEffect(() => {
-      const loadAppointments = () => {
-         // Get appointments and filter out any defaults
-         const allAppointments = appointmentService.getAll();
-         // Filter out default appointments with IDs 1 and 2
-         const userAppointments = allAppointments.filter(
-            (apt) => apt._id !== "1" && apt._id !== "2"
-         );
+      const initializeAndLoad = async () => {
+         try {
+            setIsLoading(true);
+            // Initialize IndexedDB
+            await indexedDBService.initDB();
 
-         // Debug log to check appointment structure
-         if (userAppointments.length > 0) {
-            console.log(
-               "Appointment structure sample:",
-               JSON.stringify(userAppointments[0], null, 2)
+            // Load appointments
+            const allAppointments = await fetchAppointments();
+            // Filter out default appointments with IDs 1 and 2
+            const userAppointments = allAppointments.filter(
+               (apt: Appointment) => apt._id !== "1" && apt._id !== "2"
             );
+            setAppointments(userAppointments);
+         } catch (error) {
+            console.error(
+               "Error initializing and loading appointments:",
+               error
+            );
+            toast.error("Failed to load appointments");
+         } finally {
+            setIsLoading(false);
          }
-
-         setAppointments(userAppointments);
       };
 
-      loadAppointments();
+      initializeAndLoad();
       // Refresh appointments every minute
-      const interval = setInterval(loadAppointments, 60000);
+      const interval = setInterval(initializeAndLoad, 60000);
 
-      // Also refresh appointments when the component is focused (user returns to the page)
-      const handleVisibilityChange = () => {
-         if (document.visibilityState === "visible") {
-            loadAppointments();
-         }
-      };
-
-      document.addEventListener("visibilitychange", handleVisibilityChange);
-
-      return () => {
-         clearInterval(interval);
-         document.removeEventListener(
-            "visibilitychange",
-            handleVisibilityChange
-         );
-      };
+      return () => clearInterval(interval);
    }, []);
 
    // Generate week days
@@ -151,9 +146,9 @@ export default function Appointments() {
 
    const handleDeleteAppointment = async (appointmentId: string) => {
       try {
-         await appointmentService.delete(appointmentId);
+         await deleteAppointment(appointmentId);
          setAppointments(
-            appointments.filter((apt) => apt._id !== appointmentId)
+            appointments.filter((apt: Appointment) => apt._id !== appointmentId)
          );
          setSelectedAppointment(null); // Close modal if open
       } catch (error) {
@@ -161,15 +156,17 @@ export default function Appointments() {
       }
    };
 
-   const handleRefreshAppointments = () => {
-      // Clear any default appointments
-      const currentAppointments = appointmentService.getAll();
-      // Refresh the appointments list from storage
-      setAppointments(currentAppointments);
+   const handleRefreshAppointments = async () => {
+      try {
+         const currentAppointments = await fetchAppointments();
+         setAppointments(currentAppointments);
+      } catch (error) {
+         console.error("Error refreshing appointments:", error);
+      }
    };
 
    // Function to determine status color
-   const getStatusColor = (status: string) => {
+   const getStatusColor = (status: string | undefined): string => {
       switch (status) {
          case "Confirmed":
             return "from-green-500 to-green-600";
@@ -180,6 +177,82 @@ export default function Appointments() {
             return "from-yellow-500 to-yellow-600";
       }
    };
+
+   const getCustomerInitial = (appointment: Appointment): string => {
+      // First try to get initial from customerInfo
+      if (appointment.customerInfo) {
+         if (appointment.customerInfo.firstName) {
+            return appointment.customerInfo.firstName[0];
+         }
+         if (appointment.customerInfo.name) {
+            return appointment.customerInfo.name[0];
+         }
+      }
+
+      // Then try to get initial from customer object
+      if (
+         typeof appointment.customer === "object" &&
+         appointment.customer !== null
+      ) {
+         const customer = appointment.customer as AppointmentCustomer;
+         return customer.firstName?.[0] || "?";
+      }
+
+      return "?";
+   };
+
+   const getCustomerName = (appointment: Appointment): string => {
+      // First try to get name from customerInfo
+      if (appointment.customerInfo) {
+         if (
+            appointment.customerInfo.firstName &&
+            appointment.customerInfo.lastName
+         ) {
+            return `${appointment.customerInfo.firstName} ${appointment.customerInfo.lastName}`;
+         }
+         if (appointment.customerInfo.name) {
+            return appointment.customerInfo.name;
+         }
+      }
+
+      // Then try to get name from customer object
+      if (
+         typeof appointment.customer === "object" &&
+         appointment.customer !== null
+      ) {
+         const customer = appointment.customer as AppointmentCustomer;
+         return `${customer.firstName} ${customer.lastName}`;
+      }
+
+      return "Unknown Customer";
+   };
+
+   const getServiceName = (appointment: Appointment): string => {
+      // First try to get name from serviceInfo
+      if (appointment.serviceInfo?.name) {
+         return appointment.serviceInfo.name;
+      }
+
+      // Then try to get name from service object
+      if (
+         typeof appointment.service === "object" &&
+         appointment.service !== null
+      ) {
+         const service = appointment.service as { name: string };
+         return service.name;
+      }
+
+      return "Unknown Service";
+   };
+
+   // Add loading state to the UI
+   if (isLoading) {
+      return (
+         <div className="flex items-center justify-center min-h-screen">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900 dark:border-white"></div>
+         </div>
+      );
+   }
 
    return (
       <div className="space-y-6 animate-fadeIn">
@@ -259,49 +332,22 @@ export default function Appointments() {
                                  <div className="flex-shrink-0">
                                     <div className="h-10 w-10 rounded-full bg-white border border-gray-200 flex items-center justify-center">
                                        <span className="text-gray-900 font-medium">
-                                          {typeof appointment.customer ===
-                                             "object" &&
-                                          appointment.customer !== null
-                                             ? appointment.customer.firstName
-                                                ? appointment.customer
-                                                     .firstName[0]
-                                                : appointment.customer.name
-                                                ? appointment.customer.name[0]
-                                                : "U"
-                                             : "U"}
+                                          {getCustomerInitial(appointment)}
                                        </span>
                                     </div>
                                  </div>
                                  <div className="ml-4">
                                     <div className="text-sm font-medium text-white">
-                                       {typeof appointment.customer ===
-                                          "object" &&
-                                       appointment.customer !== null
-                                          ? appointment.customer.firstName &&
-                                            appointment.customer.lastName
-                                             ? `${appointment.customer.firstName} ${appointment.customer.lastName}`
-                                             : appointment.customer.name
-                                             ? appointment.customer.name
-                                             : "Unknown Customer"
-                                          : "Unknown Customer"}
+                                       {getCustomerName(appointment)}
                                     </div>
                                     <div className="text-sm text-gray-400">
-                                       {typeof appointment.service ===
-                                          "object" &&
-                                       appointment.service !== null
-                                          ? appointment.service.name
-                                             ? appointment.service.name
-                                             : "Unknown Service"
-                                          : typeof appointment.service ===
-                                            "string"
-                                          ? appointment.service
-                                          : "Unknown Service"}
+                                       {getServiceName(appointment)}
                                     </div>
                                  </div>
                               </div>
                               <div className="flex items-center space-x-4">
                                  <div className="text-sm text-gray-400">
-                                    {appointment.time} ({appointment.duration})
+                                    {appointment.time}
                                  </div>
                                  <span
                                     className={`inline-flex items-center rounded-full px-2.5 py-1 text-xs font-medium bg-gradient-to-r ${getStatusColor(
@@ -322,8 +368,8 @@ export default function Appointments() {
                                     }
                                     className={`transition-colors ${
                                        darkMode
-                                          ? "text-red-400 hover:text-red-300 hover:bg-red-500/10"
-                                          : "text-red-600 hover:text-red-700 hover:bg-red-50"
+                                          ? "text-red-400 hover:text-red-300"
+                                          : "text-red-600 hover:text-red-700"
                                     }`}
                                  >
                                     Delete
@@ -471,42 +517,14 @@ export default function Appointments() {
                                           >
                                              <div className="flex items-center space-x-1">
                                                 <div className="h-5 w-5 rounded-full bg-white border border-gray-200 flex items-center justify-center text-gray-900 text-xs">
-                                                   {typeof apt.customer ===
-                                                      "object" &&
-                                                   apt.customer !== null
-                                                      ? apt.customer.firstName
-                                                         ? apt.customer
-                                                              .firstName[0]
-                                                         : apt.customer.name
-                                                         ? apt.customer.name[0]
-                                                         : "?"
-                                                      : "?"}
+                                                   {getCustomerInitial(apt)}
                                                 </div>
                                                 <p className="font-medium text-white truncate">
-                                                   {typeof apt.customer ===
-                                                      "object" &&
-                                                   apt.customer !== null
-                                                      ? apt.customer
-                                                           .firstName &&
-                                                        apt.customer.lastName
-                                                         ? `${apt.customer.firstName} ${apt.customer.lastName}`
-                                                         : apt.customer.name
-                                                         ? apt.customer.name
-                                                         : "Unknown Customer"
-                                                      : "Unknown Customer"}
+                                                   {getCustomerName(apt)}
                                                 </p>
                                              </div>
                                              <div className="mt-1 text-gray-300">
-                                                {apt.time} -{" "}
-                                                {typeof apt.service ===
-                                                   "object" &&
-                                                apt.service !== null
-                                                   ? apt.service.name ||
-                                                     "Unknown Service"
-                                                   : typeof apt.service ===
-                                                     "string"
-                                                   ? apt.service
-                                                   : "Unknown Service"}
+                                                {getServiceName(apt)}
                                              </div>
                                           </div>
                                        ))}
@@ -587,24 +605,9 @@ export default function Appointments() {
                                                          <div className="flex items-center space-x-1">
                                                             <div className="h-3 w-3 rounded-full bg-white border border-gray-200 flex items-center justify-center"></div>
                                                             <p className="font-medium text-white truncate text-[10px]">
-                                                               {apt.time}{" "}
-                                                               {typeof apt.customer ===
-                                                                  "object" &&
-                                                               apt.customer !==
-                                                                  null
-                                                                  ? apt.customer
-                                                                       .firstName &&
-                                                                    apt.customer
-                                                                       .lastName
-                                                                     ? `${apt.customer.firstName} ${apt.customer.lastName}`
-                                                                     : apt
-                                                                          .customer
-                                                                          .name
-                                                                     ? apt
-                                                                          .customer
-                                                                          .name
-                                                                     : "Unknown Customer"
-                                                                  : "Unknown Customer"}
+                                                               {getCustomerName(
+                                                                  apt
+                                                               )}
                                                             </p>
                                                          </div>
                                                       </div>
@@ -669,14 +672,7 @@ export default function Appointments() {
                   <div className="mb-4 flex items-center">
                      <div className="h-12 w-12 rounded-full bg-white border border-gray-200 flex items-center justify-center">
                         <span className="text-gray-900 font-medium text-lg">
-                           {typeof selectedAppointment.customer === "object" &&
-                           selectedAppointment.customer !== null
-                              ? selectedAppointment.customer.firstName
-                                 ? selectedAppointment.customer.firstName[0]
-                                 : selectedAppointment.customer.name
-                                 ? selectedAppointment.customer.name[0]
-                                 : "?"
-                              : "?"}
+                           {getCustomerInitial(selectedAppointment)}
                         </span>
                      </div>
                      <div className="ml-4">
@@ -685,28 +681,14 @@ export default function Appointments() {
                               darkMode ? "text-white" : "text-gray-900"
                            }`}
                         >
-                           {typeof selectedAppointment.customer === "object" &&
-                           selectedAppointment.customer !== null
-                              ? selectedAppointment.customer.firstName &&
-                                selectedAppointment.customer.lastName
-                                 ? `${selectedAppointment.customer.firstName} ${selectedAppointment.customer.lastName}`
-                                 : selectedAppointment.customer.name
-                                 ? selectedAppointment.customer.name
-                                 : "Unknown Customer"
-                              : "Unknown Customer"}
+                           {getCustomerName(selectedAppointment)}
                         </div>
                         <div
                            className={`${
                               darkMode ? "text-gray-400" : "text-gray-600"
                            }`}
                         >
-                           {typeof selectedAppointment.service === "object" &&
-                           selectedAppointment.service !== null
-                              ? selectedAppointment.service.name ||
-                                "Unknown Service"
-                              : typeof selectedAppointment.service === "string"
-                              ? selectedAppointment.service
-                              : "Unknown Service"}
+                           {getServiceName(selectedAppointment)}
                         </div>
                      </div>
                   </div>
@@ -723,10 +705,6 @@ export default function Appointments() {
                      <div>
                         <div className="font-medium mb-1">Time</div>
                         <div>{selectedAppointment.time}</div>
-                     </div>
-                     <div>
-                        <div className="font-medium mb-1">Duration</div>
-                        <div>{selectedAppointment.duration}</div>
                      </div>
                      <div>
                         <div className="font-medium mb-1">Status</div>
@@ -784,10 +762,10 @@ export default function Appointments() {
                         onClick={() =>
                            handleDeleteAppointment(selectedAppointment._id)
                         }
-                        className={`px-4 py-2 rounded-full text-sm font-medium ${
+                        className={`px-4 py-2 text-sm font-medium ${
                            darkMode
-                              ? "bg-red-600 text-white hover:bg-red-700"
-                              : "bg-red-100 text-red-600 hover:bg-red-200"
+                              ? "text-red-400 hover:text-red-300"
+                              : "text-red-600 hover:text-red-700"
                         } transition-colors`}
                      >
                         Delete

@@ -13,15 +13,15 @@ import {
    Customer,
    Service,
    AppointmentData,
-   appointmentAPI,
 } from "@/services/api";
 import CustomDropdown from "@/components/CustomDropdown";
 import { useRouter } from "next/navigation";
 import { toast } from "react-hot-toast";
 import { fetchCustomers } from "@/services/customerService";
 import { fetchServices } from "@/services/serviceService";
-import { appointmentService } from "@/lib/appointmentService";
 import { useTheme } from "@/components/ThemeProvider";
+import { createAppointment } from "@/services/appointmentService";
+import * as appointmentAPI from "@/services/api";
 
 // Custom style to fix dropdown behavior
 const customStyles = `
@@ -154,7 +154,6 @@ export default function AddAppointment() {
       serviceId: "",
       date: "",
       time: "",
-      duration: "60",
       status: "Pending",
       notes: "",
    });
@@ -324,36 +323,43 @@ export default function AddAppointment() {
 
    const handleSubmit = async (e: React.FormEvent) => {
       e.preventDefault();
-      if (!validateForm()) return;
-
       setLoading(true);
-      try {
-         // Find the selected customer and service details
-         const selectedCustomer = customers.find(
-            (c) => c._id === formData.customerId
-         );
-         const selectedService = services.find(
-            (s) => s._id === formData.serviceId
-         );
 
-         if (!selectedCustomer || !selectedService) {
-            toast.error(
-               "Selected customer or service not found. Please try again."
-            );
+      try {
+         // Validate form data
+         const errors = validateForm();
+         if (Object.keys(errors).length > 0) {
+            setFormErrors(errors);
             setLoading(false);
             return;
          }
 
-         // Format data for creation with customer and service info
+         // Find selected service and customer
+         const selectedService = services.find(
+            (s) => s._id === formData.serviceId
+         );
+         const selectedCustomer = customers.find(
+            (c) => c._id === formData.customerId
+         );
+
+         if (!selectedService || !selectedCustomer) {
+            toast.error("Please select both a service and a customer");
+            setLoading(false);
+            return;
+         }
+
+         console.log("Selected service:", selectedService);
+         console.log("Service duration:", selectedService.duration);
+
+         // Prepare appointment data
          const appointmentData: AppointmentData = {
-            customer: formData.customerId.trim(),
-            service: formData.serviceId.trim(),
+            customer: formData.customerId,
+            service: formData.serviceId,
             date: formData.date,
             time: formData.time,
-            duration: formData.duration,
-            status: "Pending" as const,
+            duration: String(selectedService.duration), // Ensure duration is a string
+            status: formData.status as "Pending" | "Confirmed" | "Canceled",
             notes: formData.notes || "",
-            // Add additional info to help with display when API is down
             customerInfo: {
                name: `${selectedCustomer.firstName} ${selectedCustomer.lastName}`,
                firstName: selectedCustomer.firstName,
@@ -364,55 +370,36 @@ export default function AddAppointment() {
             },
          };
 
-         console.log("Creating appointment with data:", appointmentData);
+         console.log("Final appointment data:", appointmentData);
 
-         // Skip API call and directly use local storage approach
-         // Create a mock appointment object
-         const mockAppointment = {
-            ...appointmentData,
-            _id: `mock_${Date.now()}`,
-            createdAt: new Date().toISOString(),
-            updatedAt: new Date().toISOString(),
-            customer: {
-               _id: selectedCustomer._id,
-               name: `${selectedCustomer.firstName} ${selectedCustomer.lastName}`,
-               firstName: selectedCustomer.firstName,
-               lastName: selectedCustomer.lastName,
-               email: selectedCustomer.email || "",
-               phone: selectedCustomer.phone || "",
-            },
-            service: {
-               _id: selectedService._id,
-               name: selectedService.name,
-               duration: selectedService.duration,
-               price: selectedService.price,
-            },
-            statusColor: "from-yellow-500 to-yellow-600",
-         };
+         // First, create in IndexedDB for offline support
+         await createAppointment(appointmentData);
 
-         // Get current appointments from localStorage
-         const storedAppointments = localStorage.getItem("storedAppointments");
-         const currentAppointments = storedAppointments
-            ? JSON.parse(storedAppointments)
-            : [];
+         // Then, if online, sync with server
+         if (navigator.onLine) {
+            try {
+               const serverResponse = await appointmentAPI.createAppointment(
+                  appointmentData
+               );
+               console.log("Server response:", serverResponse);
 
-         // Add the new appointment and save back to localStorage
-         currentAppointments.push(mockAppointment);
-         localStorage.setItem(
-            "storedAppointments",
-            JSON.stringify(currentAppointments)
-         );
+               if (serverResponse) {
+                  toast.success("Appointment created and synced with server");
+               }
+            } catch (error: any) {
+               console.error("Server error:", error.response?.data || error);
+               throw error; // Re-throw to be caught by outer catch block
+            }
+         }
 
-         console.log(
-            "Appointment created directly in localStorage:",
-            mockAppointment
-         );
-         toast.success("Appointment created successfully");
+         // Navigate back to appointments list
          router.push("/dashboard/appointments");
+         router.refresh(); // Force refresh the appointments list
       } catch (error: any) {
          console.error("Error creating appointment:", error);
-         const errorMessage = error.message || "Failed to create appointment";
-         toast.error(errorMessage);
+         toast.error(
+            error.response?.data?.message || "Failed to create appointment"
+         );
       } finally {
          setLoading(false);
       }
@@ -434,7 +421,6 @@ export default function AddAppointment() {
       if (!formData.serviceId) errors.serviceId = "Service is required";
       if (!formData.date) errors.date = "Date is required";
       if (!formData.time) errors.time = "Time is required";
-      if (!formData.duration) errors.duration = "Duration is required";
 
       // Date validation
       if (formData.date) {
@@ -457,11 +443,6 @@ export default function AddAppointment() {
          if (appointmentTime < now) {
             errors.time = "Cannot schedule appointments in the past";
          }
-      }
-
-      // Duration validation
-      if (formData.duration && isNaN(Number(formData.duration))) {
-         errors.duration = "Duration must be a number";
       }
 
       setFormErrors(errors);
@@ -845,37 +826,6 @@ export default function AddAppointment() {
                         </p>
                      )}
                   </div>
-               </div>
-
-               {/* Duration Selection */}
-               <div>
-                  <label
-                     className={`block mb-2 text-sm font-medium ${
-                        darkMode ? "text-gray-200" : "text-gray-700"
-                     }`}
-                  >
-                     Duration <span className="text-pink-500">*</span>
-                  </label>
-                  <input
-                     type="number"
-                     name="duration"
-                     value={formData.duration}
-                     onChange={handleChange}
-                     className={`w-full px-4 py-2 rounded-lg border focus:ring-1 focus:ring-gray-200 transition-colors ${
-                        darkMode
-                           ? "bg-gray-800 border-gray-700 text-white hover:bg-gray-700"
-                           : "bg-white border-gray-300 text-gray-900 hover:bg-gray-50"
-                     }`}
-                  />
-                  {formErrors.duration && (
-                     <p
-                        className={`mt-1 text-sm ${
-                           darkMode ? "text-red-400" : "text-red-500"
-                        }`}
-                     >
-                        {formErrors.duration}
-                     </p>
-                  )}
                </div>
 
                {/* Notes */}

@@ -36,20 +36,38 @@ export default function AddService() {
       setIsLoading(true);
 
       try {
-         await serviceAPI.createService({
-            name,
-            price,
-            duration,
-            description,
+         // Convert all values to strings and ensure they're not empty
+         if (!name.trim()) {
+            toast.error("Service name is required");
+            return;
+         }
+         if (!price) {
+            toast.error("Price is required");
+            return;
+         }
+         if (!duration) {
+            toast.error("Duration is required");
+            return;
+         }
+
+         const serviceData = {
+            name: name.trim(),
+            price: price.toString(),
+            duration: duration.toString(),
+            description: description.trim(),
             category: "General",
             isActive: true,
-         });
+         };
+
+         console.log("Creating service with data:", serviceData);
+         const response = await serviceAPI.createService(serviceData);
+         console.log("Service created successfully:", response);
 
          toast.success("Service added successfully");
          router.push("/dashboard/services");
-      } catch (error) {
+      } catch (error: any) {
          console.error("Error adding service:", error);
-         toast.error("Failed to add service");
+         toast.error(error.response?.data?.message || "Failed to add service");
       } finally {
          setIsLoading(false);
       }

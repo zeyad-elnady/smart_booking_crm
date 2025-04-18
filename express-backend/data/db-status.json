@@ -1,12 +1,1 @@
-<<<<<<< HEAD
-{"mode":"local","initialized":true,"lastStartup":"2025-04-16T23:39:50.428Z"}
-=======
-{
-  "startTime": "2025-04-17T01:05:30.870Z",
-  "success": false,
-  "mongoDBConnected": false,
-  "syncPerformed": false,
-  "stats": {},
-  "error": "MongoDB connection failed"
-}
->>>>>>> 60023dbf5f92b2e833fef396d8152fe06a4c156d
+{"mode":"hybrid","initialized":true,"lastStartup":"2025-04-18T13:23:34.033Z"}

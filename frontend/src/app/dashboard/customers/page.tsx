@@ -278,10 +278,10 @@ export default function Customers() {
                               </button>
                               <button
                                  onClick={() => handleDeleteClick(customer._id)}
-                                 className={`transition-colors px-3 py-1 rounded ${
+                                 className={`transition-colors ${
                                     darkMode
-                                       ? "text-red-400 hover:text-red-300 hover:bg-red-500/10"
-                                       : "text-red-600 hover:text-red-700 hover:bg-red-50"
+                                       ? "text-red-400 hover:text-red-300"
+                                       : "text-red-600 hover:text-red-700"
                                  }`}
                               >
                                  Delete

@@ -1,4 +1,5 @@
 import axios from "axios";
+import axiosInstance from "./axiosConfig";
 
 // Determine the correct hostname for API calls
 const getApiHost = () => {
@@ -346,14 +347,13 @@ export interface Customer extends CustomerData {
 
 // Appointment types
 export interface AppointmentData {
-   customer: string;
-   service: string;
-   date: string;
-   time: string;
-   duration: string;
-   notes?: string;
-   status?: "Pending" | "Confirmed" | "Canceled";
-   // Add optional info fields that can be used for fallback display
+   customer: string; // customer ID (required)
+   service: string; // service ID (required)
+   date: string; // required, will be converted to Date by axios interceptor
+   time: string; // required
+   duration: string; // required
+   notes?: string; // optional
+   status?: "Pending" | "Confirmed" | "Canceled"; // optional, defaults to "Pending"
    customerInfo?: {
       name: string;
       firstName: string;
@@ -364,13 +364,12 @@ export interface AppointmentData {
    };
 }
 
-export interface Appointment
-   extends Omit<AppointmentData, "customer" | "service"> {
+export interface Appointment extends AppointmentData {
    _id: string;
-   customer: Customer | string;
-   service: Service | string;
    createdAt?: string;
    updatedAt?: string;
+   pendingSync?: boolean; // For offline functionality
+   pendingDelete?: boolean; // For offline functionality
 }
 
 // Service API
@@ -382,26 +381,31 @@ export const serviceAPI = {
          return response.data;
       } catch (error) {
          console.error("Error fetching services:", error);
-         
+
          // If API call fails, try to get from localStorage
          const mockServices = localStorage.getItem("mockServices");
          if (mockServices) {
-            console.log("Using mock service data from localStorage:", mockServices.substring(0, 100) + "...");
+            console.log(
+               "Using mock service data from localStorage:",
+               mockServices.substring(0, 100) + "..."
+            );
             return JSON.parse(mockServices);
          }
-         
+
          throw error;
       }
    },
 
    getServiceById: async (id: string) => {
       try {
-         console.log(`Fetching service with ID ${id} from ${API.defaults.baseURL}/services/${id}`);
+         console.log(
+            `Fetching service with ID ${id} from ${API.defaults.baseURL}/services/${id}`
+         );
          const response = await API.get<Service>(`/services/${id}`);
          return response.data;
       } catch (error) {
          console.error(`Error fetching service ${id}:`, error);
-         
+
          // If API call fails, try to get from localStorage
          const mockServices = localStorage.getItem("mockServices");
          if (mockServices) {
@@ -412,75 +416,59 @@ export const serviceAPI = {
                return service;
             }
          }
-         
+
          throw error;
       }
    },
 
    createService: async (serviceData: ServiceData) => {
       try {
-         console.log("Creating service with data:", serviceData);
-         const response = await API.post<Service>("/services", serviceData);
-         
+         // Ensure all required fields are strings
+         const formattedData = {
+            ...serviceData,
+            name: String(serviceData.name).trim(),
+            description: String(serviceData.description).trim(),
+            duration: String(serviceData.duration),
+            price: String(serviceData.price),
+            category: String(serviceData.category).trim(),
+            isActive: Boolean(serviceData.isActive),
+         };
+
+         console.log("Creating service with formatted data:", formattedData);
+         const response = await API.post<Service>("/services", formattedData);
+         console.log("Service created successfully:", response.data);
+
          // Update local storage
          try {
-            console.log("Service created. Updating localStorage...");
             const mockServices = localStorage.getItem("mockServices");
             let services = [];
-            
             if (mockServices) {
                services = JSON.parse(mockServices);
             }
-            
-            const newService = {
-               ...response.data,
-               _id: response.data._id || `mock_${Date.now()}`,
-               createdAt: new Date().toISOString(),
-            };
-            
-            services.push(newService);
+            services.push(response.data);
             localStorage.setItem("mockServices", JSON.stringify(services));
-            console.log("Updated mockServices in localStorage. New count:", services.length);
          } catch (e) {
             console.error("Error updating localStorage:", e);
          }
-         
+
          return response.data;
-      } catch (error) {
-         console.error("Error creating service:", error);
-         
-         // If API call fails, save to localStorage
-         try {
-            console.log("API failed. Saving service to localStorage directly.");
-            const newService = {
-               ...serviceData,
-               _id: `mock_${Date.now()}`,
-               createdAt: new Date().toISOString(),
-            };
-            
-            const mockServices = localStorage.getItem("mockServices");
-            let services = [];
-            
-            if (mockServices) {
-               services = JSON.parse(mockServices);
-            }
-            
-            services.push(newService);
-            localStorage.setItem("mockServices", JSON.stringify(services));
-            console.log("Saved new service to localStorage. New count:", services.length);
-            
-            return newService;
-         } catch (e) {
-            console.error("Error saving to localStorage:", e);
-            throw error;
-         }
+      } catch (error: any) {
+         console.error("Error creating service:", {
+            error,
+            data: error.response?.data,
+            sentData: serviceData,
+         });
+         throw error;
       }
    },
 
    updateService: async (id: string, serviceData: Partial<ServiceData>) => {
       try {
-         const response = await API.put<Service>(`/services/${id}`, serviceData);
-         
+         const response = await API.put<Service>(
+            `/services/${id}`,
+            serviceData
+         );
+
          // Update local storage
          try {
             const mockServices = localStorage.getItem("mockServices");
@@ -493,17 +481,20 @@ export const serviceAPI = {
                      ...serviceData,
                      updatedAt: new Date().toISOString(),
                   };
-                  localStorage.setItem("mockServices", JSON.stringify(services));
+                  localStorage.setItem(
+                     "mockServices",
+                     JSON.stringify(services)
+                  );
                }
             }
          } catch (e) {
             console.error("Error updating localStorage:", e);
          }
-         
+
          return response.data;
       } catch (error) {
          console.error(`Error updating service ${id}:`, error);
-         
+
          // If API call fails, update localStorage
          try {
             const mockServices = localStorage.getItem("mockServices");
@@ -516,7 +507,10 @@ export const serviceAPI = {
                      ...serviceData,
                      updatedAt: new Date().toISOString(),
                   };
-                  localStorage.setItem("mockServices", JSON.stringify(services));
+                  localStorage.setItem(
+                     "mockServices",
+                     JSON.stringify(services)
+                  );
                   return services[index];
                }
             }
@@ -531,35 +525,45 @@ export const serviceAPI = {
    deleteService: async (id: string) => {
       try {
          const response = await API.delete(`/services/${id}`);
-         
+
          // Update local storage
          try {
             const mockServices = localStorage.getItem("mockServices");
             if (mockServices) {
                const services = JSON.parse(mockServices);
-               const updatedServices = services.filter((s: Service) => s._id !== id);
-               localStorage.setItem("mockServices", JSON.stringify(updatedServices));
+               const updatedServices = services.filter(
+                  (s: Service) => s._id !== id
+               );
+               localStorage.setItem(
+                  "mockServices",
+                  JSON.stringify(updatedServices)
+               );
             }
          } catch (e) {
             console.error("Error updating localStorage:", e);
          }
-         
+
          return response.data;
       } catch (error) {
          console.error(`Error deleting service ${id}:`, error);
-         
+
          // If API call fails, update localStorage
          try {
             const mockServices = localStorage.getItem("mockServices");
             if (mockServices) {
                const services = JSON.parse(mockServices);
-               const updatedServices = services.filter((s: Service) => s._id !== id);
-               localStorage.setItem("mockServices", JSON.stringify(updatedServices));
+               const updatedServices = services.filter(
+                  (s: Service) => s._id !== id
+               );
+               localStorage.setItem(
+                  "mockServices",
+                  JSON.stringify(updatedServices)
+               );
             }
          } catch (e) {
             console.error("Error updating localStorage:", e);
          }
-         
+
          throw error;
       }
    },
@@ -580,7 +584,10 @@ export const customerAPI = {
          // If API call fails, try to get from localStorage
          const mockCustomers = localStorage.getItem("mockCustomers");
          if (mockCustomers) {
-            console.log("Using mock customer data from localStorage:", mockCustomers.substring(0, 100) + "...");
+            console.log(
+               "Using mock customer data from localStorage:",
+               mockCustomers.substring(0, 100) + "..."
+            );
             return JSON.parse(mockCustomers);
          }
 
@@ -622,21 +629,23 @@ export const customerAPI = {
             console.log("Customer created. Updating localStorage...");
             const mockCustomers = localStorage.getItem("mockCustomers");
             let customers = [];
-            
+
             if (mockCustomers) {
                customers = JSON.parse(mockCustomers);
             }
-            
+
             const newCustomer = {
                ...response.data,
                _id: response.data._id || `mock_${Date.now()}`,
                createdAt: new Date().toISOString(),
             };
-            
+
             customers.push(newCustomer);
             localStorage.setItem("mockCustomers", JSON.stringify(customers));
-            console.log("Updated mockCustomers in localStorage. New count:", customers.length);
-
+            console.log(
+               "Updated mockCustomers in localStorage. New count:",
+               customers.length
+            );
          } catch (e) {
             console.error("Error updating local storage:", e);
          }
@@ -647,7 +656,9 @@ export const customerAPI = {
 
          // If API call fails, save to localStorage
          try {
-            console.log("API failed. Saving customer to localStorage directly.");
+            console.log(
+               "API failed. Saving customer to localStorage directly."
+            );
             const newCustomer = {
                ...data,
                _id: `mock_${Date.now()}`,
@@ -656,14 +667,17 @@ export const customerAPI = {
 
             const mockCustomers = localStorage.getItem("mockCustomers");
             let customers = [];
-            
+
             if (mockCustomers) {
                customers = JSON.parse(mockCustomers);
             }
-            
+
             customers.push(newCustomer);
             localStorage.setItem("mockCustomers", JSON.stringify(customers));
-            console.log("Saved new customer to localStorage. New count:", customers.length);
+            console.log(
+               "Saved new customer to localStorage. New count:",
+               customers.length
+            );
 
             return newCustomer;
          } catch (e) {
@@ -758,11 +772,57 @@ export const appointmentAPI = {
    },
 
    createAppointment: async (appointmentData: AppointmentData) => {
-      const response = await API.post<Appointment>(
-         "/appointments",
-         appointmentData
-      );
-      return response.data;
+      try {
+         // Log the data being sent
+         console.log("Creating appointment with data:", {
+            ...appointmentData,
+            date: new Date(appointmentData.date).toISOString(),
+         });
+
+         // Validate required fields
+         if (!appointmentData.customer) throw new Error("Customer is required");
+         if (!appointmentData.service) throw new Error("Service is required");
+         if (!appointmentData.date) throw new Error("Date is required");
+         if (!appointmentData.time) throw new Error("Time is required");
+         if (!appointmentData.duration) throw new Error("Duration is required");
+
+         // Format the data
+         const formattedData = {
+            ...appointmentData,
+            date: new Date(appointmentData.date).toISOString(),
+         };
+
+         // Make the API call
+         const response = await API.post<Appointment>(
+            "/appointments",
+            formattedData
+         );
+
+         // Log successful response
+         console.log("Appointment created successfully:", response.data);
+
+         return response.data;
+      } catch (error) {
+         // Enhanced error logging
+         if (axios.isAxiosError(error)) {
+            console.error("Appointment creation failed:", {
+               status: error.response?.status,
+               statusText: error.response?.statusText,
+               data: error.response?.data,
+               config: {
+                  url: error.config?.url,
+                  method: error.config?.method,
+                  data: error.config?.data,
+               },
+            });
+         } else {
+            console.error(
+               "Non-Axios error during appointment creation:",
+               error
+            );
+         }
+         throw error;
+      }
    },
 
    updateAppointment: async (
@@ -1061,3 +1121,131 @@ export const dashboardAPI = {
 };
 
 export default API;
+
+export const createAppointment = async (
+   appointmentData: AppointmentData
+): Promise<Appointment> => {
+   try {
+      const response = await axiosInstance.post<Appointment>(
+         "/appointments",
+         appointmentData
+      );
+      return response.data;
+   } catch (error) {
+      console.error("Error creating appointment:", error);
+      throw error;
+   }
+};
+
+export const updateAppointment = async (
+   id: string,
+   appointment: Partial<Appointment>
+): Promise<Appointment> => {
+   try {
+      const response = await axiosInstance.put(
+         `/appointments/${id}`,
+         appointment
+      );
+      return response.data;
+   } catch (error) {
+      throw error;
+   }
+};
+
+export const deleteAppointment = async (id: string): Promise<void> => {
+   try {
+      await axiosInstance.delete(`/appointments/${id}`);
+   } catch (error) {
+      throw error;
+   }
+};
+
+export const getAppointments = async (): Promise<Appointment[]> => {
+   try {
+      const response = await axiosInstance.get("/appointments");
+      return response.data;
+   } catch (error) {
+      throw error;
+   }
+};
+
+export const getAppointmentById = async (id: string): Promise<Appointment> => {
+   try {
+      const response = await axiosInstance.get(`/appointments/${id}`);
+      return response.data;
+   } catch (error) {
+      throw error;
+   }
+};
+
+export const testConnections = async () => {
+   try {
+      console.log("Testing API and database connections...");
+
+      try {
+         // Test basic API connection
+         console.log("Testing basic API connection...");
+         const baseResponse = await axiosInstance.get(
+            "/services/test-connection"
+         );
+         console.log("Basic connection test successful:", baseResponse.data);
+
+         try {
+            // Test service creation with exact required fields
+            const testService = {
+               name: "Test Service",
+               description: "Test service description",
+               duration: "30",
+               price: "50.00",
+               category: "Test",
+               isActive: true,
+            };
+
+            console.log("Creating test service with data:", testService);
+            const createResponse = await axiosInstance.post(
+               "/services",
+               testService
+            );
+            console.log("Service creation successful:", createResponse.data);
+
+            return {
+               success: true,
+               apiConnection: baseResponse.data,
+               serviceCreation: createResponse.data,
+            };
+         } catch (serviceError: any) {
+            console.error("Service creation failed:", {
+               error: serviceError,
+               response: serviceError.response?.data,
+               data: serviceError.response?.data?.receivedData,
+            });
+            return {
+               success: false,
+               apiConnection: baseResponse.data,
+               error:
+                  serviceError.response?.data?.message ||
+                  "Service creation failed",
+               receivedData: serviceError.response?.data?.receivedData,
+            };
+         }
+      } catch (apiError: any) {
+         console.error("API connection test failed:", {
+            error: apiError,
+            response: apiError.response?.data,
+         });
+         return {
+            success: false,
+            error:
+               apiError.response?.data?.message || "API connection test failed",
+            status: apiError.response?.status,
+            details: apiError.response?.data,
+         };
+      }
+   } catch (error: any) {
+      console.error("Connection test failed:", error);
+      return {
+         success: false,
+         error: error.message || "Unknown error occurred",
+      };
+   }
+};

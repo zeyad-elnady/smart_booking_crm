@@ -1,126 +1,202 @@
-import API from "./api";
-import { AppointmentData, Appointment } from "./api";
+import axios from "../services/axiosConfig";
+import { Appointment, AppointmentData } from "./api";
+import { indexedDBService } from "./indexedDB";
+import { toast } from "react-hot-toast";
+
+// Helper function to generate a unique ID
+const generateId = () =>
+   `local_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+
+// Helper function to check internet connection
+const isOnline = (): boolean => navigator.onLine;
 
 /**
- * Fetches all appointments
- * @returns Array of appointments
+ * Fetches all appointments from IndexedDB
  */
-export const fetchAppointments = async () => {
+export const fetchAppointments = async (): Promise<Appointment[]> => {
    try {
-      const response = await API.get<Appointment[]>("/appointments");
-      return response.data;
-   } catch (error) {
-      console.error("Error fetching appointments:", error);
+      // Try to fetch from server first if online
+      if (navigator.onLine) {
+         try {
+            const response = await axios.get("/appointments");
+            const serverAppointments = response.data;
 
-      // Use mock data if API call fails
-      if (typeof localStorage !== "undefined") {
-         const mockData = localStorage.getItem("mockAppointments");
-         if (mockData) {
-            console.warn("Using mock appointment data from localStorage");
-            return JSON.parse(mockData);
+            // Update IndexedDB with server data
+            for (const appointment of serverAppointments) {
+               await indexedDBService.saveAppointment(appointment);
+            }
+
+            return serverAppointments;
+         } catch (serverError) {
+            console.error(
+               "Error fetching from server, falling back to IndexedDB:",
+               serverError
+            );
          }
       }
 
+      // Fallback to IndexedDB
+      return await indexedDBService.getAllAppointments();
+   } catch (error) {
+      console.error("Error fetching appointments:", error);
       throw error;
    }
 };
 
 /**
- * Creates a new appointment
- * @param appointmentData The appointment data to create
- * @returns The created appointment
+ * Creates a new appointment in IndexedDB
  */
 export const createAppointment = async (
    appointmentData: AppointmentData
 ): Promise<Appointment> => {
    try {
-      console.log("Creating appointment with data:", appointmentData);
-      const response = await API.post<Appointment>(
-         "/appointments",
-         appointmentData
-      );
-      console.log("Appointment created successfully:", response.data);
-      return response.data;
-   } catch (error: any) {
-      console.error("Error creating appointment:", error);
+      // Generate a temporary ID for offline functionality
+      const tempId = `temp_${Date.now()}`;
 
-      // Handle specific error cases
-      if (error.code === "ECONNABORTED") {
-         throw new Error(
-            "Connection timeout. Server may be down or overloaded."
-         );
-      } else if (
-         error.message.includes("Network Error") ||
-         error.message.includes("connect") ||
-         error.message.includes("ECONNREFUSED")
-      ) {
-         throw new Error(
-            "Network error. Please check if backend server is running."
-         );
+      // Create the appointment object with offline sync flags
+      const appointment: Appointment = {
+         ...appointmentData,
+         _id: tempId,
+         pendingSync: true,
+         pendingDelete: false,
+      };
+
+      // Store in IndexedDB for offline functionality
+      await indexedDBService.saveAppointment(appointment);
+
+      // If online, sync with server immediately
+      if (navigator.onLine) {
+         try {
+            const serverResponse = await axios.post(
+               "/appointments",
+               appointmentData
+            );
+            const serverAppointment = serverResponse.data;
+
+            // Update the local appointment with server data
+            await indexedDBService.deleteAppointment(tempId);
+            await indexedDBService.saveAppointment({
+               ...serverAppointment,
+               pendingSync: false,
+               pendingDelete: false,
+            });
+
+            toast.success("Appointment created and synced with server");
+            return serverAppointment;
+         } catch (serverError) {
+            console.error("Error syncing with server:", serverError);
+            // Keep the local version if server sync fails
+            toast.error("Created locally, will sync when online");
+            return appointment;
+         }
       }
 
-      // If there's a specific error message from the server, use it
-      if (error.response?.data?.message) {
-         throw new Error(error.response.data.message);
-      }
-
-      throw error;
-   }
-};
-
-/**
- * Fetches a specific appointment by ID
- * @param id The appointment ID
- * @returns The appointment data
- */
-export const fetchAppointmentById = async (
-   id: string
-): Promise<Appointment> => {
-   try {
-      const response = await API.get<Appointment>(`/appointments/${id}`);
-      return response.data;
+      toast.success("Appointment created locally");
+      return appointment;
    } catch (error) {
-      console.error(`Error fetching appointment ${id}:`, error);
+      console.error("Error creating appointment:", error);
+      toast.error("Failed to create appointment");
       throw error;
    }
 };
 
 /**
- * Updates an existing appointment
- * @param id The appointment ID
- * @param appointmentData The updated appointment data
- * @returns The updated appointment
+ * Updates an existing appointment in IndexedDB
  */
 export const updateAppointment = async (
    id: string,
-   appointmentData: Partial<AppointmentData>
+   appointmentData: Partial<Appointment>
 ): Promise<Appointment> => {
    try {
-      const response = await API.put<Appointment>(
-         `/appointments/${id}`,
-         appointmentData
-      );
-      return response.data;
+      const existingAppointment = await indexedDBService.getAppointmentById(id);
+      if (!existingAppointment) {
+         throw new Error("Appointment not found");
+      }
+
+      const updatedAppointment: Appointment = {
+         ...existingAppointment,
+         ...appointmentData,
+         pendingSync: true,
+      };
+
+      await indexedDBService.saveAppointment(updatedAppointment);
+      toast.success("Appointment updated locally");
+      return updatedAppointment;
    } catch (error) {
-      console.error(`Error updating appointment ${id}:`, error);
+      console.error("Error updating appointment in IndexedDB:", error);
       throw error;
    }
 };
 
 /**
- * Deletes an appointment
- * @param id The appointment ID
- * @returns The deletion response
+ * Deletes an appointment from IndexedDB
  */
 export const deleteAppointment = async (id: string): Promise<void> => {
    try {
-      const response = await API.delete(`/appointments/${id}`);
-      return response.data;
+      const appointment = await indexedDBService.getAppointmentById(id);
+      if (!appointment) {
+         throw new Error("Appointment not found");
+      }
+
+      // If it's a local appointment that hasn't been synced, delete it directly
+      if (appointment._id.startsWith("local_")) {
+         await indexedDBService.deleteAppointment(id);
+      } else {
+         // For server-synced appointments, mark for deletion
+         await indexedDBService.saveAppointment({
+            ...appointment,
+            pendingDelete: true,
+            pendingSync: true,
+         });
+      }
+
+      toast.success("Appointment deleted locally");
    } catch (error) {
-      console.error(`Error deleting appointment ${id}:`, error);
+      console.error("Error deleting appointment from IndexedDB:", error);
       throw error;
    }
 };
+
+/**
+ * Fetches a specific appointment by ID from IndexedDB
+ */
+export const fetchAppointmentById = async (
+   id: string
+): Promise<Appointment | null> => {
+   try {
+      return await indexedDBService.getAppointmentById(id);
+   } catch (error) {
+      console.error("Error fetching appointment from IndexedDB:", error);
+      throw error;
+   }
+};
+
+/**
+ * Syncs local appointments with the server when online
+ * This function would be called when internet connection is restored
+ * or when user explicitly requests a sync
+ */
+export const syncAppointments = async (): Promise<void> => {
+   // This function would be implemented later when server sync is needed
+   // It would handle:
+   // 1. Uploading appointments with pendingSync = true
+   // 2. Deleting appointments with pendingDelete = true
+   // 3. Updating local appointments with server responses
+   // 4. Handling conflicts
+};
+
+// Add event listeners for online/offline status
+if (typeof window !== "undefined") {
+   window.addEventListener("online", () => {
+      toast.success("Internet connection restored");
+      // Could trigger sync here if desired
+      // syncAppointments();
+   });
+
+   window.addEventListener("offline", () => {
+      toast.error("Working offline - changes will be saved locally");
+   });
+}
 
 /**
  * Fetches recent appointments
@@ -128,7 +204,7 @@ export const deleteAppointment = async (id: string): Promise<void> => {
  */
 export const fetchRecentAppointments = async () => {
    try {
-      const response = await API.get("/appointments/recent");
+      const response = await axios.get("/appointments/recent");
       return response.data;
    } catch (error) {
       console.error("Error fetching recent appointments:", error);

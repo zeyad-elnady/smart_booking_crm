@@ -3,8 +3,46 @@
 import { useState, useEffect } from "react";
 import { PlusIcon } from "@heroicons/react/24/outline";
 import Link from "next/link";
-import { serviceAPI, Service } from "@/services/api";
+import { serviceAPI, Service, testConnections } from "@/services/api";
 import { useTheme } from "@/components/ThemeProvider";
+import { toast } from "react-hot-toast";
+
+const TestConnectionButton = () => {
+   const { darkMode } = useTheme();
+   const [testing, setTesting] = useState(false);
+
+   const handleTest = async () => {
+      try {
+         setTesting(true);
+         const result = await testConnections();
+         console.log("Connection test results:", result);
+         if (result.success) {
+            toast.success("All connections working properly!");
+         } else {
+            toast.error(`Connection test failed: ${result.error}`);
+         }
+      } catch (error) {
+         console.error("Test failed:", error);
+         toast.error("Connection test failed");
+      } finally {
+         setTesting(false);
+      }
+   };
+
+   return (
+      <button
+         onClick={handleTest}
+         disabled={testing}
+         className={`px-4 py-2 rounded-lg text-sm font-semibold shadow-sm transition-all ${
+            darkMode
+               ? "bg-purple-600 text-white hover:bg-purple-700 disabled:bg-purple-400"
+               : "bg-white text-gray-900 border border-gray-300 hover:bg-gray-50 disabled:bg-gray-100"
+         }`}
+      >
+         {testing ? "Testing..." : "Test Connections"}
+      </button>
+   );
+};
 
 export default function Services() {
    const [services, setServices] = useState<Service[]>([]);
@@ -116,10 +154,11 @@ export default function Services() {
                   pricing and duration.
                </p>
             </div>
-            <div className="mt-4 sm:ml-16 sm:mt-0 sm:flex-none">
+            <div className="mt-4 sm:ml-16 sm:mt-0 sm:flex-none space-x-4">
+               <TestConnectionButton />
                <Link
                   href="/dashboard/services/add"
-                  className={`block rounded-lg px-4 py-2 text-center text-sm font-semibold shadow-sm transition-all hover:scale-105 flex items-center ${
+                  className={`inline-block rounded-lg px-4 py-2 text-center text-sm font-semibold shadow-sm transition-all hover:scale-105 ${
                      darkMode
                         ? "bg-purple-600 text-white hover:bg-purple-700"
                         : "bg-white text-gray-900 border border-gray-300 hover:bg-gray-50"
