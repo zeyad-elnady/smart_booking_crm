@@ -1,126 +1,115 @@
 # Smart Booking CRM
 
-A modern, responsive appointment and service booking system built with Next.js, React, and Express.js.
-
-## Project Structure
-
-This project consists of two main parts:
-
-1. **Frontend**: A Next.js application with a modern dark glassmorphism UI
-2. **Backend**: An Express.js API with MongoDB database for data storage
+A modern CRM system for managing appointments, customers, and services.
 
 ## Features
 
-- User authentication and authorization
-- Service management (create, read, update, delete)
-- Customer management
-- Appointment scheduling and management
-- Dark theme with glassmorphism design
-- Responsive layout for all devices
-
-## Getting Started
-
-### Prerequisites
-
-- Node.js (v14 or higher)
-- npm or yarn
-
-### Running the Backend
-
-1. Navigate to the backend directory:
-   ```
-   cd express-backend
-   ```
-
-2. Install dependencies:
-   ```
-   npm install
-   ```
-
-3. Create a `.env` file with the following content:
-   ```
-   PORT=5000
-   JWT_SECRET=your_jwt_secret_should_be_changed_in_production
-   NODE_ENV=development
-   ```
-
-4. Start the development server:
-   ```
-   npm run dev
-   ```
-
-The backend API will be available at http://localhost:5000
-
-### Running the Frontend
-
-1. Navigate to the frontend directory:
-   ```
-   cd frontend
-   ```
-
-2. Install dependencies:
-   ```
-   npm install
-   ```
-
-3. Start the development server:
-   ```
-   npm run dev
-   ```
-
-The frontend application will be available at http://localhost:3000
-
-## API Endpoints
-
-### Authentication
-- `POST /api/users` - Register a new user
-- `POST /api/users/login` - User login
-- `GET /api/users/profile` - Get user profile (protected)
-- `PUT /api/users/profile` - Update user profile (protected)
-
-### Services
-- `GET /api/services` - Get all services
-- `GET /api/services/:id` - Get a service by ID
-- `POST /api/services` - Create a new service (protected)
-- `PUT /api/services/:id` - Update a service (protected)
-- `DELETE /api/services/:id` - Delete a service (protected)
-
-### Customers
-- `GET /api/customers` - Get all customers (protected)
-- `GET /api/customers/:id` - Get a customer by ID (protected)
-- `POST /api/customers` - Create a new customer (protected)
-- `PUT /api/customers/:id` - Update a customer (protected)
-- `DELETE /api/customers/:id` - Delete a customer (protected)
-
-### Appointments
-- `GET /api/appointments` - Get all appointments (protected)
-- `GET /api/appointments/:id` - Get an appointment by ID (protected)
-- `POST /api/appointments` - Create a new appointment (protected)
-- `PUT /api/appointments/:id` - Update an appointment (protected)
-- `DELETE /api/appointments/:id` - Delete an appointment (protected)
+-  Customer Management
+-  Appointment Scheduling
+-  Service Management
+-  Dashboard with Analytics
+-  Offline Support
+-  Real-time Notifications
 
 ## Tech Stack
 
 ### Frontend
-- Next.js
-- React
-- TypeScript
-- Axios
-- Tailwind CSS
+
+-  Next.js 14
+-  TypeScript
+-  Tailwind CSS
+-  IndexedDB for offline storage
+-  React Query for data fetching
 
 ### Backend
-- Express.js
-- Local JSON File Storage
-- JWT Authentication
-- bcrypt for password hashing
 
-## Diagnostic Tools
+-  Node.js
+-  Express.js
+-  MongoDB
+-  JWT Authentication
 
-This project includes a diagnostic page available at `/diagnostic` that helps troubleshoot:
-- API connection issues
-- System information
-- Browser compatibility
+## Prerequisites
+
+-  Node.js (v18 or higher)
+-  MongoDB (v5 or higher)
+-  npm or yarn
+
+## Setup Instructions
+
+1. Clone the repository:
+
+```bash
+git clone <repository-url>
+cd smart-booking-crm
+```
+
+2. Install dependencies:
+
+```bash
+# Install backend dependencies
+cd express-backend
+npm install
+
+# Install frontend dependencies
+cd ../frontend
+npm install
+```
+
+3. Configure environment variables:
+
+   -  Copy `.env.example` to `.env` in both frontend and backend directories
+   -  Update the variables as needed
+
+4. Start MongoDB:
+
+```bash
+mongod
+```
+
+5. Start the backend server:
+
+```bash
+cd express-backend
+npm run dev
+```
+
+6. Start the frontend development server:
+
+```bash
+cd frontend
+npm run dev
+```
+
+7. Access the application:
+   -  Frontend: http://localhost:3000
+   -  Backend API: http://localhost:5000
+
+## Development
+
+-  Backend runs on port 5000
+-  Frontend runs on port 3000
+-  MongoDB runs on default port 27017
+
+## Testing
+
+```bash
+# Run backend tests
+cd express-backend
+npm test
+
+# Run frontend tests
+cd frontend
+npm test
+```
+
+## Contributing
+
+1. Fork the repository
+2. Create your feature branch
+3. Commit your changes
+4. Push to the branch
+5. Create a new Pull Request
 
 ## License
 
-This project is created for educational purposes.
+This project is licensed under the MIT License.
