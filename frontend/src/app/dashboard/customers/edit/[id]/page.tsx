@@ -2,19 +2,20 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowLeftIcon, ChevronDownIcon } from "@heroicons/react/24/outline";
+import { ArrowLeftIcon } from "@heroicons/react/24/outline";
 import { customerAPI } from "@/services/api";
 import React from "react";
 
-interface PageParams {
+type Props = {
    params: {
       id: string;
    };
-}
+   searchParams: { [key: string]: string | string[] | undefined };
+};
 
-export default function EditCustomer({ params }: PageParams) {
+export default function EditCustomer({ params, searchParams }: Props) {
    const router = useRouter();
-   const id = params.id;
+   const { id } = params;
 
    const [formData, setFormData] = useState({
       firstName: "",
