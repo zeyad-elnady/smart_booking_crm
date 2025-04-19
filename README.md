@@ -28,61 +28,74 @@ A modern CRM system for managing appointments, customers, and services.
 -  MongoDB
 -  JWT Authentication
 
-## Prerequisites
+## Quick Start Guide
+
+### Prerequisites
 
 -  Node.js (v18 or higher)
 -  MongoDB (v5 or higher)
 -  npm or yarn
 
-## Setup Instructions
-
-1. Clone the repository:
+### Step 1: Clone and Setup
 
 ```bash
+# Clone the repository
 git clone <repository-url>
 cd smart-booking-crm
+
+# Run the setup script
+npm run setup
 ```
 
-2. Install dependencies:
+This will:
+
+-  Check your Node.js version
+-  Create necessary .env files
+-  Install all dependencies for frontend and backend
+
+### Step 2: Fix MongoDB Connection Issue (Important!)
+
+If you encounter crashes or database connection issues, run:
 
 ```bash
-# Install backend dependencies
 cd express-backend
-npm install
-
-# Install frontend dependencies
-cd ../frontend
-npm install
+npm run fix-mongodb
 ```
 
-3. Configure environment variables:
+This will fix a known issue with the MongoDB connection handling.
 
-   -  Copy `.env.example` to `.env` in both frontend and backend directories
-   -  Update the variables as needed
+### Step 3: Start the Application
 
-4. Start MongoDB:
+1. Start MongoDB:
 
 ```bash
 mongod
 ```
 
-5. Start the backend server:
+2. Start the application (this will start both frontend and backend):
 
 ```bash
-cd express-backend
 npm run dev
 ```
 
-6. Start the frontend development server:
+3. Access the application:
 
-```bash
-cd frontend
-npm run dev
-```
+-  Frontend: http://localhost:3000
+-  Backend API: http://localhost:5000
 
-7. Access the application:
-   -  Frontend: http://localhost:3000
-   -  Backend API: http://localhost:5000
+## Troubleshooting
+
+If you encounter any issues:
+
+1. Make sure MongoDB is running
+2. Check if all environment variables are set correctly
+3. Ensure all dependencies are installed
+4. Check if ports 3000 and 5000 are available
+5. Run the fix-mongodb script if you have database connection issues
+
+## Need Help?
+
+Contact the development team for assistance.
 
 ## Development
 
