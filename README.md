@@ -33,7 +33,7 @@ A modern CRM system for managing appointments, customers, and services.
 ### Prerequisites
 
 -  Node.js (v18 or higher)
--  MongoDB (v5 or higher)
+-  MongoDB (v5 or higher) - Optional, the app will work without it
 -  npm or yarn
 
 ### Step 1: Clone and Setup
@@ -51,22 +51,13 @@ This will:
 
 -  Check your Node.js version
 -  Create necessary .env files
+-  Fix MongoDB connection issues
+-  Set up local data storage
 -  Install all dependencies for frontend and backend
 
-### Step 2: Fix MongoDB Connection Issue (Important!)
+### Step 2: Start the Application
 
-If you encounter crashes or database connection issues, run:
-
-```bash
-cd express-backend
-npm run fix-mongodb
-```
-
-This will fix a known issue with the MongoDB connection handling.
-
-### Step 3: Start the Application
-
-1. Start MongoDB:
+1. (Optional) Start MongoDB if you want to use it:
 
 ```bash
 mongod
@@ -83,15 +74,22 @@ npm run dev
 -  Frontend: http://localhost:3000
 -  Backend API: http://localhost:5000
 
+## Data Storage
+
+The application uses a hybrid storage approach:
+
+-  If MongoDB is available, it will use MongoDB for data storage
+-  If MongoDB is not available, it will automatically fall back to local file storage
+-  Local data is stored in the `express-backend/data` directory
+
 ## Troubleshooting
 
 If you encounter any issues:
 
-1. Make sure MongoDB is running
-2. Check if all environment variables are set correctly
-3. Ensure all dependencies are installed
-4. Check if ports 3000 and 5000 are available
-5. Run the fix-mongodb script if you have database connection issues
+1. Make sure all dependencies are installed
+2. Check if ports 3000 and 5000 are available
+3. If you have database issues, the app will automatically use local storage
+4. Check the console for error messages
 
 ## Need Help?
 
