@@ -4,18 +4,13 @@ import { useState, useEffect } from "react";
 import { authAPI } from "@/services/api";
 import { MoonIcon, SunIcon } from "@heroicons/react/24/outline";
 import { useTheme } from "@/components/ThemeProvider";
+import { Switch } from "@headlessui/react";
+import { toast } from "react-hot-toast";
 
 interface User {
    email: string;
    name: string;
    businessName: string;
-}
-
-interface BusinessHour {
-   day: string;
-   open: string;
-   close: string;
-   isOpen: boolean;
 }
 
 type NotificationType = "email" | "appointment" | "marketing";
@@ -43,23 +38,12 @@ export default function Settings() {
       useState<boolean>(true);
    const [marketingEmails, setMarketingEmails] = useState<boolean>(false);
 
-   // Business hours
-   const [businessHours, setBusinessHours] = useState<BusinessHour[]>([
-      { day: "Monday", open: "09:00", close: "17:00", isOpen: true },
-      { day: "Tuesday", open: "09:00", close: "17:00", isOpen: true },
-      { day: "Wednesday", open: "09:00", close: "17:00", isOpen: true },
-      { day: "Thursday", open: "09:00", close: "17:00", isOpen: true },
-      { day: "Friday", open: "09:00", close: "17:00", isOpen: true },
-      { day: "Saturday", open: "10:00", close: "15:00", isOpen: true },
-      { day: "Sunday", open: "10:00", close: "15:00", isOpen: false },
-   ]);
-
    useEffect(() => {
       // Get current user from localStorage
       const currentUser = authAPI.getCurrentUser();
       if (currentUser) {
          setUser(currentUser as User);
-         setEditedUser(currentUser as User); // Initialize edited user with current values
+         setEditedUser(currentUser as User);
       }
 
       // Load saved service link if exists
@@ -90,19 +74,6 @@ export default function Settings() {
          setMarketingEmails(savedMarketingEmails === "true");
       }
 
-      // Load saved business hours if exists
-      const savedBusinessHours = localStorage.getItem("businessHours");
-      if (savedBusinessHours) {
-         try {
-            const parsedHours = JSON.parse(savedBusinessHours);
-            if (Array.isArray(parsedHours)) {
-               setBusinessHours(parsedHours);
-            }
-         } catch (error) {
-            console.error("Error parsing business hours:", error);
-         }
-      }
-
       setLoading(false);
    }, []);
 
@@ -113,6 +84,7 @@ export default function Settings() {
          localStorage.setItem("serviceChoice", "yes");
          setHasServiceLink(true);
          setSaveSuccess(true);
+         toast.success("Service link saved successfully!");
 
          // Clear success message after 3 seconds
          setTimeout(() => setSaveSuccess(false), 3000);
@@ -148,26 +120,9 @@ export default function Settings() {
       }
    };
 
-   const updateBusinessHours = (
-      index: number,
-      field: keyof BusinessHour,
-      value: string | boolean
-   ) => {
-      const updatedHours = [...businessHours];
-
-      if (field === "isOpen") {
-         updatedHours[index].isOpen = value as boolean;
-      } else {
-         updatedHours[index][field] = value as string;
-      }
-
-      setBusinessHours(updatedHours);
-      localStorage.setItem("businessHours", JSON.stringify(updatedHours));
-   };
-
    const handleSignOut = () => {
       authAPI.logout();
-      window.location.href = "/login";
+      toast.success("Signed out successfully!");
    };
 
    // Handle editing and saving user information
@@ -534,123 +489,6 @@ export default function Settings() {
                      ></div>
                   </label>
                </div>
-            </div>
-         </div>
-
-         <div
-            className={`p-6 rounded-lg ${
-               darkMode ? "glass-dark" : "glass-light"
-            }`}
-         >
-            <h2
-               className={`text-xl font-semibold mb-4 ${
-                  darkMode ? "text-white" : "text-gray-800"
-               }`}
-            >
-               Business Hours
-            </h2>
-            <p
-               className={`mb-4 ${
-                  darkMode ? "text-gray-300" : "text-gray-600"
-               }`}
-            >
-               Set your regular business hours
-            </p>
-
-            <div className="space-y-4">
-               {businessHours.map((daySchedule, index) => (
-                  <div
-                     key={daySchedule.day}
-                     className={`flex flex-wrap gap-3 items-center py-2 border-b ${
-                        darkMode ? "border-gray-700" : "border-gray-200"
-                     }`}
-                  >
-                     <div className="w-28">
-                        <h3
-                           className={`font-medium ${
-                              darkMode ? "text-white" : "text-gray-800"
-                           }`}
-                        >
-                           {daySchedule.day}
-                        </h3>
-                     </div>
-
-                     <label className="relative inline-flex items-center cursor-pointer">
-                        <input
-                           type="checkbox"
-                           className="sr-only peer"
-                           checked={daySchedule.isOpen}
-                           onChange={(e) =>
-                              updateBusinessHours(
-                                 index,
-                                 "isOpen",
-                                 e.target.checked
-                              )
-                           }
-                        />
-                        <div
-                           className={`w-12 h-6 rounded-full transition-all duration-300 ease-in-out ${
-                              darkMode
-                                 ? "bg-gray-700 shadow-inner"
-                                 : "bg-gray-200 shadow-inner"
-                           } peer peer-checked:after:translate-x-6 peer-checked:after:border-white peer-checked:shadow-lg after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-0 after:shadow-md after:rounded-full after:h-5 after:w-5 after:transition-all after:duration-300 after:ease-in-out peer-checked:bg-indigo-600`}
-                        ></div>
-                        <span
-                           className={`ml-2 text-sm ${
-                              darkMode ? "text-gray-300" : "text-gray-600"
-                           }`}
-                        >
-                           {daySchedule.isOpen ? "Open" : "Closed"}
-                        </span>
-                     </label>
-
-                     {daySchedule.isOpen && (
-                        <>
-                           <div className="flex items-center gap-2">
-                              <input
-                                 type="time"
-                                 value={daySchedule.open}
-                                 onChange={(e) =>
-                                    updateBusinessHours(
-                                       index,
-                                       "open",
-                                       e.target.value
-                                    )
-                                 }
-                                 className={`px-2 py-1 border rounded-md text-sm ${
-                                    darkMode
-                                       ? "bg-gray-800/50 border-gray-700 text-white"
-                                       : "bg-white border-gray-300 text-gray-800"
-                                 }`}
-                              />
-                              <span
-                                 className={
-                                    darkMode ? "text-gray-400" : "text-gray-500"
-                                 }
-                              >
-                                 to
-                              </span>
-                              <input
-                                 type="time"
-                                 value={daySchedule.close}
-                                 onChange={(e) =>
-                                    updateBusinessHours(
-                                       index,
-                                       "close",
-                                       e.target.value
-                                    )
-                                 }
-                                 className={`px-2 py-1 border rounded-md text-sm ${
-                                    darkMode
-                                       ? "bg-gray-800/50 border-gray-700 text-white"
-                                       : "bg-white border-gray-300 text-gray-800"
-                                 }`}
-                              />
-                           </div>
-                        </>
-                     )}
-                  </div>
-               ))}
             </div>
          </div>
 

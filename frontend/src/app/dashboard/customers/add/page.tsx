@@ -22,71 +22,31 @@ export default function AddCustomer() {
    const [firstName, setFirstName] = useState("");
    const [lastName, setLastName] = useState("");
    const [email, setEmail] = useState("");
-   const [countryCode, setCountryCode] = useState("+1");
    const [phone, setPhone] = useState("");
    const [address, setAddress] = useState("");
    const [notes, setNotes] = useState("");
-
-   // Dropdown state
-   const [dropdownOpen, setDropdownOpen] = useState(false);
 
    // Loading state
    const [isLoading, setIsLoading] = useState(false);
    const [mounted, setMounted] = useState(false);
 
-   const countryCodes = [
-      { code: "+1", country: "US/Canada" },
-      { code: "+44", country: "UK" },
-      { code: "+61", country: "Australia" },
-      { code: "+33", country: "France" },
-      { code: "+49", country: "Germany" },
-      { code: "+81", country: "Japan" },
-      { code: "+86", country: "China" },
-      { code: "+91", country: "India" },
-      { code: "+52", country: "Mexico" },
-      { code: "+55", country: "Brazil" },
-   ];
-
    useEffect(() => {
       setMounted(true);
-
-      // Add click outside listener for dropdown
-      function handleClickOutside(event: MouseEvent) {
-         const dropdown = document.getElementById("country-dropdown");
-         if (dropdown && !dropdown.contains(event.target as Node)) {
-            setDropdownOpen(false);
-         }
-      }
-
-      document.addEventListener("mousedown", handleClickOutside);
-      return () =>
-         document.removeEventListener("mousedown", handleClickOutside);
    }, []);
 
    if (!mounted) return null;
-
-   const toggleDropdown = () => {
-      setDropdownOpen(!dropdownOpen);
-   };
-
-   const selectCountryCode = (code: string) => {
-      setCountryCode(code);
-      setDropdownOpen(false);
-   };
 
    const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
       e.preventDefault();
       setIsLoading(true);
 
       try {
-         // Combine country code and phone
-         const fullPhoneNumber = `${countryCode}${phone}`;
-
+         // Only use the phone number without country code
          await customerAPI.createCustomer({
             firstName,
             lastName,
             email,
-            phone: fullPhoneNumber,
+            phone,
             address,
             notes,
          });
@@ -213,7 +173,7 @@ export default function AddCustomer() {
                   </div>
 
                   {/* Phone */}
-                  <div className="mb-6">
+                  <div>
                      <label
                         className={`block mb-2 text-sm font-medium ${
                            darkMode ? "text-gray-200" : "text-gray-700"
@@ -221,67 +181,25 @@ export default function AddCustomer() {
                      >
                         Phone Number <span className="text-red-500">*</span>
                      </label>
-                     <div className="flex">
-                        {/* Country code dropdown */}
-                        <div className="relative">
-                           <button
-                              type="button"
-                              onClick={toggleDropdown}
-                              className={`flex items-center justify-center h-10 px-3 rounded-l-lg border transition-colors
-                    ${
-                       darkMode
-                          ? "bg-gray-800 border-gray-700 text-white hover:bg-gray-700"
-                          : "bg-white border-gray-300 text-gray-900"
-                    }`}
-                           >
-                              {countryCode}
-                              <ChevronLeft
-                                 className={`w-4 h-4 ml-1 transform rotate-90 ${
-                                    darkMode ? "text-gray-400" : "text-gray-500"
-                                 }`}
-                              />
-                           </button>
-
-                           {/* Dropdown menu */}
-                           {dropdownOpen && (
-                              <div
-                                 id="country-dropdown"
-                                 className={`absolute z-10 mt-1 w-48 overflow-auto border rounded-lg py-1 max-h-60
-                    ${
-                       darkMode
-                          ? "bg-gray-800 border-gray-700"
-                          : "bg-white border-gray-200"
-                    }`}
-                              >
-                                 {countryCodes.map(({ code, country }) => (
-                                    <button
-                                       key={code}
-                                       type="button"
-                                       onClick={() => selectCountryCode(code)}
-                                       className={`w-full px-4 py-2 text-left text-sm hover:bg-purple-500/10 ${
-                                          darkMode
-                                             ? "text-gray-200"
-                                             : "text-gray-700"
-                                       }`}
-                                    >
-                                       {code} - {country}
-                                    </button>
-                                 ))}
-                              </div>
-                           )}
-                        </div>
-
+                     <div className="relative">
                         <input
                            type="tel"
                            value={phone}
-                           onChange={(e) => setPhone(e.target.value)}
+                           onChange={(e) =>
+                              setPhone(e.target.value.replace(/\D/g, ""))
+                           }
                            required
-                           className={`flex-1 px-4 py-2 rounded-r-lg border-l-0 ${
+                           className={`w-full px-4 py-2 pl-10 rounded-lg ${
                               darkMode
                                  ? "bg-gray-800 border-gray-700 text-white focus:border-purple-500"
                                  : "bg-gray-50 border-gray-300 text-gray-900 focus:border-purple-600"
                            } border focus:ring-2 focus:ring-purple-500/20 outline-none transition-colors`}
                            placeholder="(555) 555-5555"
+                        />
+                        <Phone
+                           className={`absolute left-3 top-2.5 w-5 h-5 ${
+                              darkMode ? "text-gray-400" : "text-gray-500"
+                           }`}
                         />
                      </div>
                   </div>

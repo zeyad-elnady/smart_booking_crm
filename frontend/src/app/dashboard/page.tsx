@@ -13,7 +13,6 @@ import {
 import { authAPI, User, dashboardAPI } from "@/services/api";
 import { useTheme } from "@/components/ThemeProvider";
 import { format } from "date-fns";
-import RevenueChart from "@/components/RevenueChart";
 
 interface DashboardStats {
    averageWaitTime: number;
@@ -272,45 +271,171 @@ export default function Dashboard() {
    if (!mounted) return null;
 
    return (
-      <div className="min-h-screen p-8 space-y-8">
-         {/* Welcome Section */}
-         <div className="flex justify-between items-start">
+      <div className="space-y-10 animate-fadeIn">
+         <div className="flex flex-col md:flex-row items-center justify-between">
             <div>
-               <h1 className="text-4xl font-bold bg-gradient-to-r from-purple-600 to-blue-500 bg-clip-text text-transparent">
-                  Welcome back, {user?.name || "Guest"}
+               <h1 className="text-3xl font-bold mb-2 gradient-text">
+                  Welcome back{user?.name ? `, ${user.name}` : ""}
                </h1>
-               <p className="text-gray-500 dark:text-gray-400 mt-2">
-                  Here's an overview of 3bass today
+               <p className="text-white/80 dark:text-white/80 light:text-gray-600">
+                  Here's an overview of {user?.businessName || "your business"}{" "}
+                  today
                </p>
             </div>
-            <div className="text-right">
-               <div className="text-sm text-gray-500 dark:text-gray-400">
+            <div className="glass p-4 mt-4 md:mt-0 rounded-lg">
+               <p className="text-sm dark:text-white/80 light:text-gray-600">
                   Today's Date
-               </div>
-               <div className="text-lg font-semibold">
-                  {format(new Date(), "EEEE, MMMM d, yyyy")}
-               </div>
+               </p>
+               <p className="text-xl font-bold dark:text-white light:text-gray-800">
+                  {new Date().toLocaleDateString("en-US", {
+                     weekday: "long",
+                     year: "numeric",
+                     month: "long",
+                     day: "numeric",
+                  })}
+               </p>
             </div>
          </div>
 
-         {/* Stats Section */}
+         {showServicePrompt && (
+            <div
+               className={`p-6 rounded-lg ${
+                  darkMode ? "glass-dark" : "glass-light"
+               }`}
+            >
+               <div className="flex justify-between items-start">
+                  <h3
+                     className={`text-xl font-semibold mb-3 ${
+                        darkMode ? "text-white" : "text-gray-800"
+                     }`}
+                  >
+                     Add a Direct Link to Your Service
+                  </h3>
+                  <button
+                     onClick={() => setShowServicePrompt(false)}
+                     className={`${
+                        darkMode
+                           ? "text-gray-400 hover:text-white"
+                           : "text-gray-600 hover:text-gray-800"
+                     }`}
+                  >
+                     <XMarkIcon className="h-5 w-5" />
+                  </button>
+               </div>
+               <p
+                  className={`mb-4 ${
+                     darkMode ? "text-gray-300" : "text-gray-600"
+                  }`}
+               >
+                  Would you like to add a quick access link to your service
+                  website?
+               </p>
+
+               <div className="space-y-4">
+                  <div className="flex flex-col space-y-2">
+                     <label
+                        htmlFor="serviceName"
+                        className={`text-sm ${
+                           darkMode ? "text-gray-300" : "text-gray-600"
+                        }`}
+                     >
+                        Service Name
+                     </label>
+                     <input
+                        type="text"
+                        id="serviceName"
+                        value={serviceName}
+                        onChange={(e) => setServiceName(e.target.value)}
+                        placeholder="My Salon Website"
+                        className={`px-3 py-2 border rounded-md ${
+                           darkMode
+                              ? "bg-gray-800/50 border-gray-700 text-white"
+                              : "bg-white border-gray-300 text-gray-800"
+                        }`}
+                     />
+                  </div>
+
+                  <div className="flex flex-col space-y-2">
+                     <label
+                        htmlFor="serviceLink"
+                        className={`text-sm ${
+                           darkMode ? "text-gray-300" : "text-gray-600"
+                        }`}
+                     >
+                        Service URL
+                     </label>
+                     <input
+                        type="url"
+                        id="serviceLink"
+                        value={serviceLink}
+                        onChange={(e) => setServiceLink(e.target.value)}
+                        placeholder="https://your-website.com"
+                        className={`px-3 py-2 border rounded-md ${
+                           darkMode
+                              ? "bg-gray-800/50 border-gray-700 text-white"
+                              : "bg-white border-gray-300 text-gray-800"
+                        }`}
+                     />
+                  </div>
+
+                  <div className="flex flex-wrap gap-3 pt-2">
+                     <button
+                        onClick={handleServiceLinkSave}
+                        disabled={!serviceLink || !serviceName}
+                        className="px-4 py-2 bg-gradient-to-r from-purple-600 to-blue-500 text-white rounded-md disabled:opacity-50"
+                     >
+                        Save Link
+                     </button>
+
+                     <button
+                        onClick={handleDeclineServiceLink}
+                        className={`px-4 py-2 rounded-md ${
+                           darkMode
+                              ? "bg-gray-700 text-white"
+                              : "bg-gray-200 text-gray-800"
+                        }`}
+                     >
+                        No Thanks
+                     </button>
+                  </div>
+               </div>
+            </div>
+         )}
+
+         {hasServiceLink && (
+            <div className="flex justify-center">
+               <a
+                  href={serviceLink}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-block px-6 py-3 bg-gradient-to-r from-purple-600 to-blue-500 text-white rounded-md hover:from-purple-700 hover:to-blue-600 transition-all duration-300 shadow-lg"
+               >
+                  Go to {serviceName}
+               </a>
+            </div>
+         )}
+
          <div className="space-y-4">
-            <div className="flex justify-between items-center">
-               <h2 className="text-xl font-semibold text-gray-800 dark:text-gray-200">
+            <div className="flex items-center justify-between">
+               <h2 className="text-xl font-semibold dark:text-white light:text-gray-800">
                   Business Statistics
                </h2>
-               <div className="flex items-center gap-2">
-                  <span className="text-sm text-gray-500 dark:text-gray-400">
-                     Last Updated:{" "}
-                     {lastUpdated ? format(lastUpdated, "h:mm:ss a") : "Never"}
-                  </span>
+               <div className="flex items-center">
+                  <div className="text-sm mr-4 dark:text-gray-300 light:text-gray-600">
+                     {lastUpdated ? (
+                        <>Last Updated: {lastUpdated.toLocaleTimeString()}</>
+                     ) : (
+                        "Loading..."
+                     )}
+                  </div>
                   <button
                      onClick={handleRefreshStats}
-                     className="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-full transition-colors"
+                     className="p-2 rounded-full hover:bg-gray-700/20 transition-colors"
                      disabled={refreshing}
+                     aria-label="Refresh stats"
                   >
                      <ArrowPathIcon
-                        className={`h-5 w-5 text-gray-500 dark:text-gray-400 ${
+                        className={`h-5 w-5 dark:text-white light:text-gray-700 ${
                            refreshing ? "animate-spin" : ""
                         }`}
                      />
@@ -318,42 +443,56 @@ export default function Dashboard() {
                </div>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-               {statDefinitions.map((stat) => (
-                  <div
-                     key={stat.key}
-                     className={`p-6 rounded-lg shadow-sm ${
-                        darkMode
-                           ? "bg-gray-800 text-white"
-                           : "bg-white text-gray-800"
-                     }`}
-                  >
-                     <div className="flex items-center gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+               {loading ? (
+                  // Loading skeleton
+                  <>
+                     {[...Array(7)].map((_, i) => (
                         <div
-                           className={`p-3 rounded-full ${stat.color} bg-opacity-10`}
+                           key={i}
+                           className="glass p-6 rounded-xl h-40 animate-pulse"
                         >
-                           {stat.icon}
+                           <div className="h-6 bg-gray-300/10 rounded w-1/2 mb-4"></div>
+                           <div className="h-10 bg-gray-300/10 rounded w-1/3"></div>
                         </div>
-                        <div>
-                           <div className="text-sm text-gray-500 dark:text-gray-400">
-                              {stat.name}
+                     ))}
+                  </>
+               ) : (
+                  <>
+                     {statDefinitions.map((stat) => (
+                        <div key={stat.key} className={`glass rounded-xl p-6`}>
+                           <div className="flex items-center mb-4">
+                              <div
+                                 className={`p-3 rounded-lg bg-gradient-to-br ${stat.color} mr-3`}
+                              >
+                                 {stat.icon}
+                              </div>
+                              <h3 className="stat-label text-sm font-medium">
+                                 {stat.name}
+                              </h3>
                            </div>
-                           <div className="text-2xl font-bold">
+                           <div className="stat-value text-4xl font-bold">
                               {formatStatValue(stats[stat.key], stat)}
                            </div>
                         </div>
-                     </div>
-                  </div>
-               ))}
+                     ))}
+                  </>
+               )}
             </div>
          </div>
 
-         {/* Revenue Chart */}
-         <div className={`rounded-lg ${darkMode ? "bg-gray-800" : "bg-white"}`}>
-            <RevenueChart />
-         </div>
-
-         {/* Rest of your dashboard content */}
+         <style jsx>{`
+            @keyframes fadeIn {
+               from {
+                  opacity: 0;
+                  transform: translateY(20px);
+               }
+               to {
+                  opacity: 1;
+                  transform: translateY(0);
+               }
+            }
+         `}</style>
       </div>
    );
 }

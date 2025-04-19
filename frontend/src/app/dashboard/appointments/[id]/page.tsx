@@ -1,11 +1,12 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useParams } from "next/navigation";
 import { useTheme } from "@/components/ThemeProvider";
 import { toast } from "react-hot-toast";
 import { useForm } from "react-hook-form";
 import React from "react";
+import Link from "next/link";
 
 import {
    fetchAppointmentById,
@@ -16,10 +17,6 @@ import { fetchServices } from "@/services/serviceService";
 import type { Customer } from "@/types/customer";
 import type { Service } from "@/types/service";
 import type { Appointment, AppointmentStatus } from "@/types/appointment";
-
-interface EditAppointmentProps {
-   params: { id: string };
-}
 
 // Define the response type that includes populated fields
 interface AppointmentResponse
@@ -34,15 +31,15 @@ interface FormData {
    service: string;
    date: string;
    time: string;
-   duration: string;
    notes: string;
    status: AppointmentStatus;
 }
 
-const EditAppointment = ({ params }: EditAppointmentProps) => {
+export default function EditAppointment() {
    const router = useRouter();
+   const params = useParams();
    const { darkMode } = useTheme();
-   const { id } = params;
+   const appointmentId = params?.id as string;
 
    const {
       register,
@@ -59,7 +56,7 @@ const EditAppointment = ({ params }: EditAppointmentProps) => {
       const loadData = async () => {
          setLoading(true);
          try {
-            const appointment = await fetchAppointmentById(id);
+            const appointment = await fetchAppointmentById(appointmentId);
             if (appointment) {
                const typedAppointment =
                   appointment as unknown as AppointmentResponse;
@@ -78,14 +75,13 @@ const EditAppointment = ({ params }: EditAppointmentProps) => {
                setValue("service", typedAppointment.service._id);
                setValue("date", typedAppointment.date);
                setValue("time", typedAppointment.time);
-               setValue("duration", typedAppointment.duration.toString());
                setValue("notes", typedAppointment.notes || "");
                setValue("status", typedAppointment.status as AppointmentStatus);
             } else {
                throw new Error("Appointment not found");
             }
          } catch (error) {
-            toast.error("Error loading appointment");
+            toast.error("Could not load appointment data");
             console.error("Error loading appointment:", error);
          } finally {
             setLoading(false);
@@ -93,7 +89,7 @@ const EditAppointment = ({ params }: EditAppointmentProps) => {
       };
 
       loadData();
-   }, [id, setValue]);
+   }, [appointmentId, setValue]);
 
    const onSubmit = async (data: FormData) => {
       try {
@@ -127,7 +123,7 @@ const EditAppointment = ({ params }: EditAppointmentProps) => {
             },
          };
 
-         await updateAppointment(id, appointmentData);
+         await updateAppointment(appointmentId, appointmentData);
          toast.success("Appointment updated successfully");
          router.push("/dashboard/appointments");
       } catch (error) {
@@ -139,174 +135,231 @@ const EditAppointment = ({ params }: EditAppointmentProps) => {
    };
 
    if (loading) {
-      return <div>Loading...</div>;
+      return (
+         <div className="flex items-center justify-center min-h-[60vh]">
+            <div
+               className={`text-lg ${
+                  darkMode ? "text-white" : "text-gray-800"
+               }`}
+            >
+               Loading...
+            </div>
+         </div>
+      );
    }
 
    return (
-      <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
-         <div className="space-y-4">
-            <div>
-               <label htmlFor="customer" className="block text-sm font-medium">
-                  Customer
-               </label>
-               <select
-                  id="customer"
-                  {...register("customer", {
-                     required: "Customer is required",
-                  })}
-                  className={`mt-1 block w-full rounded-md ${
-                     darkMode ? "bg-gray-800" : "bg-white"
-                  }`}
-               >
-                  <option value="">Select a customer</option>
-                  {customers.map((customer) => (
-                     <option key={customer._id} value={customer._id}>
-                        {customer.firstName} {customer.lastName}
-                     </option>
-                  ))}
-               </select>
-               {errors.customer && (
-                  <p className="text-red-500 text-sm">
-                     {errors.customer.message}
-                  </p>
-               )}
-            </div>
-
-            <div>
-               <label htmlFor="service" className="block text-sm font-medium">
-                  Service
-               </label>
-               <select
-                  id="service"
-                  {...register("service", { required: "Service is required" })}
-                  className={`mt-1 block w-full rounded-md ${
-                     darkMode ? "bg-gray-800" : "bg-white"
-                  }`}
-               >
-                  <option value="">Select a service</option>
-                  {services.map((service) => (
-                     <option key={service._id} value={service._id}>
-                        {service.name}
-                     </option>
-                  ))}
-               </select>
-               {errors.service && (
-                  <p className="text-red-500 text-sm">
-                     {errors.service.message}
-                  </p>
-               )}
-            </div>
-
-            <div>
-               <label htmlFor="date" className="block text-sm font-medium">
-                  Date
-               </label>
-               <input
-                  type="date"
-                  id="date"
-                  {...register("date", { required: "Date is required" })}
-                  className={`mt-1 block w-full rounded-md ${
-                     darkMode ? "bg-gray-800" : "bg-white"
-                  }`}
-               />
-               {errors.date && (
-                  <p className="text-red-500 text-sm">{errors.date.message}</p>
-               )}
-            </div>
-
-            <div>
-               <label htmlFor="time" className="block text-sm font-medium">
-                  Time
-               </label>
-               <input
-                  type="time"
-                  id="time"
-                  {...register("time", { required: "Time is required" })}
-                  className={`mt-1 block w-full rounded-md ${
-                     darkMode ? "bg-gray-800" : "bg-white"
-                  }`}
-               />
-               {errors.time && (
-                  <p className="text-red-500 text-sm">{errors.time.message}</p>
-               )}
-            </div>
-
-            <div>
-               <label htmlFor="duration" className="block text-sm font-medium">
-                  Duration (minutes)
-               </label>
-               <input
-                  type="number"
-                  id="duration"
-                  {...register("duration", {
-                     required: "Duration is required",
-                  })}
-                  className={`mt-1 block w-full rounded-md ${
-                     darkMode ? "bg-gray-800" : "bg-white"
-                  }`}
-               />
-               {errors.duration && (
-                  <p className="text-red-500 text-sm">
-                     {errors.duration.message}
-                  </p>
-               )}
-            </div>
-
-            <div>
-               <label htmlFor="status" className="block text-sm font-medium">
-                  Status
-               </label>
-               <select
-                  id="status"
-                  {...register("status", { required: "Status is required" })}
-                  className={`mt-1 block w-full rounded-md ${
-                     darkMode ? "bg-gray-800" : "bg-white"
-                  }`}
-               >
-                  <option value="Pending">Pending</option>
-                  <option value="Confirmed">Confirmed</option>
-                  <option value="Completed">Completed</option>
-                  <option value="Cancelled">Cancelled</option>
-               </select>
-               {errors.status && (
-                  <p className="text-red-500 text-sm">
-                     {errors.status.message}
-                  </p>
-               )}
-            </div>
-
-            <div>
-               <label htmlFor="notes" className="block text-sm font-medium">
-                  Notes
-               </label>
-               <textarea
-                  id="notes"
-                  {...register("notes")}
-                  className={`mt-1 block w-full rounded-md ${
-                     darkMode ? "bg-gray-800" : "bg-white"
-                  }`}
-               />
-            </div>
+      <div className="container mx-auto p-6">
+         <div className="mb-6">
+            <Link
+               href="/dashboard/appointments"
+               className={`inline-flex items-center text-base hover:opacity-75 transition-opacity ${
+                  darkMode ? "text-gray-300" : "text-gray-600"
+               }`}
+            >
+               <span className="text-xl mr-1">←</span> Back to appointments
+            </Link>
          </div>
 
-         <div className="flex justify-end space-x-4">
-            <button
-               type="button"
-               onClick={() => router.back()}
-               className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50"
+         <div
+            className={`p-6 rounded-lg ${
+               darkMode ? "glass-dark" : "glass-light"
+            }`}
+         >
+            <h1
+               className={`text-3xl font-bold mb-8 ${
+                  darkMode ? "text-white" : "text-gray-800"
+               }`}
             >
-               Cancel
-            </button>
-            <button
-               type="submit"
-               disabled={loading}
-               className="px-4 py-2 text-sm font-medium text-white bg-blue-600 border border-transparent rounded-md hover:bg-blue-700"
-            >
-               {loading ? "Updating..." : "Update Appointment"}
-            </button>
+               Edit Appointment
+            </h1>
+
+            <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
+               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div>
+                     <label
+                        className={`block text-sm mb-2 ${
+                           darkMode ? "text-gray-300" : "text-gray-600"
+                        }`}
+                     >
+                        Customer *
+                     </label>
+                     <select
+                        {...register("customer", {
+                           required: "Customer is required",
+                        })}
+                        className={`w-full px-4 py-2 rounded-md border ${
+                           darkMode
+                              ? "bg-gray-800/50 border-gray-700 text-white"
+                              : "bg-white border-gray-300 text-gray-900"
+                        }`}
+                     >
+                        <option value="">Select a customer</option>
+                        {customers.map((customer) => (
+                           <option key={customer._id} value={customer._id}>
+                              {customer.firstName} {customer.lastName}
+                           </option>
+                        ))}
+                     </select>
+                     {errors.customer && (
+                        <p className="text-red-500 text-sm mt-1">
+                           {errors.customer.message}
+                        </p>
+                     )}
+                  </div>
+
+                  <div>
+                     <label
+                        className={`block text-sm mb-2 ${
+                           darkMode ? "text-gray-300" : "text-gray-600"
+                        }`}
+                     >
+                        Service *
+                     </label>
+                     <select
+                        {...register("service", {
+                           required: "Service is required",
+                        })}
+                        className={`w-full px-4 py-2 rounded-md border ${
+                           darkMode
+                              ? "bg-gray-800/50 border-gray-700 text-white"
+                              : "bg-white border-gray-300 text-gray-900"
+                        }`}
+                     >
+                        <option value="">Select a service</option>
+                        {services.map((service) => (
+                           <option key={service._id} value={service._id}>
+                              {service.name}
+                           </option>
+                        ))}
+                     </select>
+                     {errors.service && (
+                        <p className="text-red-500 text-sm mt-1">
+                           {errors.service.message}
+                        </p>
+                     )}
+                  </div>
+
+                  <div>
+                     <label
+                        className={`block text-sm mb-2 ${
+                           darkMode ? "text-gray-300" : "text-gray-600"
+                        }`}
+                     >
+                        Date *
+                     </label>
+                     <input
+                        type="date"
+                        {...register("date", { required: "Date is required" })}
+                        className={`w-full px-4 py-2 rounded-md border ${
+                           darkMode
+                              ? "bg-gray-800/50 border-gray-700 text-white"
+                              : "bg-white border-gray-300 text-gray-900"
+                        }`}
+                     />
+                     {errors.date && (
+                        <p className="text-red-500 text-sm mt-1">
+                           {errors.date.message}
+                        </p>
+                     )}
+                  </div>
+
+                  <div>
+                     <label
+                        className={`block text-sm mb-2 ${
+                           darkMode ? "text-gray-300" : "text-gray-600"
+                        }`}
+                     >
+                        Time *
+                     </label>
+                     <input
+                        type="time"
+                        {...register("time", { required: "Time is required" })}
+                        className={`w-full px-4 py-2 rounded-md border ${
+                           darkMode
+                              ? "bg-gray-800/50 border-gray-700 text-white"
+                              : "bg-white border-gray-300 text-gray-900"
+                        }`}
+                     />
+                     {errors.time && (
+                        <p className="text-red-500 text-sm mt-1">
+                           {errors.time.message}
+                        </p>
+                     )}
+                  </div>
+
+                  <div>
+                     <label
+                        className={`block text-sm mb-2 ${
+                           darkMode ? "text-gray-300" : "text-gray-600"
+                        }`}
+                     >
+                        Status *
+                     </label>
+                     <select
+                        {...register("status", {
+                           required: "Status is required",
+                        })}
+                        className={`w-full px-4 py-2 rounded-md border ${
+                           darkMode
+                              ? "bg-gray-800/50 border-gray-700 text-white"
+                              : "bg-white border-gray-300 text-gray-900"
+                        }`}
+                     >
+                        <option value="Waiting">Waiting</option>
+                        <option value="Confirmed">Confirmed</option>
+                        <option value="Completed">Completed</option>
+                        <option value="Cancelled">Cancelled</option>
+                     </select>
+                     {errors.status && (
+                        <p className="text-red-500 text-sm mt-1">
+                           {errors.status.message}
+                        </p>
+                     )}
+                  </div>
+               </div>
+
+               <div>
+                  <label
+                     className={`block text-sm mb-2 ${
+                        darkMode ? "text-gray-300" : "text-gray-600"
+                     }`}
+                  >
+                     Notes
+                  </label>
+                  <textarea
+                     {...register("notes")}
+                     rows={4}
+                     placeholder="Any additional information about the appointment..."
+                     className={`w-full px-4 py-2 rounded-md border ${
+                        darkMode
+                           ? "bg-gray-800/50 border-gray-700 text-white"
+                           : "bg-white border-gray-300 text-gray-900"
+                     }`}
+                  />
+               </div>
+
+               <div className="flex justify-end space-x-3 pt-4">
+                  <button
+                     type="button"
+                     onClick={() => router.push("/dashboard/appointments")}
+                     className={`px-4 py-2 rounded-md ${
+                        darkMode
+                           ? "bg-gray-700 text-white hover:bg-gray-600"
+                           : "bg-gray-200 text-gray-800 hover:bg-gray-300"
+                     }`}
+                  >
+                     Cancel
+                  </button>
+                  <button
+                     type="submit"
+                     className="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700"
+                  >
+                     Save Changes
+                  </button>
+               </div>
+            </form>
          </div>
-      </form>
+      </div>
    );
-};
-
-export default EditAppointment;
+}
