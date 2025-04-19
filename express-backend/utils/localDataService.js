@@ -647,25 +647,14 @@ const remove = (collection, id) => {
  * @returns {boolean} Connection status
  */
 const isMongoConnected = () => {
-   // Use MongoDB instead of local storage
-   return true;
-
-   // Original implementation commented out:
-   /*
-  // Modified to always return false to use local storage only
-  // This eliminates the MongoDB dependency for local development
-  return false;
-  
-  // Original implementation commented out:
-  /*
-  try {
-    // Check MongoDB connection state
-    const mongooseState = require('mongoose').connection.readyState;
-    return mongooseState === 1;
-  } catch (error) {
-    return false;
-  }
-  */
+   try {
+      // Check MongoDB connection state
+      const mongooseState = require("mongoose").connection.readyState;
+      return mongooseState === 1;
+   } catch (error) {
+      console.error("Error checking MongoDB connection:", error);
+      return false;
+   }
 };
 
 /**

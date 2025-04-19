@@ -28,51 +28,108 @@ A modern CRM system for managing appointments, customers, and services.
 -  MongoDB
 -  JWT Authentication
 
-## Quick Start Guide
+## Prerequisites
 
-### Prerequisites
+-  Node.js version 18.x or 20.x (LTS versions recommended)
+-  MongoDB installed and running locally
+-  npm or yarn package manager
 
--  Node.js (v18 or higher)
--  MongoDB (v5 or higher) - Optional, the app will work without it
--  npm or yarn
+## Quick Start
 
-### Step 1: Clone and Setup
+1. Clone the repository:
+
+   ```bash
+   git clone https://github.com/yourusername/smart-booking-crm.git
+   cd smart-booking-crm
+   ```
+
+2. Run the setup script:
+
+   ```bash
+   npm run setup
+   ```
+
+   This will:
+
+   -  Check Node.js version compatibility
+   -  Create necessary .env files
+   -  Fix MongoDB connection issues
+   -  Install all dependencies
+   -  Set up the data directory
+
+3. Start the development servers:
+
+   ```bash
+   npm run dev
+   ```
+
+4. Access the application:
+   -  Frontend: http://localhost:3000
+   -  Backend API: http://localhost:5000
+
+## Troubleshooting
+
+### Node.js Version Issues
+
+If you encounter Node.js version-related issues:
+
+1. Install nvm (Node Version Manager):
+
+   ```bash
+   # Windows
+   winget install CoreyButler.NVMforWindows
+
+   # macOS/Linux
+   curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.0/install.sh | bash
+   ```
+
+2. Install and use a compatible Node.js version:
+   ```bash
+   nvm install 18
+   nvm use 18
+   ```
+
+### Memory Issues
+
+If you encounter memory-related issues:
+
+1. The setup script automatically adds memory configuration to .env files
+2. You can manually increase the memory limit by setting NODE_OPTIONS:
+
+   ```bash
+   # Windows
+   set NODE_OPTIONS=--max-old-space-size=4096
+
+   # macOS/Linux
+   export NODE_OPTIONS=--max-old-space-size=4096
+   ```
+
+### Clean Installation
+
+If you need to start fresh:
 
 ```bash
-# Clone the repository
-git clone <repository-url>
-cd smart-booking-crm
-
-# Run the setup script
+npm run clean
 npm run setup
 ```
 
-This will:
+## Available Scripts
 
--  Check your Node.js version
--  Create necessary .env files
--  Fix MongoDB connection issues
--  Set up local data storage
--  Install all dependencies for frontend and backend
+-  `npm run setup` - Run the setup script
+-  `npm run dev` - Start development servers
+-  `npm run build` - Build the frontend
+-  `npm run start` - Start the production server
+-  `npm run clean` - Clean all node_modules
 
-### Step 2: Start the Application
+## Project Structure
 
-1. (Optional) Start MongoDB if you want to use it:
-
-```bash
-mongod
 ```
-
-2. Start the application (this will start both frontend and backend):
-
-```bash
-npm run dev
+smart-booking-crm/
+├── frontend/           # Next.js frontend
+├── express-backend/    # Express.js backend
+├── setup-project.js    # Setup script
+└── package.json       # Root package.json
 ```
-
-3. Access the application:
-
--  Frontend: http://localhost:3000
--  Backend API: http://localhost:5000
 
 ## Data Storage
 
@@ -81,15 +138,6 @@ The application uses a hybrid storage approach:
 -  If MongoDB is available, it will use MongoDB for data storage
 -  If MongoDB is not available, it will automatically fall back to local file storage
 -  Local data is stored in the `express-backend/data` directory
-
-## Troubleshooting
-
-If you encounter any issues:
-
-1. Make sure all dependencies are installed
-2. Check if ports 3000 and 5000 are available
-3. If you have database issues, the app will automatically use local storage
-4. Check the console for error messages
 
 ## Need Help?
 
@@ -119,7 +167,7 @@ npm test
 2. Create your feature branch
 3. Commit your changes
 4. Push to the branch
-5. Create a new Pull Request
+5. Create a Pull Request
 
 ## License
 
