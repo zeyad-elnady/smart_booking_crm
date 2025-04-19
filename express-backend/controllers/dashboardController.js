@@ -282,6 +282,108 @@ const getDashboardStats = async (req, res) => {
    }
 };
 
+const getRevenueStats = async (req, res) => {
+   try {
+      const { period = "month" } = req.query;
+      const now = new Date();
+      let startDate;
+      let groupBy;
+      let format;
+
+      switch (period) {
+         case "day":
+            startDate = new Date(
+               now.getFullYear(),
+               now.getMonth(),
+               now.getDate() - 30
+            ); // Last 30 days
+            groupBy = { $dateToString: { format: "%Y-%m-%d", date: "$date" } };
+            format = "%Y-%m-%d";
+            break;
+         case "week":
+            startDate = new Date(
+               now.getFullYear(),
+               now.getMonth(),
+               now.getDate() - 90
+            ); // Last 90 days
+            groupBy = {
+               $dateToString: {
+                  format: "%Y-W%V",
+                  date: "$date",
+               },
+            };
+            format = "%Y-W%V";
+            break;
+         case "month":
+         default:
+            startDate = new Date(now.getFullYear() - 1, now.getMonth(), 1); // Last 12 months
+            groupBy = {
+               $dateToString: {
+                  format: "%Y-%m",
+                  date: "$date",
+               },
+            };
+            format = "%Y-%m";
+      }
+
+      const pipeline = [
+         {
+            $match: {
+               date: { $gte: startDate },
+               status: "Completed",
+            },
+         },
+         {
+            $lookup: {
+               from: "services",
+               localField: "serviceId",
+               foreignField: "_id",
+               as: "service",
+            },
+         },
+         {
+            $unwind: "$service",
+         },
+         {
+            $group: {
+               _id: groupBy,
+               revenue: { $sum: { $toDouble: "$service.price" } },
+               count: { $sum: 1 },
+            },
+         },
+         {
+            $sort: { _id: 1 },
+         },
+      ];
+
+      console.log("Revenue Stats Pipeline:", JSON.stringify(pipeline, null, 2));
+
+      const revenueStats = await Appointment.aggregate(pipeline);
+
+      console.log(
+         "Revenue Stats Results:",
+         JSON.stringify(revenueStats, null, 2)
+      );
+
+      res.json({
+         success: true,
+         data: revenueStats.map((stat) => ({
+            date: stat._id,
+            revenue: stat.revenue,
+            count: stat.count,
+         })),
+      });
+   } catch (error) {
+      console.error("Error getting revenue stats:", error);
+      res.status(500).json({
+         success: false,
+         message: "Error retrieving revenue statistics",
+         error: error.message,
+      });
+   }
+};
+
 module.exports = {
    getDashboardStats,
+   getRevenueStats,
 };
