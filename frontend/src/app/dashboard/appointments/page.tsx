@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import {
    PlusIcon,
@@ -15,6 +15,7 @@ import {
    TrashIcon,
    PencilIcon,
    ChevronDownIcon,
+   XCircleIcon,
 } from "@heroicons/react/24/outline";
 import { useTheme } from "@/components/ThemeProvider";
 import {
@@ -50,6 +51,8 @@ import { testConnections } from "@/services/api";
 import { indexedDBService } from "@/services/indexedDB";
 import { useDarkMode } from "@/context/DarkModeContext";
 import LoadingSpinner from "@/components/LoadingSpinner";
+import { useRouter } from "next/navigation";
+import DeleteAppointmentDialog from "@/components/DeleteAppointmentDialog";
 
 interface AppointmentCustomer {
    _id: string;
@@ -66,6 +69,7 @@ const statusOptions: AppointmentStatus[] = [
 ];
 
 export default function Appointments() {
+   const router = useRouter();
    const { darkMode } = useTheme();
    const [viewMode, setViewMode] = useState("list"); // 'list' or 'calendar'
    const [calendarMode, setCalendarMode] = useState("week"); // 'week' or 'month'
@@ -75,8 +79,12 @@ export default function Appointments() {
    const [selectedAppointment, setSelectedAppointment] =
       useState<Appointment | null>(null);
    const [appointments, setAppointments] = useState<Appointment[]>([]);
-   const [loading, setLoading] = useState(false);
+   const [loading, setLoading] = useState(true);
    const [openStatusMenu, setOpenStatusMenu] = useState<string | null>(null);
+   const [selectedDate, setSelectedDate] = useState<string>(format(new Date(), "yyyy-MM-dd"));
+   const [error, setError] = useState<string | null>(null);
+   const [appointmentToDelete, setAppointmentToDelete] = useState<string | null>(null);
+   const [isDeleting, setIsDeleting] = useState(false);
 
    // Initialize IndexedDB and load appointments
    useEffect(() => {
@@ -85,22 +93,61 @@ export default function Appointments() {
             setLoading(true);
             // Initialize IndexedDB
             await indexedDBService.initDB();
+            
+            // First ensure we've removed any mock appointments from localStorage
+            if (localStorage.getItem("mockAppointments")) {
+               console.log("Removing legacy mock appointments data from localStorage");
+               localStorage.removeItem("mockAppointments");
+            }
+
+            // Check if there are appointments marked as sample data in IndexedDB
+            const allAppointments = await indexedDBService.getAllAppointments();
+            const sampleAppointments = allAppointments.filter(
+               apt => apt._id.startsWith('sample_') || apt._id.startsWith('mock_')
+            );
+            
+            // Remove any sample appointments that might exist
+            if (sampleAppointments.length > 0) {
+               console.log(`Removing ${sampleAppointments.length} sample appointments from database`);
+               for (const apt of sampleAppointments) {
+                  await indexedDBService.deleteAppointment(apt._id);
+               }
+            }
 
             // Load appointments
             const currentAppointments = await fetchAppointments();
-            setAppointments(currentAppointments);
+            
+            // Make sure to filter out any appointments that might be marked for deletion
+            const filteredAppointments = currentAppointments.filter(apt => !apt.pendingDelete);
+            
+            setAppointments(filteredAppointments);
          } catch (error) {
             console.error(
                "Error initializing IndexedDB or loading appointments:",
                error
             );
-            toast.error("Failed to load appointments");
+            setError("Failed to load appointments. Please try again later.");
          } finally {
             setLoading(false);
          }
       };
 
       initializeAndLoad();
+
+      // Set up a listener for the refresh flag
+      const checkForRefresh = () => {
+         const shouldRefresh = localStorage.getItem("appointmentListShouldRefresh");
+         if (shouldRefresh === "true") {
+            localStorage.removeItem("appointmentListShouldRefresh");
+            handleRefreshAppointments();
+         }
+      };
+
+      // Check for refresh every 2 seconds
+      const refreshInterval = setInterval(checkForRefresh, 2000);
+
+      // Clean up
+      return () => clearInterval(refreshInterval);
    }, []);
 
    // Generate week days
@@ -160,24 +207,64 @@ export default function Appointments() {
    };
 
    const handleDeleteAppointment = async (appointmentId: string) => {
+      // Show confirmation dialog instead of immediate deletion
+      setAppointmentToDelete(appointmentId);
+   };
+
+   const handleConfirmDelete = async () => {
+      if (!appointmentToDelete) return;
+      
       try {
-         await deleteAppointment(appointmentId);
-         setAppointments(
-            appointments.filter((apt: Appointment) => apt._id !== appointmentId)
-         );
-         setSelectedAppointment(null); // Close modal if open
+         setIsDeleting(true);
+         
+         await deleteAppointment(appointmentToDelete);
+         
+         // Update the appointments list
+         setAppointments(appointments.filter((apt) => apt._id !== appointmentToDelete));
+         
+         toast.success("Appointment deleted successfully");
+         
+         // Close the modal if the deleted appointment was being viewed
+         if (selectedAppointment && selectedAppointment._id === appointmentToDelete) {
+            setSelectedAppointment(null);
+         }
       } catch (error) {
-         console.error("Error deleting appointment:", error);
+         console.error(`Error deleting appointment ${appointmentToDelete}:`, error);
+         toast.error("Failed to delete appointment");
+      } finally {
+         setIsDeleting(false);
+         setAppointmentToDelete(null); // Close dialog
       }
+   };
+
+   const handleCancelDelete = () => {
+      setAppointmentToDelete(null);
    };
 
    const handleRefreshAppointments = async () => {
       setLoading(true);
       try {
+         setError(null);
          const currentAppointments = await fetchAppointments();
-         setAppointments(currentAppointments);
+         
+         // Filter out any appointments marked for deletion
+         const filteredAppointments = currentAppointments.filter(appointment => !appointment.pendingDelete);
+         
+         // Sort appointments by date and time
+         const sortedAppointments = filteredAppointments.sort((a, b) => {
+            // First sort by date
+            const dateComparison = a.date.localeCompare(b.date);
+            if (dateComparison !== 0) return dateComparison;
+            
+            // If dates are the same, sort by time
+            return a.time.localeCompare(b.time);
+         });
+         
+         setAppointments(sortedAppointments);
       } catch (error) {
          console.error("Error refreshing appointments:", error);
+         setError("Failed to refresh appointments. Please try again later.");
+         toast.error("Failed to refresh appointments");
       } finally {
          setLoading(false);
       }
@@ -185,86 +272,134 @@ export default function Appointments() {
 
    // Function to determine status color
    const getStatusColor = (status: string | undefined): string => {
-      switch (status) {
-         case "Confirmed":
-            return "bg-green-500 text-white hover:bg-green-600";
-         case "Canceled":
-            return "bg-red-500 text-white hover:bg-red-600";
-         case "Completed":
-            return "bg-blue-500 text-white hover:bg-blue-600";
-         case "Pending":
-         default:
-            return darkMode
-               ? "bg-amber-500 text-white hover:bg-amber-600"
-               : "bg-amber-100 text-amber-800 hover:bg-amber-200";
+      try {
+         switch (status) {
+            case "Confirmed":
+               return "bg-green-500 text-white hover:bg-green-600";
+            case "Canceled":
+               return "bg-red-500 text-white hover:bg-red-600";
+            case "Completed":
+               return "bg-blue-500 text-white hover:bg-blue-600";
+            case "Pending":
+            default:
+               return darkMode
+                  ? "bg-amber-500 text-white hover:bg-amber-600"
+                  : "bg-amber-100 text-amber-800 hover:bg-amber-200";
+         }
+      } catch (error) {
+         console.error("Error determining status color:", error);
+         return darkMode
+            ? "bg-gray-500 text-white hover:bg-gray-600"
+            : "bg-gray-100 text-gray-800 hover:bg-gray-200";
       }
+   };
+
+   // Function to ensure appointment has a valid status
+   const getAppointmentStatus = (appointment: Appointment): AppointmentStatus => {
+      // If the appointment has a valid status, return it
+      if (appointment.status && statusOptions.includes(appointment.status as AppointmentStatus)) {
+         return appointment.status as AppointmentStatus;
+      }
+      
+      // Default to Pending if no valid status
+      return "Pending";
    };
 
    const getCustomerInitial = (appointment: Appointment): string => {
-      // First try to get initial from customerInfo
-      if (appointment.customerInfo) {
-         if (appointment.customerInfo.firstName) {
-            return appointment.customerInfo.firstName[0];
+      try {
+         // First try to get initial from customerInfo
+         if (appointment.customerInfo) {
+            if (appointment.customerInfo.firstName && appointment.customerInfo.firstName.length > 0) {
+               return appointment.customerInfo.firstName[0].toUpperCase();
+            }
+            if (appointment.customerInfo.name && appointment.customerInfo.name.length > 0) {
+               return appointment.customerInfo.name[0].toUpperCase();
+            }
          }
-         if (appointment.customerInfo.name) {
-            return appointment.customerInfo.name[0];
+
+         // Then try to get initial from customer object
+         if (typeof appointment.customer === "object" && appointment.customer !== null) {
+            const customer = appointment.customer as AppointmentCustomer;
+            if (customer.firstName && customer.firstName.length > 0) {
+               return customer.firstName[0].toUpperCase();
+            }
+            if (customer.name && customer.name.length > 0) {
+               return customer.name[0].toUpperCase();
+            }
          }
-      }
 
-      // Then try to get initial from customer object
-      if (
-         typeof appointment.customer === "object" &&
-         appointment.customer !== null
-      ) {
-         const customer = appointment.customer as AppointmentCustomer;
-         return customer.firstName?.[0] || "?";
+         // If all else fails, return first character of the string or default
+         if (typeof appointment.customer === 'string' && appointment.customer.length > 0) {
+            return appointment.customer[0].toUpperCase();
+         }
+         
+         return "?";
+      } catch (error) {
+         console.error("Error getting customer initial:", error);
+         return "?";
       }
-
-      return "?";
    };
 
    const getCustomerName = (appointment: Appointment): string => {
-      // First try to get name from customerInfo
-      if (appointment.customerInfo) {
-         if (
-            appointment.customerInfo.firstName &&
-            appointment.customerInfo.lastName
-         ) {
-            return `${appointment.customerInfo.firstName} ${appointment.customerInfo.lastName}`;
+      try {
+         // First try to get name from customerInfo
+         if (appointment.customerInfo) {
+            if (appointment.customerInfo.firstName && appointment.customerInfo.lastName) {
+               return `${appointment.customerInfo.firstName} ${appointment.customerInfo.lastName}`;
+            }
+            if (appointment.customerInfo.name) {
+               return appointment.customerInfo.name;
+            }
          }
-         if (appointment.customerInfo.name) {
-            return appointment.customerInfo.name;
+
+         // Then try to get name from customer object
+         if (typeof appointment.customer === "object" && appointment.customer !== null) {
+            const customer = appointment.customer as AppointmentCustomer;
+            if (customer.firstName && customer.lastName) {
+               return `${customer.firstName} ${customer.lastName}`;
+            }
+            if (customer.name) {
+               return customer.name;
+            }
          }
-      }
 
-      // Then try to get name from customer object
-      if (
-         typeof appointment.customer === "object" &&
-         appointment.customer !== null
-      ) {
-         const customer = appointment.customer as AppointmentCustomer;
-         return `${customer.firstName} ${customer.lastName}`;
-      }
+         // If customer is just a string, return it
+         if (typeof appointment.customer === 'string') {
+            return appointment.customer;
+         }
 
-      return "Unknown Customer";
+         return "Unknown Customer";
+      } catch (error) {
+         console.error("Error getting customer name:", error);
+         return "Unknown Customer";
+      }
    };
 
    const getServiceName = (appointment: Appointment): string => {
-      // First try to get name from serviceInfo
-      if (appointment.serviceInfo?.name) {
-         return appointment.serviceInfo.name;
-      }
+      try {
+         // First try to get name from serviceInfo
+         if (appointment.serviceInfo?.name) {
+            return appointment.serviceInfo.name;
+         }
 
-      // Then try to get name from service object
-      if (
-         typeof appointment.service === "object" &&
-         appointment.service !== null
-      ) {
-         const service = appointment.service as { name: string };
-         return service.name;
-      }
+         // Then try to get name from service object
+         if (typeof appointment.service === "object" && appointment.service !== null) {
+            const service = appointment.service as { name: string };
+            if (service.name) {
+               return service.name;
+            }
+         }
 
-      return "Unknown Service";
+         // If service is just a string, return it
+         if (typeof appointment.service === 'string') {
+            return appointment.service;
+         }
+
+         return "Unknown Service";
+      } catch (error) {
+         console.error("Error getting service name:", error);
+         return "Unknown Service";
+      }
    };
 
    const handleStatusChange = async (
@@ -276,38 +411,41 @@ export default function Appointments() {
          const appointment = appointments.find(
             (apt) => apt._id === appointmentId
          );
-         if (!appointment) return;
+         if (!appointment) {
+            toast.error("Appointment not found");
+            return;
+         }
 
          // Create the update data with all required fields
          const updatedAppointment: AppointmentData = {
-            customer:
-               typeof appointment.customer === "object" &&
-               appointment.customer !== null
-                  ? (appointment.customer as Customer)._id
-                  : (appointment.customer as string),
+            customer: 
+               typeof appointment.customer === "object" && appointment.customer !== null
+                  ? (appointment.customer as any)._id || appointment.customer
+                  : appointment.customer,
             service:
-               typeof appointment.service === "object" &&
-               appointment.service !== null
-                  ? (appointment.service as Service)._id
-                  : (appointment.service as string),
+               typeof appointment.service === "object" && appointment.service !== null
+                  ? (appointment.service as any)._id || appointment.service
+                  : appointment.service,
             date: appointment.date,
             time: appointment.time,
-            duration: appointment.duration,
+            duration: appointment.duration || "30",
             status: newStatus,
             notes: appointment.notes || "",
-            customerInfo: appointment.customerInfo,
-            serviceInfo: appointment.serviceInfo,
+            customerInfo: appointment.customerInfo || undefined,
+            serviceInfo: appointment.serviceInfo || undefined,
          };
 
          // Update the appointment
-         const result = await updateAppointment(
-            appointmentId,
-            updatedAppointment
-         );
+         await updateAppointment(appointmentId, updatedAppointment);
 
-         // Refresh the appointments list to get the latest data
-         const refreshedAppointments = await fetchAppointments();
-         setAppointments(refreshedAppointments);
+         // Update the local state without requiring a full refresh
+         setAppointments(
+            appointments.map((apt) => 
+               apt._id === appointmentId 
+                  ? { ...apt, status: newStatus, pendingSync: true } 
+                  : apt
+            )
+         );
 
          toast.success("Appointment status updated successfully");
       } catch (error) {
@@ -318,6 +456,13 @@ export default function Appointments() {
          setOpenStatusMenu(null);
       }
    };
+
+   // Filter appointments by selected date
+   const filteredAppointments = selectedDate
+      ? appointments.filter(
+         (appointment) => appointment.date === selectedDate
+      )
+      : appointments;
 
    return (
       <div className="space-y-6 animate-fadeIn">
@@ -364,6 +509,22 @@ export default function Appointments() {
                      <CalendarIcon className="h-5 w-5" />
                   </button>
                </div>
+               <div
+                  className={`border rounded-md p-2 ${
+                     darkMode
+                        ? "bg-gray-800 border-gray-700"
+                        : "bg-white border-gray-300"
+                  }`}
+               >
+                  <input
+                     type="date"
+                     value={selectedDate}
+                     onChange={(e) => setSelectedDate(e.target.value)}
+                     className={`outline-none ${
+                        darkMode ? "bg-gray-800 text-white" : "bg-white text-gray-900"
+                     }`}
+                  />
+               </div>
                <button
                   onClick={handleRefreshAppointments}
                   disabled={loading}
@@ -376,7 +537,7 @@ export default function Appointments() {
                   <ArrowPathIcon
                      className={`h-5 w-5 mr-1 ${loading ? "animate-spin" : ""}`}
                   />
-                  {loading ? "Refreshing..." : "Refresh"}
+                  {loading ? "Loading..." : "Refresh"}
                </button>
                <Link
                   href="/dashboard/appointments/add"
@@ -399,181 +560,171 @@ export default function Appointments() {
          )}
 
          {viewMode === "list" ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-               {appointments.map((appointment) => (
-                  <div
-                     key={appointment._id}
-                     onClick={() => handleAppointmentClick(appointment)}
-                     className={`rounded-lg border transition-all hover:shadow-lg cursor-pointer ${
-                        darkMode
-                           ? "bg-gray-800/50 border-gray-700 hover:bg-gray-800/70"
-                           : "bg-white border-gray-200 hover:bg-gray-50"
-                     }`}
-                  >
-                     <div className="p-6">
-                        <div className="flex items-center justify-between mb-4">
-                           <div className="flex items-center space-x-3">
-                              <div
-                                 className={`h-12 w-12 rounded-full flex items-center justify-center text-lg font-semibold ${
-                                    darkMode
-                                       ? "bg-purple-600/20 text-purple-400"
-                                       : "bg-purple-100 text-purple-600"
-                                 }`}
-                              >
-                                 {getCustomerInitial(appointment)}
-                              </div>
-                              <div>
-                                 <h3
-                                    className={`text-lg font-semibold ${
-                                       darkMode ? "text-white" : "text-gray-900"
-                                    }`}
-                                 >
-                                    {getCustomerName(appointment)}
-                                 </h3>
-                                 <p
-                                    className={`text-sm ${
+            filteredAppointments.length > 0 ? (
+               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {filteredAppointments.map((appointment) => (
+                     <div
+                        key={appointment._id}
+                        onClick={() => handleAppointmentClick(appointment)}
+                        className={`rounded-lg border transition-all hover:shadow-lg cursor-pointer ${
+                           darkMode
+                              ? "bg-gray-800/50 border-gray-700 hover:bg-gray-800/70"
+                              : "bg-white border-gray-200 hover:bg-gray-50"
+                        }`}
+                     >
+                        <div className="p-6">
+                           <div className="flex items-center justify-between mb-4">
+                              <div className="flex items-center space-x-3">
+                                 <div
+                                    className={`h-12 w-12 rounded-full flex items-center justify-center text-lg font-semibold ${
                                        darkMode
-                                          ? "text-gray-400"
-                                          : "text-gray-600"
+                                          ? "bg-purple-600/20 text-purple-400"
+                                          : "bg-purple-100 text-purple-600"
                                     }`}
                                  >
-                                    {getServiceName(appointment)}
-                                 </p>
+                                    {getCustomerInitial(appointment)}
+                                 </div>
+                                 <div>
+                                    <h3
+                                       className={`text-lg font-semibold ${
+                                          darkMode ? "text-white" : "text-gray-900"
+                                       }`}
+                                    >
+                                       {getCustomerName(appointment)}
+                                    </h3>
+                                    <p
+                                       className={`text-sm ${
+                                          darkMode
+                                             ? "text-gray-400"
+                                             : "text-gray-600"
+                                       }`}
+                                    >
+                                       {getServiceName(appointment)}
+                                    </p>
+                                 </div>
+                              </div>
+                              <div className="relative">
+                                 <button
+                                    onClick={(e) => {
+                                       e.stopPropagation();
+                                       setOpenStatusMenu(
+                                          openStatusMenu === appointment._id
+                                             ? null
+                                             : appointment._id
+                                       );
+                                    }}
+                                    className={`px-3 py-1.5 rounded-full text-xs font-medium transition-colors ${getStatusColor(appointment.status)} flex items-center gap-1 shadow-sm`}
+                                 >
+                                    {getAppointmentStatus(appointment)}
+                                    <ChevronDownIcon className="h-3 w-3" />
+                                 </button>
+
+                                 {openStatusMenu === appointment._id && (
+                                    <div
+                                       className={`absolute right-0 mt-1 w-32 rounded-md shadow-lg z-50 ${
+                                          darkMode
+                                             ? "bg-gray-800 border border-gray-700"
+                                             : "bg-white border border-gray-200"
+                                       }`}
+                                    >
+                                       <div className="py-1">
+                                          {statusOptions.map((status) => (
+                                             <button
+                                                key={status}
+                                                onClick={(e) => {
+                                                   e.stopPropagation();
+                                                   handleStatusChange(
+                                                      appointment._id,
+                                                      status as AppointmentStatus
+                                                   );
+                                                }}
+                                                className="block w-full text-left px-2 py-1.5"
+                                             >
+                                                <span
+                                                   className={`inline-block w-full px-2 py-1 rounded text-xs font-medium ${getStatusColor(status)}`}
+                                                >
+                                                   {status}
+                                                </span>
+                                             </button>
+                                          ))}
+                                       </div>
+                                    </div>
+                                 )}
                               </div>
                            </div>
-                           <div className="relative">
-                              <button
-                                 onClick={(e) => {
-                                    e.stopPropagation();
-                                    setOpenStatusMenu(
-                                       openStatusMenu === appointment._id
-                                          ? null
-                                          : appointment._id
-                                    );
-                                 }}
-                                 className={`px-3 py-1.5 rounded-full text-xs font-medium transition-colors ${
-                                    appointment.status === "Confirmed"
-                                       ? "bg-green-500 text-white hover:bg-green-600"
-                                       : appointment.status === "Canceled"
-                                       ? "bg-red-500 text-white hover:bg-red-600"
-                                       : appointment.status === "Completed"
-                                       ? "bg-blue-500 text-white hover:bg-blue-600"
-                                       : darkMode
-                                       ? "bg-amber-500 text-white hover:bg-amber-600"
-                                       : "bg-amber-100 text-amber-800 hover:bg-amber-200"
-                                 } flex items-center gap-1 shadow-sm`}
-                              >
-                                 {appointment.status}
-                                 <ChevronDownIcon className="h-3 w-3" />
-                              </button>
 
-                              {openStatusMenu === appointment._id && (
-                                 <div
-                                    className={`absolute right-0 mt-1 w-32 rounded-md shadow-lg z-50 ${
-                                       darkMode
-                                          ? "bg-gray-800 border border-gray-700"
-                                          : "bg-white border border-gray-200"
-                                    }`}
-                                 >
-                                    <div className="py-1">
-                                       {statusOptions.map((status) => (
-                                          <button
-                                             key={status}
-                                             onClick={(e) => {
-                                                e.stopPropagation();
-                                                handleStatusChange(
-                                                   appointment._id,
-                                                   status
-                                                );
-                                             }}
-                                             className="block w-full text-left px-2 py-1.5"
-                                          >
-                                             <span
-                                                className={`inline-block w-full px-2 py-1 rounded text-xs font-medium ${
-                                                   status === "Confirmed"
-                                                      ? "bg-green-500 text-white hover:bg-green-600"
-                                                      : status === "Canceled"
-                                                      ? "bg-red-500 text-white hover:bg-red-600"
-                                                      : status === "Completed"
-                                                      ? "bg-blue-500 text-white hover:bg-blue-600"
-                                                      : darkMode
-                                                      ? "bg-amber-500 text-white hover:bg-amber-600"
-                                                      : "bg-amber-100 text-amber-800 hover:bg-amber-200"
-                                                }`}
-                                             >
-                                                {status}
-                                             </span>
-                                          </button>
-                                       ))}
-                                    </div>
+                           <div
+                              className={`space-y-2 text-sm ${
+                                 darkMode ? "text-gray-400" : "text-gray-600"
+                              }`}
+                           >
+                              <div className="flex items-center space-x-2">
+                                 <CalendarIcon className="h-4 w-4" />
+                                 <span>
+                                    {format(
+                                       parseISO(appointment.date),
+                                       "MMMM d, yyyy"
+                                    )}
+                                 </span>
+                              </div>
+                              <div className="flex items-center space-x-2">
+                                 <ClockIcon className="h-4 w-4" />
+                                 <span>{appointment.time}</span>
+                              </div>
+                              {appointment.notes && (
+                                 <div className="flex items-start space-x-2 mt-2">
+                                    <ChatBubbleLeftIcon className="h-4 w-4 mt-0.5" />
+                                    <span className="text-sm line-clamp-2">
+                                       {appointment.notes}
+                                    </span>
                                  </div>
                               )}
                            </div>
-                        </div>
 
-                        <div
-                           className={`space-y-2 text-sm ${
-                              darkMode ? "text-gray-400" : "text-gray-600"
-                           }`}
-                        >
-                           <div className="flex items-center space-x-2">
-                              <CalendarIcon className="h-4 w-4" />
-                              <span>
-                                 {format(
-                                    parseISO(appointment.date),
-                                    "MMMM d, yyyy"
-                                 )}
-                              </span>
-                           </div>
-                           <div className="flex items-center space-x-2">
-                              <ClockIcon className="h-4 w-4" />
-                              <span>{appointment.time}</span>
-                           </div>
-                           {appointment.notes && (
-                              <div className="flex items-start space-x-2 mt-2">
-                                 <ChatBubbleLeftIcon className="h-4 w-4 mt-0.5" />
-                                 <span className="text-sm line-clamp-2">
-                                    {appointment.notes}
-                                 </span>
-                              </div>
-                           )}
-                        </div>
-
-                        <div
-                           className={`flex items-center justify-end space-x-2 mt-4 pt-4 border-t ${
-                              darkMode ? "border-gray-700" : "border-gray-200"
-                           }`}
-                        >
-                           <Link
-                              href={`/dashboard/appointments/${appointment._id}`}
-                              className={`inline-flex items-center px-3 py-1.5 text-sm font-medium rounded-md ${
-                                 darkMode
-                                    ? "text-purple-400 hover:text-purple-300 bg-purple-600/10 hover:bg-purple-600/20"
-                                    : "text-purple-600 hover:text-purple-500 bg-purple-50 hover:bg-purple-100"
+                           <div
+                              className={`flex items-center justify-end space-x-2 mt-4 pt-4 border-t ${
+                                 darkMode ? "border-gray-700" : "border-gray-200"
                               }`}
                            >
-                              <PencilIcon className="h-4 w-4 mr-1.5" />
-                              Edit
-                           </Link>
-                           <button
-                              onClick={(e) => {
-                                 e.stopPropagation();
-                                 handleDeleteAppointment(appointment._id);
-                              }}
-                              className={`inline-flex items-center px-3 py-1.5 text-sm font-medium rounded-md ${
-                                 darkMode
-                                    ? "text-red-400 hover:text-red-300 bg-red-600/10 hover:bg-red-600/20"
-                                    : "text-red-600 hover:text-red-500 bg-red-50 hover:bg-red-100"
-                              }`}
-                           >
-                              <TrashIcon className="h-4 w-4 mr-1.5" />
-                              Delete
-                           </button>
+                              <Link
+                                 href={`/dashboard/appointments/${appointment._id}`}
+                                 className={`inline-flex items-center px-3 py-1.5 text-sm font-medium rounded-md ${
+                                    darkMode
+                                       ? "text-purple-400 hover:text-purple-300 bg-purple-600/10 hover:bg-purple-600/20"
+                                       : "text-purple-600 hover:text-purple-500 bg-purple-50 hover:bg-purple-100"
+                                 }`}
+                              >
+                                 <PencilIcon className="h-4 w-4 mr-1.5" />
+                                 Edit
+                              </Link>
+                              <button
+                                 onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleDeleteAppointment(appointment._id);
+                                 }}
+                                 className={`inline-flex items-center px-3 py-1.5 text-sm font-medium rounded-md ${
+                                    darkMode
+                                       ? "text-red-400 hover:text-red-300 bg-red-600/10 hover:bg-red-600/20"
+                                       : "text-red-600 hover:text-red-500 bg-red-50 hover:bg-red-100"
+                                 }`}
+                              >
+                                 <TrashIcon className="h-4 w-4 mr-1.5" />
+                                 Delete
+                              </button>
+                           </div>
                         </div>
                      </div>
-                  </div>
-               ))}
-            </div>
+                  ))}
+               </div>
+            ) : (
+               <div className="text-center py-12">
+                  <p className={`text-lg ${darkMode ? "text-gray-400" : "text-gray-600"}`}>
+                     {selectedDate
+                        ? "No appointments found for the selected date."
+                        : "No appointments found. Add your first appointment to get started."}
+                  </p>
+               </div>
+            )
          ) : (
             <div className="glass border border-white/10 rounded-xl shadow-lg overflow-hidden">
                <div className="px-5 py-4 border-b border-white/10 flex justify-between items-center">
@@ -705,15 +856,7 @@ export default function Appointments() {
                                                 handleAppointmentClick(apt)
                                              }
                                              className={`p-2 rounded-md text-xs cursor-pointer transition-colors shadow-sm ${
-                                                apt.status === "Confirmed"
-                                                   ? "bg-green-500 text-white hover:bg-green-600"
-                                                   : apt.status === "Canceled"
-                                                   ? "bg-red-500 text-white hover:bg-red-600"
-                                                   : apt.status === "Completed"
-                                                   ? "bg-blue-500 text-white hover:bg-blue-600"
-                                                   : darkMode
-                                                   ? "bg-amber-500 text-white hover:bg-amber-600"
-                                                   : "bg-amber-100 text-amber-800 hover:bg-amber-200"
+                                                getStatusColor(apt.status)
                                              }`}
                                           >
                                              <div className="flex items-center space-x-1">
@@ -800,18 +943,7 @@ export default function Appointments() {
                                                             )
                                                          }
                                                          className={`p-1 rounded-sm text-xs cursor-pointer transition-colors shadow-sm ${
-                                                            apt.status ===
-                                                            "Confirmed"
-                                                               ? "bg-green-500 text-white hover:bg-green-600"
-                                                               : apt.status ===
-                                                                 "Canceled"
-                                                               ? "bg-red-500 text-white hover:bg-red-600"
-                                                               : apt.status ===
-                                                                 "Completed"
-                                                               ? "bg-blue-500 text-white hover:bg-blue-600"
-                                                               : darkMode
-                                                               ? "bg-amber-500 text-white hover:bg-amber-600"
-                                                               : "bg-amber-100 text-amber-800 hover:bg-amber-200"
+                                                            getStatusColor(apt.status)
                                                          } truncate`}
                                                       >
                                                          <div className="flex items-center space-x-1">
@@ -923,11 +1055,7 @@ export default function Appointments() {
                         <div>
                            <span
                               className={`inline-flex items-center rounded-full px-3 py-1.5 text-xs font-medium shadow-sm ${
-                                 selectedAppointment.status === "Confirmed"
-                                    ? "bg-green-500 text-white"
-                                    : selectedAppointment.status === "Canceled"
-                                    ? "bg-red-500 text-white"
-                                    : "bg-amber-500 text-white"
+                                 getStatusColor(selectedAppointment.status)
                               }`}
                            >
                               {selectedAppointment.status}
@@ -975,9 +1103,7 @@ export default function Appointments() {
                         Edit Appointment
                      </Link>
                      <button
-                        onClick={() =>
-                           handleDeleteAppointment(selectedAppointment._id)
-                        }
+                        onClick={() => handleDeleteAppointment(selectedAppointment._id)}
                         className={`px-4 py-2 text-sm font-medium ${
                            darkMode
                               ? "text-red-400 hover:text-red-300"
@@ -990,6 +1116,14 @@ export default function Appointments() {
                </div>
             </div>
          )}
+
+         <DeleteAppointmentDialog
+            isOpen={appointmentToDelete !== null}
+            onClose={handleCancelDelete}
+            onConfirm={handleConfirmDelete}
+            darkMode={darkMode}
+            isDeleting={isDeleting}
+         />
       </div>
    );
 }

@@ -87,7 +87,6 @@ export default function EditService({ params }: { params: { id: string } }) {
             price: Number(formData.price),
          };
          await updateService(params.id, submitData);
-         toast.success("Service updated successfully");
          router.push("/dashboard/services");
       } catch (error) {
          console.error("Error updating service:", error);

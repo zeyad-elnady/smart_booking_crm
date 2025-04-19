@@ -11,7 +11,7 @@ import { MapPin } from "lucide-react";
 import { ClipboardList } from "lucide-react";
 import { ArrowLeft } from "lucide-react";
 import { toast } from "react-hot-toast";
-import { customerAPI } from "@/services/api";
+import { createCustomer } from "@/services/customerService";
 import { useTheme } from "@/components/ThemeProvider";
 
 export default function AddCustomer() {
@@ -42,7 +42,7 @@ export default function AddCustomer() {
 
       try {
          // Only use the phone number without country code
-         await customerAPI.createCustomer({
+         await createCustomer({
             firstName,
             lastName,
             email,

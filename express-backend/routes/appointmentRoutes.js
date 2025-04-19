@@ -14,17 +14,17 @@ const mongoose = require("mongoose");
 // Route: /api/appointments
 router
    .route("/")
-   .get(protect, getAppointments)
-   .post(protect, createAppointment);
+   .get(getAppointments)
+   .post(createAppointment);
 
 // Route: /api/appointments/recent
-router.get("/recent", protect, getRecentAppointments);
+router.get("/recent", getRecentAppointments);
 
 // Route: /api/appointments/:id
 router
    .route("/:id")
-   .get(protect, getAppointmentById)
-   .put(protect, updateAppointment)
-   .delete(protect, deleteAppointment);
+   .get(getAppointmentById)
+   .put(updateAppointment)
+   .delete(deleteAppointment);
 
 module.exports = router;

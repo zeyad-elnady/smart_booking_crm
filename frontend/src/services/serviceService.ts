@@ -1,28 +1,12 @@
 import API from "./api";
-
-export interface Service {
-   _id: string;
-   name: string;
-   description: string;
-   duration: string;
-   price: number;
-   category: string;
-   isActive: boolean;
-}
+import { Service, ServiceData } from "@/types/service";
+import { indexedDBService } from "./indexedDB";
+import { toast } from "react-hot-toast";
 
 export interface ServiceResponse {
    message: string;
    affectedAppointments?: number;
    service?: Service;
-}
-
-export interface ServiceData {
-   name: string;
-   description: string;
-   duration: string;
-   price: number;
-   category: string;
-   isActive?: boolean;
 }
 
 interface ApiError {
@@ -35,136 +19,195 @@ interface ApiError {
    };
 }
 
+// Add a flag to track if services have been loaded already
+let servicesLoaded = false;
+
 /**
- * Fetches all services
+ * Clears all service data from IndexedDB
+ * @returns Promise that resolves when clearing is complete
+ */
+export const clearAllServices = async (): Promise<void> => {
+   try {
+      // Initialize database if needed
+      await indexedDBService.initDB();
+      
+      // Clear services from IndexedDB
+      const serviceStore = "services";
+      await indexedDBService.purgeStore(serviceStore);
+      
+      // Mark service list for refresh
+      localStorage.setItem("serviceListShouldRefresh", "true");
+      
+      // Reset the loaded flag since all services were deleted
+      servicesLoaded = false;
+      
+      console.log("All service data cleared successfully");
+      return Promise.resolve();
+   } catch (error) {
+      console.error("Error clearing service data:", error);
+      return Promise.reject(error);
+   }
+};
+
+/**
+ * Fetches all services from IndexedDB
  * @returns Array of services
  */
-export const fetchServices = async () => {
+export const fetchServices = async (): Promise<Service[]> => {
    try {
-      const response = await API.get("/services");
-      return response.data;
+      // Get services from IndexedDB
+      await indexedDBService.initDB();
+      const localServices = await indexedDBService.getAllServices();
+      
+      if (localServices && localServices.length > 0) {
+         console.log(`Found ${localServices.length} services in IndexedDB`);
+         servicesLoaded = true;
+         return localServices;
+      }
+      
+      // No services were found - return empty array
+      return [];
    } catch (error) {
       console.error("Error fetching services:", error);
-
-      // Use mock data if API call fails
-      if (typeof localStorage !== "undefined") {
-         const mockData = localStorage.getItem("mockServices");
-         if (mockData) {
-            console.warn("Using mock service data from localStorage");
-            return JSON.parse(mockData);
-         }
-      }
-
-      throw error;
+      return [];
    }
 };
 
 /**
- * Creates a new service
- * @param serviceData The service data to create
- * @returns The created service
+ * Enable fetching services from API (removed API functionality)
  */
-export const createService = async (
-   serviceData: ServiceData
-): Promise<Service> => {
+export const enableServicesFetching = (): void => {
+   // This function now does nothing since we skip API calls
+   console.log("Using local storage only, API calls disabled");
+};
+
+/**
+ * Creates a new service using IndexedDB only
+ */
+export async function createService(serviceData: ServiceData): Promise<Service> {
    try {
-      // Ensure price is a number
-      const data = {
+      await indexedDBService.initDB();
+      
+      // Generate a unique local ID for the service
+      const localId = `local_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
+      const newService: Service = {
          ...serviceData,
-         price: Number(serviceData.price),
+         id: localId,
+         _id: localId, // Make sure we have _id field as well
+         createdAt: new Date().toISOString(),
+         updatedAt: new Date().toISOString(),
       };
+      
+      // Save to IndexedDB
+      await indexedDBService.addItem('services', newService);
+      console.log('Service saved to IndexedDB:', newService);
+      
+      // Mark the list for refresh
+      localStorage.setItem("serviceListShouldRefresh", "true");
+      
+      return newService;
+   } catch (error) {
+      console.error('Error creating service:', error);
+      toast.error("Failed to create service");
+      throw error;
+   }
+}
 
-      const response = await API.post("/services", data);
-      return {
-         ...response.data,
-         price: Number(response.data.price), // Ensure returned price is a number
+/**
+ * Updates an existing service using IndexedDB only
+ */
+export async function updateService(serviceId: string, serviceData: Partial<ServiceData>): Promise<Service> {
+   try {
+      await indexedDBService.initDB();
+      
+      // First check if the service exists in IndexedDB
+      let existingService: Service | null = await indexedDBService.getItem('services', serviceId);
+      
+      if (!existingService) {
+         throw new Error('Service not found in local database');
+      }
+      
+      const updatedService: Service = {
+         ...existingService,
+         ...serviceData,
+         updatedAt: new Date().toISOString(),
       };
-   } catch (error: unknown) {
-      console.error("Error creating service:", error);
-      const apiError = error as ApiError;
-      if (apiError.code === "ECONNABORTED") {
-         throw new Error(
-            "Connection timeout. Server may be down or overloaded."
-         );
-      } else if (
-         apiError.message.includes("Network Error") ||
-         apiError.message.includes("connect") ||
-         apiError.message.includes("ECONNREFUSED")
-      ) {
-         throw new Error(
-            "Network error. Please check if backend server is running."
-         );
-      }
+      
+      // Update in IndexedDB
+      await indexedDBService.updateItem('services', serviceId, updatedService);
+      console.log('Service updated in IndexedDB:', updatedService);
+      
+      // Mark the list for refresh
+      localStorage.setItem("serviceListShouldRefresh", "true");
+      
+      return updatedService;
+   } catch (error) {
+      console.error('Error updating service:', error);
       throw error;
    }
-};
+}
 
 /**
- * Fetches a specific service by ID
- * @param id The service ID
- * @returns The service data
+ * Deletes a service using IndexedDB only
  */
-export const fetchServiceById = async (id: string): Promise<Service> => {
+export async function deleteService(serviceId: string): Promise<void> {
    try {
-      const response = await API.get(`/services/${id}`);
-      return response.data;
-   } catch (error: unknown) {
-      console.error(`Error fetching service ${id}:`, error);
+      await indexedDBService.initDB();
+      
+      // Delete from IndexedDB
+      await indexedDBService.deleteItem('services', serviceId);
+      console.log('Service deleted from IndexedDB:', serviceId);
+      
+      // Mark the list for refresh
+      localStorage.setItem("serviceListShouldRefresh", "true");
+   } catch (error) {
+      console.error('Error deleting service:', error);
       throw error;
    }
-};
+}
 
 /**
- * Updates an existing service
- * @param id The service ID
- * @param serviceData The updated service data
- * @returns The updated service
+ * Gets all services from IndexedDB only
  */
-export const updateService = async (
-   id: string,
-   serviceData: Partial<ServiceData>
-): Promise<Service> => {
+export async function getServices(): Promise<Service[]> {
    try {
-      const response = await API.put(`/services/${id}`, serviceData);
-      return response.data;
-   } catch (error: unknown) {
-      console.error(`Error updating service ${id}:`, error);
-      throw error;
+      await indexedDBService.initDB();
+      
+      // Get from IndexedDB
+      const localServices = await indexedDBService.getAllItems('services');
+      
+      if (localServices && localServices.length > 0) {
+         console.log('Found services in IndexedDB:', localServices.length);
+         return localServices;
+      }
+      
+      console.log('No services found in IndexedDB, returning empty array');
+      return [];
+   } catch (error) {
+      console.error('Error getting services:', error);
+      return [];
    }
-};
+}
 
 /**
- * Deletes a service
- * @param id The service ID
- * @param confirm Whether to confirm the deletion
- * @returns The deletion response
+ * Gets a service by ID from IndexedDB only
  */
-export const deleteService = async (
-   id: string,
-   confirm: boolean = false
-): Promise<ServiceResponse> => {
+export async function getServiceById(serviceId: string): Promise<Service | null> {
    try {
-      const response = await API.delete(
-         `/services/${id}${confirm ? "?confirm=true" : ""}`
-      );
-
-      // If we get a confirmation response, return it
-      if (response.data.affectedAppointments !== undefined) {
-         return response.data;
+      await indexedDBService.initDB();
+      
+      // Get from IndexedDB
+      const localService = await indexedDBService.getItem('services', serviceId);
+      
+      if (localService) {
+         console.log('Found service in IndexedDB:', localService);
+         return localService;
       }
-
-      // If we get a success message, return it
-      if (response.data.message) {
-         return response.data;
-      }
-
-      throw new Error("Unexpected response format");
-   } catch (error: unknown) {
-      console.error("Error deleting service:", error);
-      const apiError = error as ApiError;
-      if (apiError.response?.data?.message) {
-         throw new Error(apiError.response.data.message);
-      }
-      throw error;
+      
+      console.log('Service not found in IndexedDB, returning null');
+      return null;
+   } catch (error) {
+      console.error('Error getting service by ID:', error);
+      return null;
    }
-};
+}

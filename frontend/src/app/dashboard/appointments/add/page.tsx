@@ -154,7 +154,6 @@ export default function AddAppointment() {
    });
    const [formErrors, setFormErrors] = useState<any>({});
    const { darkMode } = useTheme();
-   const [debugMode, setDebugMode] = useState(false);
 
    const selectRef = useRef<HTMLSelectElement>(null);
 
@@ -232,6 +231,13 @@ export default function AddAppointment() {
 
    const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
       e.preventDefault();
+      
+      // First validate the form
+      if (!validateForm()) {
+         toast.error("Please fill all required fields");
+         return;
+      }
+      
       setLoading(true);
 
       try {
@@ -244,17 +250,20 @@ export default function AddAppointment() {
 
          if (!selectedService || !selectedCustomer) {
             toast.error("Please select both customer and service");
+            setLoading(false);
             return;
          }
 
+         // Create a properly formatted appointment data object
          const appointmentData: AppointmentData = {
             customer: formData.customerId,
             service: formData.serviceId,
             date: formData.date,
             time: formData.time,
-            duration: selectedService.duration,
-            notes: formData.notes,
-            status: "Pending" as AppointmentStatus,
+            duration: selectedService.duration || "60", // Default to 60 minutes if not specified
+            status: "Pending", // Default status
+            notes: formData.notes || "",
+            // Include additional info for better display
             customerInfo: {
                name: `${selectedCustomer.firstName} ${selectedCustomer.lastName}`,
                firstName: selectedCustomer.firstName,
@@ -262,17 +271,41 @@ export default function AddAppointment() {
             },
             serviceInfo: {
                name: selectedService.name,
-               price: selectedService.price,
-               duration: selectedService.duration,
+               price: Number(selectedService.price) || 0,
+               duration: selectedService.duration || "60",
             },
          };
 
-         await appointmentAPI.createAppointment(appointmentData);
+         // Use our appointmentService to create the appointment
+         const newAppointment = await createAppointment(appointmentData);
+         
+         console.log("Appointment created:", newAppointment);
+         
+         // Set the refresh flag to ensure the appointment list is updated
+         localStorage.setItem("appointmentListShouldRefresh", "true");
+         
          toast.success("Appointment created successfully");
+         
+         // Redirect to the appointments page
          router.push("/dashboard/appointments");
       } catch (error: any) {
          console.error("Error creating appointment:", error);
-         toast.error(error.message || "Failed to create appointment");
+         let errorMessage = "Failed to create appointment";
+         
+         // Provide more specific error messages
+         if (error.response) {
+            // The request was made and the server responded with an error status
+            errorMessage = `Server error: ${error.response.status} - ${error.response.data?.message || 'Unknown error'}`;
+            console.log("Error response:", error.response);
+         } else if (error.request) {
+            // The request was made but no response was received
+            errorMessage = "No response from server. Check your connection.";
+         } else if (error.message) {
+            // Something else caused the error
+            errorMessage = error.message;
+         }
+         
+         toast.error(errorMessage);
       } finally {
          setLoading(false);
       }
@@ -372,20 +405,8 @@ export default function AddAppointment() {
    };
 
    return (
-      <div className={`p-6 w-full ${darkMode ? "dark" : "light"}`}>
-         <div className="mb-6 flex items-center">
-            <button
-               onClick={() => router.back()}
-               className={`mr-4 rounded-full p-2 transition ${
-                  darkMode ? "hover:bg-white/10" : "hover:bg-gray-200"
-               }`}
-            >
-               <ArrowLeftIcon
-                  className={`h-6 w-6 ${
-                     darkMode ? "text-white" : "text-gray-800"
-                  }`}
-               />
-            </button>
+      <div className="p-6 max-w-5xl mx-auto">
+         <div className="flex items-center mb-6">
             <h1
                className={`text-2xl font-bold ${
                   darkMode ? "text-white" : "text-gray-800"
@@ -393,108 +414,7 @@ export default function AddAppointment() {
             >
                Schedule New Appointment
             </h1>
-            <div className="ml-auto">
-               <button
-                  onClick={() => setDebugMode(!debugMode)}
-                  className={`mr-2 px-2 py-1 text-xs rounded-lg ${
-                     darkMode
-                        ? "bg-gray-700 text-white"
-                        : "bg-gray-200 text-gray-700"
-                  }`}
-               >
-                  {debugMode ? "Hide Debug" : "Debug"}
-               </button>
-            </div>
          </div>
-
-         {debugMode && (
-            <div
-               className={`mb-6 p-4 rounded-lg border ${
-                  darkMode
-                     ? "bg-red-900/30 border-red-800"
-                     : "bg-red-50 border-red-200"
-               }`}
-            >
-               <h3
-                  className={`text-sm font-medium ${
-                     darkMode ? "text-red-200" : "text-red-700"
-                  }`}
-               >
-                  Debug Controls
-               </h3>
-               <p
-                  className={`text-xs mb-2 ${
-                     darkMode ? "text-red-300" : "text-red-600"
-                  }`}
-               >
-                  If you're seeing incorrect data, use these controls:
-               </p>
-               <div className="flex flex-wrap gap-2">
-                  <button
-                     onClick={reloadCustomers}
-                     className={`text-xs px-3 py-1 rounded-md ${
-                        darkMode
-                           ? "bg-red-800 hover:bg-red-700 text-white"
-                           : "bg-red-100 hover:bg-red-200 text-red-800"
-                     }`}
-                  >
-                     Reset Customer Data
-                  </button>
-                  <button
-                     onClick={reloadServices}
-                     className={`text-xs px-3 py-1 rounded-md ${
-                        darkMode
-                           ? "bg-red-800 hover:bg-red-700 text-white"
-                           : "bg-red-100 hover:bg-red-200 text-red-800"
-                     }`}
-                  >
-                     Reset Service Data
-                  </button>
-               </div>
-               <div className="grid grid-cols-2 gap-4 mt-2">
-                  <div>
-                     <p
-                        className={`text-xs font-medium ${
-                           darkMode ? "text-red-300" : "text-red-600"
-                        }`}
-                     >
-                        Current customers: {customers.length}
-                     </p>
-                     <div
-                        className={`mt-1 text-xs max-h-20 overflow-auto ${
-                           darkMode ? "text-red-300" : "text-red-600"
-                        }`}
-                     >
-                        {customers.map((c) => (
-                           <div key={c._id}>
-                              {c.firstName} {c.lastName} ({c._id})
-                           </div>
-                        ))}
-                     </div>
-                  </div>
-                  <div>
-                     <p
-                        className={`text-xs font-medium ${
-                           darkMode ? "text-red-300" : "text-red-600"
-                        }`}
-                     >
-                        Current services: {services.length}
-                     </p>
-                     <div
-                        className={`mt-1 text-xs max-h-20 overflow-auto ${
-                           darkMode ? "text-red-300" : "text-red-600"
-                        }`}
-                     >
-                        {services.map((s) => (
-                           <div key={s._id}>
-                              {s.name} ({s._id})
-                           </div>
-                        ))}
-                     </div>
-                  </div>
-               </div>
-            </div>
-         )}
 
          {/* Quick Actions Panel */}
          <div

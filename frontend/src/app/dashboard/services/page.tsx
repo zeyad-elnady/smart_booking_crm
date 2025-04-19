@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { toast } from "react-hot-toast";
 import Link from "next/link";
 import {
@@ -9,86 +9,119 @@ import {
    TrashIcon,
    PencilIcon,
 } from "@heroicons/react/24/outline";
-import { serviceAPI } from "@/services/api";
 import { Service } from "@/types/service";
 import { useTheme } from "@/components/ThemeProvider";
 import LoadingSpinner from "@/components/LoadingSpinner";
-import { deleteService } from "@/services/serviceService";
+import { deleteService, fetchServices, clearAllServices, enableServicesFetching, getServices } from "@/services/serviceService";
 import { useRouter } from "next/navigation";
+import { indexedDBService } from "@/services/indexedDB";
+import DeleteServiceDialog from "@/components/DeleteServiceDialog";
 
 export default function Services() {
    const router = useRouter();
    const [services, setServices] = useState<Service[]>([]);
-   const [loading, setLoading] = useState(true);
-   const [error, setError] = useState<string | null>(null);
+   const [isLoading, setIsLoading] = useState(true);
+   const [errorMessage, setErrorMessage] = useState<string | null>(null);
    const { darkMode } = useTheme();
-
-   const handleRefresh = async () => {
-      try {
-         setLoading(true);
-         const data = await serviceAPI.getServices();
-         setServices(data);
-         toast.success("Services refreshed successfully");
-      } catch (err: any) {
-         console.error("Services refresh error:", err);
-         setError(err.response?.data?.message || "Failed to refresh services");
-         toast.error("Failed to refresh services");
-      } finally {
-         setLoading(false);
-      }
-   };
-
-   const handleDeleteService = async (id: string) => {
-      try {
-         // First call to get confirmation data
-         const confirmationData = await deleteService(id);
-
-         if (confirmationData.affectedAppointments) {
-            // Show confirmation dialog
-            const confirmed = window.confirm(
-               `This service has ${confirmationData.affectedAppointments} associated appointments. ` +
-                  `Deleting this service will also delete all associated appointments. ` +
-                  `Are you sure you want to proceed?`
-            );
-
-            if (confirmed) {
-               // Second call to confirm deletion
-               await deleteService(id, true);
-               toast.success(
-                  "Service and associated appointments deleted successfully"
-               );
-               // Refresh the services list
-               handleRefresh();
-            }
-         } else {
-            // If no appointments, proceed with deletion
-            await deleteService(id, true);
-            toast.success("Service deleted successfully");
-            // Refresh the services list
-            handleRefresh();
+   const migrationDoneRef = useRef(false);
+   const [serviceToDelete, setServiceToDelete] = useState<string | null>(null);
+   const [isDeleting, setIsDeleting] = useState(false);
+   
+   // Initial setup - migrate any existing data
+   useEffect(() => {
+      // This runs once on component mount to handle any data migration
+      const handleDataMigration = async () => {
+         try {
+            // Initialize database if needed
+            await indexedDBService.initDB();
+            
+            // Migrate any services from localStorage to IndexedDB
+            await indexedDBService.migrateServicesFromLocalStorage();
+            
+            // Clear any migration flags to prevent duplicate notifications
+            localStorage.removeItem("serviceListShouldRefresh");
+         } catch (error) {
+            console.error("Error during service data migration:", error);
          }
-      } catch (error) {
-         console.error("Error deleting service:", error);
-         toast.error("Failed to delete service");
-      }
-   };
+      };
+      
+      handleDataMigration();
+   }, []);
 
    useEffect(() => {
       const fetchServices = async () => {
          try {
-            setLoading(true);
-            const data = await serviceAPI.getServices();
-            setServices(data);
-         } catch (err: any) {
-            console.error("Services load error:", err);
-            setError(err.response?.data?.message || "Failed to load services");
+            setIsLoading(true);
+            setErrorMessage(null);
+            
+            // Use our updated getServices function
+            const fetchedServices = await getServices();
+            setServices(fetchedServices || []);
+         } catch (error) {
+            console.error('Error fetching services:', error);
+            // Don't show error messages to the user anymore
          } finally {
-            setLoading(false);
+            setIsLoading(false);
          }
       };
-
+      
       fetchServices();
+      
+      // Listen for service list refresh events
+      const handleStorageChange = (e: StorageEvent) => {
+         if (e.key === 'serviceListShouldRefresh') {
+            fetchServices();
+         }
+      };
+      
+      window.addEventListener('storage', handleStorageChange);
+      return () => window.removeEventListener('storage', handleStorageChange);
    }, []);
+
+   const handleRefresh = async () => {
+      try {
+         await getServices();
+         toast.success("Services refreshed successfully");
+      } catch (err: any) {
+         console.error("Services refresh error:", err);
+         setErrorMessage(err.message || "Failed to refresh services");
+         toast.error("Failed to refresh services");
+      }
+   };
+
+   const handleDeleteService = async (serviceId: string) => {
+      // Show the custom delete dialog instead of deleting directly
+      setServiceToDelete(serviceId);
+   };
+
+   // Handle confirm delete
+   const handleConfirmDelete = async () => {
+      if (!serviceToDelete) return;
+      
+      try {
+         setIsDeleting(true);
+         
+         await deleteService(serviceToDelete);
+         
+         // Update the state to remove the deleted service
+         setServices(prevServices => 
+            prevServices.filter(service => service._id !== serviceToDelete)
+         );
+         
+         toast.success('Service deleted successfully');
+      } catch (error) {
+         console.error('Error deleting service:', error);
+         toast.error('Failed to delete service');
+      } finally {
+         setIsDeleting(false);
+         setServiceToDelete(null); // Close dialog
+      }
+   };
+
+   // Handle cancel delete
+   const handleCancelDelete = () => {
+      setServiceToDelete(null);
+   };
 
    return (
       <div className="space-y-6 animate-fadeIn">
@@ -112,7 +145,7 @@ export default function Services() {
             <div className="mt-4 sm:ml-16 sm:mt-0 sm:flex-none space-x-4">
                <button
                   onClick={handleRefresh}
-                  disabled={loading}
+                  disabled={isLoading}
                   className={`inline-flex items-center rounded-lg px-4 py-2 text-sm font-semibold shadow-sm transition-all hover:scale-105 ${
                      darkMode
                         ? "bg-purple-600 text-white hover:bg-purple-700 disabled:bg-purple-400"
@@ -120,9 +153,9 @@ export default function Services() {
                   }`}
                >
                   <ArrowPathIcon
-                     className={`h-5 w-5 mr-1 ${loading ? "animate-spin" : ""}`}
+                     className={`h-5 w-5 mr-1 ${isLoading ? "animate-spin" : ""}`}
                   />
-                  {loading ? "Refreshing..." : "Refresh"}
+                  {isLoading ? "Refreshing..." : "Refresh"}
                </button>
                <Link
                   href="/dashboard/services/add"
@@ -138,17 +171,30 @@ export default function Services() {
             </div>
          </div>
 
-         {loading ? (
+         {isLoading ? (
             <div className="flex justify-center items-center py-8">
                <LoadingSpinner />
             </div>
-         ) : error ? (
-            <div className="text-center py-8 text-red-500">{error}</div>
+         ) : errorMessage ? (
+            <div className="text-center py-8 text-red-500">{errorMessage}</div>
          ) : services.length === 0 ? (
             <div className="text-center py-8">
                <p className={darkMode ? "text-gray-400" : "text-gray-500"}>
                   No services found.
                </p>
+               <div className="flex flex-col items-center space-y-4 mt-4">
+                  <Link
+                     href="/dashboard/services/add"
+                     className={`inline-flex items-center px-4 py-2 text-sm font-medium rounded-md ${
+                        darkMode
+                           ? "bg-purple-600 text-white hover:bg-purple-500"
+                           : "bg-purple-100 text-purple-800 hover:bg-purple-200"
+                     }`}
+                  >
+                     <PlusIcon className="h-5 w-5 mr-2" />
+                     Add Your First Service
+                  </Link>
+               </div>
             </div>
          ) : (
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
@@ -171,7 +217,7 @@ export default function Services() {
                                        : "bg-purple-100 text-purple-600"
                                  }`}
                               >
-                                 {service.name[0].toUpperCase()}
+                                 {service.name ? service.name[0].toUpperCase() : '?'}
                               </div>
                               <div>
                                  <h3
@@ -254,6 +300,15 @@ export default function Services() {
                ))}
             </div>
          )}
+
+         {/* Delete Service Dialog */}
+         <DeleteServiceDialog
+            isOpen={serviceToDelete !== null}
+            onClose={handleCancelDelete}
+            onConfirm={handleConfirmDelete}
+            darkMode={darkMode}
+            isDeleting={isDeleting}
+         />
       </div>
    );
 }

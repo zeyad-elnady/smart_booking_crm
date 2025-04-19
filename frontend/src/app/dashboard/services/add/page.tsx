@@ -8,7 +8,7 @@ import { DollarSign } from "lucide-react";
 import { Clock } from "lucide-react";
 import { ClipboardList } from "lucide-react";
 import { toast } from "react-hot-toast";
-import { serviceAPI } from "@/services/api";
+import { createService, enableServicesFetching } from "@/services/serviceService";
 import { useTheme } from "@/components/ThemeProvider";
 
 export default function AddService() {
@@ -20,6 +20,7 @@ export default function AddService() {
    const [price, setPrice] = useState("");
    const [duration, setDuration] = useState("");
    const [description, setDescription] = useState("");
+   const [category, setCategory] = useState("General");
 
    // Loading state
    const [isLoading, setIsLoading] = useState(false);
@@ -57,20 +58,27 @@ export default function AddService() {
             return;
          }
 
+         // Make sure service fetching is enabled
+         enableServicesFetching();
+
          const serviceData = {
             name: name.trim(),
             price: numericPrice,
             duration: duration.toString(),
             description: description.trim(),
-            category: "General",
+            category: category || "General",
             isActive: true,
          };
 
          console.log("Creating service with data:", serviceData);
-         const response = await serviceAPI.createService(serviceData);
+         // Use the enhanced createService function that properly handles IndexedDB storage
+         const response = await createService(serviceData);
          console.log("Service created successfully:", response);
 
-         toast.success("Service added successfully");
+         // Mark the services list for refresh
+         localStorage.setItem("serviceListShouldRefresh", "true");
+         
+         // Navigate back to the services list page
          router.push("/dashboard/services");
       } catch (error: any) {
          console.error("Error adding service:", error);

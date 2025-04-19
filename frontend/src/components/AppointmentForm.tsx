@@ -55,13 +55,29 @@ export default function AppointmentForm({
          setError(null);
 
          try {
+            console.log("Fetching customers and services for appointment form...");
+            
             // Fetch customers
-            const customersData = await customerAPI.getCustomers();
-            setCustomers(customersData);
+            try {
+               const customersData = await customerAPI.getCustomers();
+               console.log(`Successfully loaded ${customersData.length} customers:`, 
+                  customersData.map(c => `${c.firstName} ${c.lastName} (${c._id})`));
+               setCustomers(customersData);
+            } catch (customerError) {
+               console.error("Error fetching customers:", customerError);
+               setError("Failed to load customers. Please check the console for details.");
+            }
 
             // Fetch services
-            const servicesData = await serviceAPI.getServices();
-            setServices(servicesData);
+            try {
+               const servicesData = await serviceAPI.getServices();
+               console.log(`Successfully loaded ${servicesData.length} services:`, 
+                  servicesData.map(s => `${s.name} (${s._id})`));
+               setServices(servicesData);
+            } catch (serviceError) {
+               console.error("Error fetching services:", serviceError);
+               setError("Failed to load services. Please check the console for details.");
+            }
          } catch (err) {
             console.error("Error fetching data:", err);
             setError("Failed to load customers or services. Please try again.");

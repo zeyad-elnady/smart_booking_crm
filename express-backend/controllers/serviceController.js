@@ -1,14 +1,23 @@
 const Service = require("../models/Service");
 const Appointment = require("../models/Appointment");
 const mongoose = require("mongoose");
+const localDataService = require("../utils/localDataService");
 
 // @desc    Get all services
 // @route   GET /api/services
 // @access  Public
 const getServices = async (req, res) => {
    try {
-      const services = await Service.find({});
-      res.json(services);
+      // First try to get from MongoDB
+      try {
+         const services = await Service.find({});
+         return res.json(services);
+      } catch (dbError) {
+         console.error("MongoDB error, falling back to local storage:", dbError.message);
+         // Fallback to local storage
+         const services = localDataService.find("services");
+         return res.json(services);
+      }
    } catch (error) {
       console.error("Error fetching services:", error);
       res.status(500).json({ message: error.message });
@@ -20,13 +29,31 @@ const getServices = async (req, res) => {
 // @access  Public
 const getServiceById = async (req, res) => {
    try {
-      const service = await Service.findById(req.params.id);
-
-      if (!service) {
-         return res.status(404).json({ message: "Service not found" });
+      // First try to get from MongoDB
+      try {
+         const service = await Service.findById(req.params.id);
+         
+         if (!service) {
+            // Try local storage before returning 404
+            const localService = localDataService.findById("services", req.params.id);
+            if (localService) {
+               return res.json(localService);
+            }
+            return res.status(404).json({ message: "Service not found" });
+         }
+         
+         return res.json(service);
+      } catch (dbError) {
+         console.error("MongoDB error, falling back to local storage:", dbError.message);
+         // Fallback to local storage
+         const service = localDataService.findById("services", req.params.id);
+         
+         if (!service) {
+            return res.status(404).json({ message: "Service not found" });
+         }
+         
+         return res.json(service);
       }
-
-      res.json(service);
    } catch (error) {
       console.error("Error fetching service by ID:", error);
       res.status(500).json({ message: error.message });

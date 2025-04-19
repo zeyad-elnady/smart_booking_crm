@@ -1,6 +1,8 @@
 const Appointment = require("../models/Appointment");
 const Customer = require("../models/Customer");
 const Service = require("../models/Service");
+const localDataService = require("../utils/localDataService");
+const mongoose = require("mongoose");
 
 // Get dashboard statistics
 const getDashboardStats = async (req, res) => {
@@ -67,6 +69,19 @@ const getDashboardStats = async (req, res) => {
             end: endOfMonth.toISOString(),
          },
       });
+
+      // If we're skipping MongoDB or MongoDB is not connected, use local storage instead
+      if (process.env.SKIP_MONGODB === "true" || !localDataService.isMongoConnected()) {
+         console.log("Using local storage for dashboard statistics");
+         return getLocalDashboardStats(res, {
+            today,
+            tomorrow,
+            startOfWeek,
+            endOfWeek,
+            startOfMonth,
+            endOfMonth
+         });
+      }
 
       // Get stats using aggregation pipeline
       const stats = await Appointment.aggregate([
@@ -293,17 +308,120 @@ const getDashboardStats = async (req, res) => {
 
       res.json(response);
    } catch (error) {
-      console.error("Error in getDashboardStats:", {
-         message: error.message,
-         stack: error.stack,
-      });
+      console.error("Error in getDashboardStats:", error);
       res.status(500).json({
-         message: "Error fetching dashboard statistics",
-         error: error.message,
+         message: "Error retrieving dashboard statistics",
+         error: error.message
+      });
+   }
+};
+
+/**
+ * Calculate dashboard statistics using local storage
+ */
+const getLocalDashboardStats = (res, dates) => {
+   try {
+      const { today, tomorrow, startOfWeek, endOfWeek, startOfMonth, endOfMonth } = dates;
+      
+      // Get data from local storage
+      const appointments = localDataService.find("appointments");
+      const services = localDataService.find("services");
+      const customers = localDataService.find("customers");
+      
+      // Helper function to add service details to appointments
+      const addServiceDetails = (appt) => {
+         const service = services.find(s => s._id === appt.service);
+         return {
+            ...appt,
+            serviceDetails: service || { price: 0, duration: 0 }
+         };
+      };
+      
+      // Add service details to all appointments
+      const appointmentsWithServices = appointments.map(addServiceDetails);
+      
+      // Filter completed appointments for the given date ranges
+      const isDateInRange = (apptDate, start, end) => {
+         const date = new Date(apptDate);
+         return date >= start && date <= end;
+      };
+      
+      // Daily stats
+      const dailyAppointments = appointmentsWithServices.filter(a => 
+         a.status === "Completed" && isDateInRange(a.date, today, tomorrow)
+      );
+      
+      const dailyRevenue = {
+         totalRevenue: dailyAppointments.reduce((sum, appt) => 
+            sum + (Number(appt.serviceDetails.price) || 0), 0),
+         completedCount: dailyAppointments.length
+      };
+      
+      // Weekly stats
+      const weeklyAppointments = appointmentsWithServices.filter(a => 
+         a.status === "Completed" && isDateInRange(a.date, startOfWeek, endOfWeek)
+      );
+      
+      const weeklyRevenue = {
+         totalRevenue: weeklyAppointments.reduce((sum, appt) => 
+            sum + (Number(appt.serviceDetails.price) || 0), 0),
+         completedCount: weeklyAppointments.length
+      };
+      
+      // Monthly stats
+      const monthlyAppointments = appointmentsWithServices.filter(a => 
+         a.status === "Completed" && isDateInRange(a.date, startOfMonth, endOfMonth)
+      );
+      
+      const monthlyRevenue = {
+         totalRevenue: monthlyAppointments.reduce((sum, appt) => 
+            sum + (Number(appt.serviceDetails.price) || 0), 0),
+         completedCount: monthlyAppointments.length
+      };
+      
+      // Wait time calculation
+      const confirmedAppointments = appointmentsWithServices.filter(a => 
+         a.status === "Confirmed" && isDateInRange(a.date, today, tomorrow)
+      );
+      
+      let waitTime = {
+         averageWaitTime: 0,
+         confirmedCount: confirmedAppointments.length
+      };
+      
+      if (confirmedAppointments.length > 0) {
+         const totalDuration = confirmedAppointments.reduce((sum, appt) => {
+            const duration = parseInt(appt.serviceDetails.duration) || 0;
+            return sum + duration;
+         }, 0);
+         
+         waitTime.averageWaitTime = Math.round(totalDuration / confirmedAppointments.length);
+      }
+      
+      // Response data
+      const data = {
+         totalCustomers: customers.length,
+         todayRevenue: Math.round(dailyRevenue.totalRevenue * 100) / 100,
+         weeklyRevenue: Math.round(weeklyRevenue.totalRevenue * 100) / 100, 
+         monthlyRevenue: Math.round(monthlyRevenue.totalRevenue * 100) / 100,
+         completedToday: dailyRevenue.completedCount,
+         completedWeek: weeklyRevenue.completedCount,
+         completedMonth: monthlyRevenue.completedCount,
+         averageWaitTime: waitTime.averageWaitTime,
+         confirmedToday: waitTime.confirmedCount
+      };
+      
+      // Return data
+      return res.json(data);
+   } catch (error) {
+      console.error("Error in local dashboard stats:", error);
+      res.status(500).json({
+         message: "Error calculating local dashboard statistics",
+         error: error.message
       });
    }
 };
 
 module.exports = {
-   getDashboardStats,
+   getDashboardStats
 };

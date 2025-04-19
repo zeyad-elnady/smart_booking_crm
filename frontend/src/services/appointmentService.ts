@@ -2,6 +2,7 @@ import axios from "../services/axiosConfig";
 import { Appointment, AppointmentData } from "@/types/appointment";
 import { indexedDBService } from "./indexedDB";
 import { toast } from "react-hot-toast";
+import API from "./api";
 
 // Helper function to generate a unique ID
 const generateId = () =>
@@ -11,35 +12,98 @@ const generateId = () =>
 const isOnline = (): boolean => navigator.onLine;
 
 /**
- * Fetches all appointments from IndexedDB
+ * Clears all appointment data from both IndexedDB and localStorage
+ * @returns Promise that resolves when clearing is complete
+ */
+export const clearAllAppointments = async (): Promise<void> => {
+   try {
+      // Initialize database if needed
+      await indexedDBService.initDB();
+      
+      // Clear appointments from IndexedDB
+      const appointmentStore = "appointments";
+      await indexedDBService.purgeStore(appointmentStore);
+      
+      // Remove appointments from localStorage
+      localStorage.removeItem("mockAppointments");
+      
+      // Mark appointment list for refresh
+      localStorage.setItem("appointmentListShouldRefresh", "true");
+      
+      console.log("All appointment data cleared successfully");
+      return Promise.resolve();
+   } catch (error) {
+      console.error("Error clearing appointment data:", error);
+      return Promise.reject(error);
+   }
+};
+
+/**
+ * Fetches all appointments
+ * @returns Array of appointments sorted by date and time
  */
 export const fetchAppointments = async (): Promise<Appointment[]> => {
    try {
-      // Try to fetch from server first if online
-      if (navigator.onLine) {
+      // First try to get appointments from IndexedDB
+      await indexedDBService.initDB();
+      let localAppointments = await indexedDBService.getAllAppointments();
+      
+      // Filter out any appointments marked for deletion
+      localAppointments = localAppointments.filter(appointment => !appointment.pendingDelete);
+      
+      if (localAppointments && localAppointments.length > 0) {
+         console.log(`Found ${localAppointments.length} appointments in IndexedDB`);
+      } else {
+         // If no appointments in IndexedDB, try API
          try {
-            const response = await axios.get("/appointments");
-            const serverAppointments = response.data;
-
-            // Update IndexedDB with server data
-            for (const appointment of serverAppointments) {
-               await indexedDBService.saveAppointment(appointment);
+            const response = await API.get("/appointments");
+            const apiAppointments = response.data;
+            
+            // Save API appointments to IndexedDB for offline access
+            if (apiAppointments && apiAppointments.length > 0) {
+               console.log(`Saving ${apiAppointments.length} API appointments to IndexedDB`);
+               await indexedDBService.bulkSaveAppointments(apiAppointments);
+               localAppointments = apiAppointments;
             }
-
-            return serverAppointments;
-         } catch (serverError) {
-            console.error(
-               "Error fetching from server, falling back to IndexedDB:",
-               serverError
-            );
+         } catch (apiError) {
+            console.error("API error, trying localStorage:", apiError);
+            
+            // If API fails, try localStorage as last resort
+            if (typeof localStorage !== "undefined") {
+               const mockData = localStorage.getItem("mockAppointments");
+               if (mockData) {
+                  console.warn("Using mock appointment data from localStorage");
+                  const mockAppointments = JSON.parse(mockData);
+                  
+                  // Migrate mock appointments to IndexedDB for future use
+                  if (Array.isArray(mockAppointments) && mockAppointments.length > 0) {
+                     await indexedDBService.bulkSaveAppointments(mockAppointments);
+                     // Clear from localStorage after migration
+                     localStorage.removeItem("mockAppointments");
+                     localAppointments = mockAppointments;
+                  }
+               }
+            }
          }
       }
-
-      // Fallback to IndexedDB
-      return await indexedDBService.getAllAppointments();
+      
+      // Sort appointments by date and time
+      if (localAppointments && localAppointments.length > 0) {
+         return localAppointments.sort((a, b) => {
+            // First sort by date
+            const dateComparison = a.date.localeCompare(b.date);
+            if (dateComparison !== 0) return dateComparison;
+            
+            // If dates are the same, sort by time
+            return a.time.localeCompare(b.time);
+         });
+      }
+      
+      // If no appointments found anywhere, return empty array
+      return [];
    } catch (error) {
       console.error("Error fetching appointments:", error);
-      throw error;
+      return [];
    }
 };
 
@@ -81,17 +145,16 @@ export const createAppointment = async (
                pendingDelete: false,
             });
 
-            toast.success("Appointment created and synced with server");
+            toast.success("Appointment created successfully");
             return serverAppointment;
          } catch (serverError) {
             console.error("Error syncing with server:", serverError);
             // Keep the local version if server sync fails
-            toast.error("Created locally, will sync when online");
             return appointment;
          }
       }
 
-      toast.success("Appointment created locally");
+      toast.success("Appointment created successfully");
       return appointment;
    } catch (error) {
       console.error("Error creating appointment:", error);
@@ -108,28 +171,45 @@ export const updateAppointment = async (
    appointmentData: Partial<Appointment>
 ): Promise<Appointment> => {
    try {
+      console.log(`Starting update for appointment with ID: ${id}`);
+      console.log("Update data:", appointmentData);
+      
+      // Ensure database is initialized
+      await indexedDBService.initDB();
+      
+      // Get the existing appointment
       const existingAppointment = await indexedDBService.getAppointmentById(id);
       if (!existingAppointment) {
+         console.error(`Appointment with ID ${id} not found in IndexedDB`);
          throw new Error("Appointment not found");
       }
+      
+      console.log("Found existing appointment:", existingAppointment);
 
+      // Create the updated appointment object, preserving important fields
       const updatedAppointment: Appointment = {
          ...existingAppointment,
          ...appointmentData,
          pendingSync: true,
+         updatedAt: new Date().toISOString()
       };
+      
+      console.log("Saving updated appointment:", updatedAppointment);
 
       // Save to IndexedDB first
       await indexedDBService.saveAppointment(updatedAppointment);
+      console.log("Successfully saved to IndexedDB");
 
       // If online, sync with server immediately
       if (navigator.onLine) {
          try {
+            console.log("Attempting to sync with server...");
             const serverResponse = await axios.put(
                `/appointments/${id}`,
                appointmentData
             );
             const serverAppointment = serverResponse.data;
+            console.log("Server response:", serverAppointment);
 
             // Update the local appointment with server data
             const finalAppointment = {
@@ -137,19 +217,22 @@ export const updateAppointment = async (
                pendingSync: false,
             };
             await indexedDBService.saveAppointment(finalAppointment);
+            console.log("Updated local appointment with server data");
 
+            toast.success("Appointment updated successfully");
             return finalAppointment;
          } catch (serverError) {
             console.error("Error syncing with server:", serverError);
-            toast.error("Updated locally, will sync when online");
             return updatedAppointment;
          }
+      } else {
+         toast.success("Appointment updated successfully (offline)");
       }
 
-      toast.success("Appointment updated locally");
       return updatedAppointment;
    } catch (error) {
       console.error("Error updating appointment:", error);
+      toast.error(`Failed to update appointment: ${error instanceof Error ? error.message : 'Unknown error'}`);
       throw error;
    }
 };
@@ -164,47 +247,25 @@ export const deleteAppointment = async (id: string): Promise<void> => {
          throw new Error("Appointment not found");
       }
 
-      // If online, try to delete from server first
+      // Always delete from IndexedDB first
+      await indexedDBService.deleteAppointment(id);
+      
+      // If online, try to delete from server also
       if (navigator.onLine) {
          try {
             await axios.delete(`/appointments/${id}`);
-            // If server deletion successful, delete from IndexedDB
-            await indexedDBService.deleteAppointment(id);
             toast.success("Appointment deleted successfully");
          } catch (serverError) {
             console.error("Error deleting from server:", serverError);
-            // If it's a local appointment that hasn't been synced, delete it directly
-            if (appointment._id.startsWith("local_")) {
-               await indexedDBService.deleteAppointment(id);
-               toast.success("Local appointment deleted");
-            } else {
-               // For server-synced appointments that failed to delete, mark for deletion
-               await indexedDBService.saveAppointment({
-                  ...appointment,
-                  pendingDelete: true,
-                  pendingSync: true,
-               });
-               toast.error(
-                  "Appointment marked for deletion, will sync when online"
-               );
-            }
+            // Don't need to handle this specially since we've already deleted from IndexedDB
+            toast.success("Appointment deleted locally");
          }
       } else {
-         // If offline, mark for deletion or delete local
-         if (appointment._id.startsWith("local_")) {
-            await indexedDBService.deleteAppointment(id);
-            toast.success("Local appointment deleted");
-         } else {
-            await indexedDBService.saveAppointment({
-               ...appointment,
-               pendingDelete: true,
-               pendingSync: true,
-            });
-            toast.error(
-               "Appointment marked for deletion, will sync when online"
-            );
-         }
+         toast.success("Appointment deleted locally (offline)");
       }
+      
+      // Flag to refresh appointment list
+      localStorage.setItem("appointmentListShouldRefresh", "true");
    } catch (error) {
       console.error("Error deleting appointment:", error);
       toast.error("Failed to delete appointment");
@@ -219,36 +280,74 @@ export const fetchAppointmentById = async (
    id: string
 ): Promise<Appointment | null> => {
    try {
-      // Try to fetch from server first if online
+      console.log(`Attempting to fetch appointment with ID: ${id}`);
+      
+      // First ensure database is initialized
+      await indexedDBService.initDB();
+
+      // Try to fetch directly from IndexedDB first (most reliable)
+      console.log("Checking IndexedDB for appointment...");
+      const localAppointment = await indexedDBService.getAppointmentById(id);
+      
+      if (localAppointment) {
+         console.log("Appointment found in IndexedDB:", localAppointment);
+         return localAppointment;
+      }
+      
+      console.log("Appointment not found in IndexedDB, trying server...");
+      
+      // If not in IndexedDB and we're online, try the server
       if (navigator.onLine) {
          try {
+            console.log("Fetching from server API...");
             const response = await axios.get(`/appointments/${id}`);
             const serverAppointment = response.data;
+            console.log("Appointment found on server:", serverAppointment);
 
-            // Update IndexedDB with server data
+            // Save to IndexedDB for future access
             await indexedDBService.saveAppointment({
                ...serverAppointment,
                pendingSync: false,
                pendingDelete: false,
             });
-
+            
             return serverAppointment;
          } catch (serverError) {
-            console.error(
-               "Error fetching from server, falling back to IndexedDB:",
-               serverError
-            );
+            console.error("Error fetching from server:", serverError);
+         }
+      } else {
+         console.log("Currently offline, only IndexedDB data is available");
+      }
+      
+      // As a last resort, check localStorage for legacy data
+      console.log("Checking localStorage as last resort...");
+      const storedAppointments = localStorage.getItem("storedAppointments");
+      if (storedAppointments) {
+         try {
+            const appointments = JSON.parse(storedAppointments);
+            const legacyAppointment = appointments.find((a: any) => a._id === id);
+            
+            if (legacyAppointment) {
+               console.log("Found appointment in localStorage:", legacyAppointment);
+               
+               // Save to IndexedDB for future access
+               await indexedDBService.saveAppointment({
+                  ...legacyAppointment,
+                  pendingSync: true,
+                  pendingDelete: false,
+               });
+               
+               return legacyAppointment;
+            }
+         } catch (parseError) {
+            console.error("Error parsing localStorage appointments:", parseError);
          }
       }
-
-      // Fallback to IndexedDB
-      const localAppointment = await indexedDBService.getAppointmentById(id);
-      if (!localAppointment) {
-         throw new Error("Appointment not found");
-      }
-      return localAppointment;
+      
+      console.error(`Appointment with ID ${id} not found in any storage location`);
+      return null;
    } catch (error) {
-      console.error("Error fetching appointment:", error);
+      console.error("Error in fetchAppointmentById:", error);
       throw error;
    }
 };

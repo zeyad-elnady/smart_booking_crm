@@ -2,127 +2,138 @@
 
 import { useState, useEffect } from "react";
 import {
-   PlusIcon,
-   MagnifyingGlassIcon,
    ArrowPathIcon,
    UserPlusIcon,
    PhoneIcon,
-   CalendarIcon,
    PencilIcon,
    TrashIcon,
+   MagnifyingGlassIcon,
+   XCircleIcon
 } from "@heroicons/react/24/outline";
 import Link from "next/link";
-import { customerAPI, Customer } from "@/services/api";
-import { format } from "date-fns";
+import { Customer } from "@/types/customer";
 import { useRouter } from "next/navigation";
 import { useTheme } from "@/components/ThemeProvider";
 import LoadingSpinner from "@/components/LoadingSpinner";
 import { toast } from "react-hot-toast";
+import { indexedDBService } from "@/services/indexedDB";
+import DeleteCustomerDialog from "@/components/DeleteCustomerDialog";
 
 export default function Customers() {
    const router = useRouter();
    const [customers, setCustomers] = useState<Customer[]>([]);
+   const [filteredCustomers, setFilteredCustomers] = useState<Customer[]>([]);
+   const [searchTerm, setSearchTerm] = useState("");
    const [loading, setLoading] = useState(true);
-   const [isMockData, setIsMockData] = useState(false);
    const [error, setError] = useState<string | null>(null);
    const { darkMode } = useTheme();
+   const [customerToDelete, setCustomerToDelete] = useState<string | null>(null);
+   const [isDeleting, setIsDeleting] = useState(false);
 
-   async function fetchCustomers() {
+   // Load customers directly from IndexedDB
+   async function loadCustomers() {
       try {
          setLoading(true);
-         console.log("Fetching customers from API...");
-         const data = await customerAPI.getCustomers();
-         console.log("Received customers data:", data);
-         setCustomers(data);
-
-         // Check if we're using mock data by looking for mock_ in ID
-         const hasMockData = data.some((customer: Customer) =>
-            customer._id.toString().includes("mock_")
-         );
-         setIsMockData(hasMockData);
-      } catch (error) {
-         console.error("Failed to fetch customers:", error);
-         setIsMockData(true);
-         setError("Failed to fetch customers. Please try again later.");
+         setError(null);
+         
+         // Initialize database if needed
+         if (!indexedDBService.db) {
+            await indexedDBService.initDB();
+         }
+         
+         // Get all customers from database
+         const allCustomers = await indexedDBService.getAllCustomers();
+         
+         // Sort by name
+         allCustomers.sort((a, b) => {
+            const nameA = `${a.firstName} ${a.lastName}`.toLowerCase();
+            const nameB = `${b.firstName} ${b.lastName}`.toLowerCase();
+            return nameA.localeCompare(nameB);
+         });
+         
+         setCustomers(allCustomers);
+         setFilteredCustomers(allCustomers);
+         
+         if (allCustomers.length === 0) {
+            console.log("No customers found in database");
+         } else {
+            console.log(`Loaded ${allCustomers.length} customers from database`);
+         }
+      } catch (err) {
+         console.error("Error loading customers:", err);
+         setError("Failed to load customers. Please try resetting the database.");
       } finally {
          setLoading(false);
       }
    }
 
+   // Handle search 
+   const handleSearch = async (term: string) => {
+      setSearchTerm(term);
+      
+      if (!term.trim()) {
+         setFilteredCustomers(customers);
+         return;
+      }
+      
+      // Use the database search function
+      const results = await indexedDBService.searchCustomersByName(term);
+      setFilteredCustomers(results);
+   };
+
    useEffect(() => {
-      fetchCustomers();
-
-      // Setup listener for navigation events to refresh data
-      const handleRouteChange = () => {
-         console.log("Navigation detected, refreshing customers");
-         fetchCustomers();
-      };
-
-      // Add event listener for focus
-      window.addEventListener("focus", handleRouteChange);
-
-      // Setup refresh on navigation
-      const checkNavigation = () => {
-         const shouldRefresh = localStorage.getItem(
-            "customerListShouldRefresh"
-         );
+      // Load customers when component mounts
+      loadCustomers();
+      
+      // Set up a refresh check
+      const refreshInterval = setInterval(() => {
+         const shouldRefresh = localStorage.getItem("customerListShouldRefresh");
          if (shouldRefresh === "true") {
-            console.log("Refresh flag detected, refreshing customers");
             localStorage.removeItem("customerListShouldRefresh");
-            fetchCustomers();
+            loadCustomers();
          }
-      };
-
-      // Check immediately and then setup interval
-      checkNavigation();
-      const intervalId = setInterval(checkNavigation, 1000);
-
-      return () => {
-         window.removeEventListener("focus", handleRouteChange);
-         clearInterval(intervalId);
-      };
+      }, 1000);
+      
+      return () => clearInterval(refreshInterval);
    }, []);
 
-   // Handle manual refresh button click
-   const handleRefresh = () => {
-      console.log("Manual refresh requested");
-      fetchCustomers();
+   // Handle delete customer
+   const handleDeleteCustomer = async (customerId: string) => {
+      // Show the custom delete dialog instead of window.confirm
+      setCustomerToDelete(customerId);
    };
 
-   // Handle edit customer click
-   const handleEditClick = (customerId: string) => {
-      console.log("Navigating to edit customer", customerId);
-      router.push(`/dashboard/customers/edit/${customerId}`);
-   };
-
-   const handleDeleteClick = async (
-      customerId: string,
-      confirmation: boolean = false
-   ) => {
+   // Handle confirm delete
+   const handleConfirmDelete = async () => {
+      if (!customerToDelete) return;
+      
       try {
-         const response = await customerAPI.deleteCustomer(
-            customerId,
-            confirmation
-         );
-
-         if (response.affectedAppointments && !confirmation) {
-            const confirmDelete = window.confirm(
-               `This customer has ${response.affectedAppointments} appointments. Deleting this customer will also delete all associated appointments. Are you sure you want to proceed?`
-            );
-
-            if (confirmDelete) {
-               return handleDeleteClick(customerId, true);
-            }
-            return;
-         }
-
-         // Refresh the customer list after successful deletion
-         await fetchCustomers();
+         setIsDeleting(true);
+         
+         // Use the enhanced delete function that handles appointments too
+         await indexedDBService.deleteCustomer(customerToDelete);
+         
          toast.success("Customer deleted successfully");
+         
+         // Reload customer list
+         await loadCustomers();
       } catch (error) {
          console.error("Failed to delete customer:", error);
          toast.error("Failed to delete customer");
+      } finally {
+         setIsDeleting(false);
+         setCustomerToDelete(null); // Close dialog
       }
+   };
+
+   // Handle cancel delete
+   const handleCancelDelete = () => {
+      setCustomerToDelete(null);
+   };
+
+   // Handle edit customer
+   const handleEditCustomer = (customerId: string) => {
+      router.push(`/dashboard/customers/edit/${customerId}`);
    };
 
    return (
@@ -144,18 +155,28 @@ export default function Customers() {
                   A list of all customers in your database including their
                   contact information and appointment history.
                </p>
-               {isMockData && (
-                  <div className="mt-2 p-2 bg-yellow-500/20 border border-yellow-500/30 rounded-md">
-                     <p className="text-xs text-yellow-300">
-                        ⚠️ Using mock data - Some features may be limited. The
-                        backend server is currently unavailable.
-                     </p>
-                  </div>
-               )}
             </div>
-            <div className="mt-4 sm:ml-16 sm:mt-0 sm:flex-none flex items-center space-x-4">
+            <div className="mt-4 sm:ml-16 sm:mt-0 sm:flex-none flex items-center space-x-3">
+               {/* Search bar */}
+               <div className="relative">
+                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                     <MagnifyingGlassIcon className="h-5 w-5 text-gray-400" aria-hidden="true" />
+                  </div>
+                  <input
+                     type="text"
+                     value={searchTerm}
+                     onChange={(e) => handleSearch(e.target.value)}
+                     placeholder="Search customers..."
+                     className={`block w-full pl-10 py-2 pr-3 border rounded-md ${
+                        darkMode 
+                           ? "bg-gray-800 border-gray-700 text-white placeholder-gray-400"
+                           : "bg-white border-gray-300 text-gray-900 placeholder-gray-500"
+                     }`}
+                  />
+               </div>
+               
                <button
-                  onClick={handleRefresh}
+                  onClick={loadCustomers}
                   disabled={loading}
                   className={`inline-flex items-center rounded-lg px-4 py-2 text-sm font-semibold shadow-sm transition-all hover:scale-105 ${
                      darkMode
@@ -166,7 +187,7 @@ export default function Customers() {
                   <ArrowPathIcon
                      className={`h-5 w-5 mr-1 ${loading ? "animate-spin" : ""}`}
                   />
-                  {loading ? "Refreshing..." : "Refresh"}
+                  {loading ? "Loading..." : "Refresh"}
                </button>
                <Link
                   href="/dashboard/customers/add"
@@ -185,7 +206,7 @@ export default function Customers() {
             </div>
          </div>
 
-         {/* Loading State */}
+         {/* Customer List */}
          {loading ? (
             <div className="flex justify-center items-center py-8">
                <LoadingSpinner />
@@ -198,9 +219,34 @@ export default function Customers() {
             >
                {error}
             </div>
+         ) : filteredCustomers.length === 0 ? (
+            <div className="text-center py-12">
+               {searchTerm ? (
+                  <p className={`text-lg ${darkMode ? "text-gray-400" : "text-gray-600"}`}>
+                     No customers match your search.
+                  </p>
+               ) : (
+                  <div className="space-y-4">
+                     <p className={`text-lg ${darkMode ? "text-gray-400" : "text-gray-600"}`}>
+                        No customers found. Add your first customer to get started.
+                     </p>
+                     <Link
+                        href="/dashboard/customers/add"
+                        className={`inline-flex items-center px-4 py-2 text-sm font-medium rounded-md ${
+                           darkMode
+                              ? "bg-purple-600 text-white hover:bg-purple-500"
+                              : "bg-purple-100 text-purple-800 hover:bg-purple-200"
+                        }`}
+                     >
+                        <UserPlusIcon className="h-5 w-5 mr-2" />
+                        Add Your First Customer
+                     </Link>
+                  </div>
+               )}
+            </div>
          ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-               {customers.map((customer) => (
+               {filteredCustomers.map((customer) => (
                   <div
                      key={customer._id}
                      className={`rounded-lg border transition-all hover:shadow-lg ${
@@ -219,8 +265,8 @@ export default function Customers() {
                                        : "bg-purple-100 text-purple-600"
                                  }`}
                               >
-                                 {customer.firstName[0]}
-                                 {customer.lastName[0]}
+                                 {customer.firstName?.[0] || '?'}
+                                 {customer.lastName?.[0] || '?'}
                               </div>
                               <div>
                                  <h3
@@ -237,7 +283,7 @@ export default function Customers() {
                                           : "text-gray-600"
                                     }`}
                                  >
-                                    {customer.email}
+                                    {customer.email || 'No email'}
                                  </p>
                               </div>
                            </div>
@@ -260,7 +306,7 @@ export default function Customers() {
                            }`}
                         >
                            <button
-                              onClick={() => handleEditClick(customer._id)}
+                              onClick={() => handleEditCustomer(customer._id)}
                               className={`inline-flex items-center px-3 py-1.5 text-sm font-medium rounded-md ${
                                  darkMode
                                     ? "text-purple-400 hover:text-purple-300 bg-purple-600/10 hover:bg-purple-600/20"
@@ -271,7 +317,7 @@ export default function Customers() {
                               Edit
                            </button>
                            <button
-                              onClick={() => handleDeleteClick(customer._id)}
+                              onClick={() => handleDeleteCustomer(customer._id)}
                               className={`inline-flex items-center px-3 py-1.5 text-sm font-medium rounded-md ${
                                  darkMode
                                     ? "text-red-400 hover:text-red-300 bg-red-600/10 hover:bg-red-600/20"
@@ -287,6 +333,15 @@ export default function Customers() {
                ))}
             </div>
          )}
+
+         {/* Delete Customer Dialog */}
+         <DeleteCustomerDialog
+            isOpen={customerToDelete !== null}
+            onClose={handleCancelDelete}
+            onConfirm={handleConfirmDelete}
+            darkMode={darkMode}
+            isDeleting={isDeleting}
+         />
       </div>
    );
 }

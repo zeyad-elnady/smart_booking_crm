@@ -190,41 +190,6 @@ export default function Dashboard() {
          setShowServicePrompt(false);
       }
 
-      // Initialize mockDashboardStats if it doesn't exist
-      if (typeof window !== "undefined") {
-         const storedMockStats = localStorage.getItem("mockDashboardStats");
-         if (!storedMockStats) {
-            // Get customer count
-            let totalCustomers = 0;
-            const storedMockCustomers = localStorage.getItem("mockCustomers");
-            if (storedMockCustomers) {
-               try {
-                  const customers = JSON.parse(storedMockCustomers);
-                  totalCustomers = customers.length;
-               } catch (e) {
-                  console.error("Error parsing mock customers:", e);
-               }
-            }
-
-            // Initialize stats with accurate customer count
-            const initialStats = {
-               appointmentsToday: Math.floor(Math.random() * 5),
-               totalCustomers: totalCustomers,
-               revenueToday: Math.floor(Math.random() * 300) + 50,
-               averageWaitTime: Math.floor(Math.random() * 15) + 5,
-            };
-
-            localStorage.setItem(
-               "mockDashboardStats",
-               JSON.stringify(initialStats)
-            );
-            console.log(
-               "Initialized dashboard stats with customer count:",
-               totalCustomers
-            );
-         }
-      }
-
       // Fetch dashboard stats on component mount
       fetchStats();
 
@@ -232,9 +197,26 @@ export default function Dashboard() {
       const intervalId = setInterval(() => {
          fetchStats();
       }, 60000);
+      
+      // Set up event listeners for data changes
+      const handleStorageChange = (e: StorageEvent) => {
+         if (
+            e.key === 'customerListShouldRefresh' || 
+            e.key === 'appointmentListShouldRefresh' || 
+            e.key === 'serviceListShouldRefresh'
+         ) {
+            console.log(`Refreshing dashboard stats due to ${e.key} change`);
+            fetchStats();
+         }
+      };
+      
+      window.addEventListener('storage', handleStorageChange);
 
-      // Clean up interval on component unmount
-      return () => clearInterval(intervalId);
+      // Clean up interval and event listeners on component unmount
+      return () => {
+         clearInterval(intervalId);
+         window.removeEventListener('storage', handleStorageChange);
+      };
    }, []);
 
    const handleServiceLinkSave = () => {

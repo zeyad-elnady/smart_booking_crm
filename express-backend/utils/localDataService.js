@@ -26,6 +26,11 @@ const ENCRYPTION_KEY = process.env.JWT_SECRET || "local_development_secret_key";
 // Maximum number of backup files to keep
 const MAX_BACKUPS = 10;
 
+// In-memory cache for better performance
+let dataCache = null;
+let lastCacheUpdate = null;
+const CACHE_TTL = 30000; // 30 seconds cache TTL
+
 // Ensure data directory exists
 if (!fs.existsSync(DATA_DIR)) {
    fs.mkdirSync(DATA_DIR, { recursive: true });
@@ -309,6 +314,12 @@ if (!fs.existsSync(LOCAL_DATA_FILE)) {
  * @returns {Object} The parsed data
  */
 const readLocalData = () => {
+   // Return cached data if available and not expired
+   const now = Date.now();
+   if (dataCache && lastCacheUpdate && (now - lastCacheUpdate) < CACHE_TTL) {
+      return dataCache;
+   }
+
    try {
       // Try to read as compressed data
       const compressedData = fs.readFileSync(LOCAL_DATA_FILE);
@@ -322,6 +333,10 @@ const readLocalData = () => {
             );
          }
       });
+
+      // Update cache
+      dataCache = data;
+      lastCacheUpdate = now;
 
       return data;
    } catch (error) {
@@ -404,6 +419,10 @@ const writeLocalData = (data) => {
       // Compress and write to file
       fs.writeFileSync(LOCAL_DATA_FILE, compressData(encryptedData));
 
+      // Update the cache
+      dataCache = data;
+      lastCacheUpdate = Date.now();
+
       // Create a backup copy - TEMPORARILY DISABLED to prevent nodemon restart loop
       // Uncomment this in production, but for development it causes nodemon to restart in a loop
       /*
@@ -422,10 +441,24 @@ const writeLocalData = (data) => {
       // Try uncompressed fallback
       try {
          fs.writeFileSync(LOCAL_DATA_FILE, JSON.stringify(data, null, 2));
+         
+         // Still update cache even with fallback
+         dataCache = data;
+         lastCacheUpdate = Date.now();
       } catch (fallbackError) {
          console.error("Fallback write failed:", fallbackError);
       }
    }
+};
+
+/**
+ * Clear the in-memory cache
+ * Forces next read to load from disk
+ */
+const clearCache = () => {
+   dataCache = null;
+   lastCacheUpdate = null;
+   console.log("Local data cache cleared");
 };
 
 /**
@@ -647,14 +680,14 @@ const remove = (collection, id) => {
  * @returns {boolean} Connection status
  */
 const isMongoConnected = () => {
-   try {
-      // Check MongoDB connection state
-      const mongooseState = require("mongoose").connection.readyState;
-      return mongooseState === 1;
-   } catch (error) {
-      console.error("Error checking MongoDB connection:", error);
-      return false;
-   }
+  try {
+    // Check MongoDB connection state
+    const mongooseState = require('mongoose').connection.readyState;
+    return mongooseState === 1;
+  } catch (error) {
+    console.error("Error checking MongoDB connection:", error);
+    return false;
+  }
 };
 
 /**
@@ -795,4 +828,5 @@ module.exports = {
    syncWithMongoDB,
    exportData,
    importData,
+   clearCache,
 };

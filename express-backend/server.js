@@ -121,18 +121,30 @@ app.use((err, req, res, next) => {
 // Start server function
 const startServer = async () => {
    try {
-      // Connect to MongoDB first
-      console.log("Connecting to database...");
-      await connectDB();
+      // Check if we should skip MongoDB connection attempts
+      if (process.env.SKIP_MONGODB === "true") {
+         console.log("MongoDB connection skipped (SKIP_MONGODB=true)");
+         console.log("Application will use local storage only");
+      } else {
+         // Connect to MongoDB first
+         console.log("Connecting to database...");
+         try {
+            await connectDB();
+            console.log("MongoDB Connected");
+         } catch (dbError) {
+            console.error("MongoDB connection failed:", dbError.message);
+            console.log("Application will fall back to local storage");
+         }
+      }
 
-      // Only start the server if database connection is successful
+      // Start the server regardless of database connection status
       const PORT = process.env.PORT || 5000;
       app.listen(PORT, () => {
          console.log(`Server running on port ${PORT}`);
       });
    } catch (error) {
       console.error("Failed to start server:", error);
-      process.exit(1); // Exit if we can't connect to the database
+      process.exit(1); // Exit if we can't start the server
    }
 };
 

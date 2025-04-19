@@ -5,6 +5,8 @@ import {
    AppointmentData,
    AppointmentStatus,
 } from "@/types/appointment";
+import { indexedDBService } from "./indexedDB";
+import { createCustomer } from "./customerService";
 
 // Determine the correct hostname for API calls
 const getApiHost = () => {
@@ -31,8 +33,66 @@ const getApiHost = () => {
    return "localhost:5000";
 };
 
+// Initialize local demo data
+const initializeLocalData = () => {
+   if (typeof window === 'undefined') return;
+   
+   try {
+      // Check if mock data already exists
+      const hasCustomers = localStorage.getItem("mockCustomers");
+      const hasAppointments = localStorage.getItem("mockAppointments");
+      
+      // Always remove any mock appointments to prevent sample data issues
+      if (hasAppointments) {
+         console.log("Removing mock appointments from localStorage");
+         localStorage.removeItem("mockAppointments");
+      }
+      
+      // Always remove any mock services - we don't want sample services anymore
+      if (localStorage.getItem("mockServices")) {
+         console.log("Removing mock services from localStorage");
+         localStorage.removeItem("mockServices");
+      }
+      
+      // Initialize customers if needed
+      if (!hasCustomers) {
+         console.log("Initializing mock customers in localStorage");
+         const mockCustomers = [
+            {
+               _id: "7418d3f6-937b-4ba2-8ee0-35f1879a3368",
+               firstName: "John",
+               lastName: "Smith",
+               email: "john@example.com",
+               phone: "555-1234",
+               notes: "Regular customer",
+               createdAt: new Date().toISOString(),
+               updatedAt: new Date().toISOString()
+            },
+            {
+               _id: "117676d1-bca7-4582-b4f7-413cb093abb1",
+               firstName: "Sarah",
+               lastName: "Johnson",
+               email: "sarah@example.com",
+               phone: "555-5678",
+               notes: "Prefers afternoon appointments",
+               createdAt: new Date().toISOString(),
+               updatedAt: new Date().toISOString()
+            }
+         ];
+         localStorage.setItem("mockCustomers", JSON.stringify(mockCustomers));
+      }
+      
+      console.log("Local mock data initialization complete");
+   } catch (error) {
+      console.error("Error initializing local mock data:", error);
+   }
+};
+
 // Use the dynamic hostname for API configuration
 const API_HOST = getApiHost();
+
+// Initialize local data for development
+initializeLocalData();
 
 // Create an instance of axios with default config
 const API = axios.create({
@@ -353,195 +413,77 @@ export interface Customer extends CustomerData {
 // Service API
 export const serviceAPI = {
    getServices: async () => {
+      console.log("Fetching services from API");
+      
       try {
-         console.log(`Fetching services from ${API.defaults.baseURL}/services`);
-         const response = await API.get<Service[]>("/services");
+         // Try to fetch from the real API
+         const response = await API.get("/services");
          return response.data;
       } catch (error) {
-         console.error("Error fetching services:", error);
-
-         // If API call fails, try to get from localStorage
-         const mockServices = localStorage.getItem("mockServices");
-         if (mockServices) {
-            console.log(
-               "Using mock service data from localStorage:",
-               mockServices.substring(0, 100) + "..."
-            );
-            return JSON.parse(mockServices);
-         }
-
-         throw error;
+         console.error("API error fetching services:", error);
+         
+         // Return empty array if API fails
+         return [];
       }
    },
 
    getServiceById: async (id: string) => {
+      console.log(`Getting service with ID: ${id} from API`);
+      
       try {
-         console.log(
-            `Fetching service with ID ${id} from ${API.defaults.baseURL}/services/${id}`
-         );
-         const response = await API.get<Service>(`/services/${id}`);
+         // Try to fetch from the real API
+         const response = await API.get(`/services/${id}`);
          return response.data;
       } catch (error) {
-         console.error(`Error fetching service ${id}:`, error);
-
-         // If API call fails, try to get from localStorage
-         const mockServices = localStorage.getItem("mockServices");
-         if (mockServices) {
-            console.log("Using mock service data from localStorage");
-            const services = JSON.parse(mockServices);
-            const service = services.find((s: Service) => s._id === id);
-            if (service) {
-               return service;
-            }
-         }
-
-         throw error;
+         console.error(`API error getting service ${id}:`, error);
+         throw new Error(`Service with ID ${id} not found`);
       }
    },
 
    createService: async (serviceData: ServiceData) => {
+      console.log("Creating service via API:", serviceData);
+      
       try {
-         // Ensure all required fields are strings
-         const formattedData = {
-            ...serviceData,
-            name: String(serviceData.name).trim(),
-            description: String(serviceData.description).trim(),
-            duration: String(serviceData.duration),
-            price: Number(serviceData.price),
-            category: String(serviceData.category).trim(),
-            isActive: Boolean(serviceData.isActive),
-         };
-
-         console.log("Creating service with formatted data:", formattedData);
-         const response = await API.post<Service>("/services", formattedData);
-         console.log("Service created successfully:", response.data);
-
-         // Update local storage
-         try {
-            const mockServices = localStorage.getItem("mockServices");
-            let services = [];
-            if (mockServices) {
-               services = JSON.parse(mockServices);
-            }
-            services.push(response.data);
-            localStorage.setItem("mockServices", JSON.stringify(services));
-         } catch (e) {
-            console.error("Error updating localStorage:", e);
-         }
-
+         // Try to create via real API
+         const response = await API.post("/services", serviceData);
          return response.data;
-      } catch (error: any) {
-         console.error("Error creating service:", {
-            error,
-            data: error.response?.data,
-            sentData: serviceData,
-         });
-         throw error;
+      } catch (error) {
+         console.error("API error creating service:", error);
+         
+         // Create a new service object for offline mode
+         const newService: Service = {
+            _id: `service_${Date.now()}`,
+            ...serviceData,
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString()
+         };
+         
+         return newService;
       }
    },
 
    updateService: async (id: string, serviceData: Partial<ServiceData>) => {
+      console.log(`Updating service ${id} via API:`, serviceData);
+      
       try {
-         const response = await API.put<Service>(
-            `/services/${id}`,
-            serviceData
-         );
-
-         // Update local storage
-         try {
-            const mockServices = localStorage.getItem("mockServices");
-            if (mockServices) {
-               const services = JSON.parse(mockServices);
-               const index = services.findIndex((s: Service) => s._id === id);
-               if (index !== -1) {
-                  services[index] = {
-                     ...services[index],
-                     ...serviceData,
-                     updatedAt: new Date().toISOString(),
-                  };
-                  localStorage.setItem(
-                     "mockServices",
-                     JSON.stringify(services)
-                  );
-               }
-            }
-         } catch (e) {
-            console.error("Error updating localStorage:", e);
-         }
-
+         // Try to update via real API
+         const response = await API.put(`/services/${id}`, serviceData);
          return response.data;
       } catch (error) {
-         console.error(`Error updating service ${id}:`, error);
-
-         // If API call fails, update localStorage
-         try {
-            const mockServices = localStorage.getItem("mockServices");
-            if (mockServices) {
-               const services = JSON.parse(mockServices);
-               const index = services.findIndex((s: Service) => s._id === id);
-               if (index !== -1) {
-                  services[index] = {
-                     ...services[index],
-                     ...serviceData,
-                     updatedAt: new Date().toISOString(),
-                  };
-                  localStorage.setItem(
-                     "mockServices",
-                     JSON.stringify(services)
-                  );
-                  return services[index];
-               }
-            }
-            throw new Error("Service not found in mock data");
-         } catch (e) {
-            console.error("Error updating localStorage:", e);
-            throw error;
-         }
+         console.error(`API error updating service ${id}:`, error);
+         throw error;
       }
    },
 
    deleteService: async (id: string) => {
+      console.log(`Deleting service ${id} via API`);
+      
       try {
+         // Try to delete via real API
          const response = await API.delete(`/services/${id}`);
-
-         // Update local storage
-         try {
-            const mockServices = localStorage.getItem("mockServices");
-            if (mockServices) {
-               const services = JSON.parse(mockServices);
-               const updatedServices = services.filter(
-                  (s: Service) => s._id !== id
-               );
-               localStorage.setItem(
-                  "mockServices",
-                  JSON.stringify(updatedServices)
-               );
-            }
-         } catch (e) {
-            console.error("Error updating localStorage:", e);
-         }
-
          return response.data;
       } catch (error) {
-         console.error(`Error deleting service ${id}:`, error);
-
-         // If API call fails, update localStorage
-         try {
-            const mockServices = localStorage.getItem("mockServices");
-            if (mockServices) {
-               const services = JSON.parse(mockServices);
-               const updatedServices = services.filter(
-                  (s: Service) => s._id !== id
-               );
-               localStorage.setItem(
-                  "mockServices",
-                  JSON.stringify(updatedServices)
-               );
-            }
-         } catch (e) {
-            console.error("Error updating localStorage:", e);
-         }
-
+         console.error(`API error deleting service ${id}:`, error);
          throw error;
       }
    },
@@ -550,251 +492,168 @@ export const serviceAPI = {
 // Customer API
 export const customerAPI = {
    getCustomers: async () => {
-      try {
-         console.log(
-            `Fetching customers from ${API.defaults.baseURL}/customers`
-         );
-         const response = await API.get("/customers");
-         return response.data;
-      } catch (error) {
-         console.error("Error fetching customers:", error);
-
-         // If API call fails, try to get from localStorage
-         const mockCustomers = localStorage.getItem("mockCustomers");
-         if (mockCustomers) {
-            console.log(
-               "Using mock customer data from localStorage:",
-               mockCustomers.substring(0, 100) + "..."
-            );
-            return JSON.parse(mockCustomers);
+      console.log("Fetching customers");
+      
+      // First, try to get from localStorage
+      const storedCustomers = localStorage.getItem("mockCustomers");
+      if (storedCustomers) {
+         try {
+            const customers = JSON.parse(storedCustomers);
+            if (Array.isArray(customers) && customers.length > 0) {
+               console.log(`Using ${customers.length} customers from localStorage`);
+               return customers;
+            }
+         } catch (error) {
+            console.error("Error parsing customers from localStorage:", error);
          }
-
-         throw error;
       }
+      
+      // If localStorage failed or was empty, initialize default data
+      console.log("Initializing default customers data");
+      initializeLocalData();
+      
+      // Return the newly initialized customers
+      const freshCustomers = localStorage.getItem("mockCustomers");
+      return freshCustomers ? JSON.parse(freshCustomers) : [];
    },
 
    getCustomerById: async (id: string) => {
-      try {
-         console.log(
-            `Fetching customer with ID ${id} from ${API.defaults.baseURL}/customers/${id}`
-         );
-         const response = await API.get(`/customers/${id}`);
-         return response.data;
-      } catch (error: unknown) {
-         console.error(`Error fetching customer ${id}:`, error);
-
-         // If API call fails, try to get from localStorage
-         const mockCustomers = localStorage.getItem("mockCustomers");
-         if (mockCustomers) {
-            console.log("Using mock customer data from localStorage");
-            const customers = JSON.parse(mockCustomers);
+      console.log(`Getting customer with ID: ${id}`);
+      
+      // Get customers from localStorage
+      const storedCustomers = localStorage.getItem("mockCustomers");
+      if (storedCustomers) {
+         try {
+            const customers = JSON.parse(storedCustomers);
             const customer = customers.find((c: Customer) => c._id === id);
             if (customer) {
                return customer;
             }
-         }
-
-         throw error;
-      }
-   },
-
-   createCustomer: async (data: CustomerData) => {
-      try {
-         const response = await API.post("/customers", data);
-
-         // Update local storage
-         try {
-            console.log("Customer created. Updating localStorage...");
-            const mockCustomers = localStorage.getItem("mockCustomers");
-            let customers = [];
-
-            if (mockCustomers) {
-               customers = JSON.parse(mockCustomers);
-            }
-
-            const newCustomer = {
-               ...response.data,
-               _id: response.data._id || `mock_${Date.now()}`,
-               createdAt: new Date().toISOString(),
-            };
-
-            customers.push(newCustomer);
-            localStorage.setItem("mockCustomers", JSON.stringify(customers));
-            console.log(
-               "Updated mockCustomers in localStorage. New count:",
-               customers.length
-            );
-         } catch (e) {
-            console.error("Error updating local storage:", e);
-         }
-
-         return response.data;
-      } catch (error: unknown) {
-         console.error("Error creating customer:", error);
-
-         // If API call fails, save to localStorage
-         try {
-            console.log(
-               "API failed. Saving customer to localStorage directly."
-            );
-            const newCustomer = {
-               ...data,
-               _id: `mock_${Date.now()}`,
-               createdAt: new Date().toISOString(),
-            };
-
-            const mockCustomers = localStorage.getItem("mockCustomers");
-            let customers = [];
-
-            if (mockCustomers) {
-               customers = JSON.parse(mockCustomers);
-            }
-
-            customers.push(newCustomer);
-            localStorage.setItem("mockCustomers", JSON.stringify(customers));
-            console.log(
-               "Saved new customer to localStorage. New count:",
-               customers.length
-            );
-
-            return newCustomer;
-         } catch (e) {
-            console.error("Error saving to localStorage:", e);
-            throw error;
+         } catch (error) {
+            console.error("Error parsing customers from localStorage:", error);
          }
       }
+      
+      // If customer not found
+      throw new Error(`Customer with ID ${id} not found`);
    },
 
-   updateCustomer: async (id: string, data: Partial<CustomerData>) => {
+   createCustomer: async (customerData: CustomerData) => {
+      console.log("Creating customer:", customerData);
+      // Call our updated createCustomer function from customerService
       try {
-         const response = await API.put(`/customers/${id}`, data);
-
-         // Update local storage
-         try {
-            const mockCustomers = localStorage.getItem("mockCustomers");
-            if (mockCustomers) {
-               const customers = JSON.parse(mockCustomers);
-               const index = customers.findIndex((c: Customer) => c._id === id);
-               if (index !== -1) {
-                  customers[index] = {
-                     ...customers[index],
-                     ...data,
-                     updatedAt: new Date().toISOString(),
-                  };
-                  localStorage.setItem(
-                     "mockCustomers",
-                     JSON.stringify(customers)
-                  );
-               }
-            }
-         } catch (e: unknown) {
-            if (e instanceof Error) {
-               console.error("Error updating local storage:", e.message);
-            }
-         }
-
-         return response.data;
-      } catch (error: unknown) {
-         console.error(`Error updating customer ${id}:`, error);
-
-         // If API call fails, update localStorage
-         try {
-            const mockCustomers = localStorage.getItem("mockCustomers");
-            if (mockCustomers) {
-               const customers = JSON.parse(mockCustomers);
-               const index = customers.findIndex((c: Customer) => c._id === id);
-               if (index !== -1) {
-                  customers[index] = {
-                     ...customers[index],
-                     ...data,
-                     updatedAt: new Date().toISOString(),
-                  };
-                  localStorage.setItem(
-                     "mockCustomers",
-                     JSON.stringify(customers)
-                  );
-                  return customers[index];
-               }
-            }
-            throw new Error("Customer not found in mock data");
-         } catch (e: unknown) {
-            if (e instanceof Error) {
-               console.error("Error updating localStorage:", e.message);
-            }
-            throw error;
-         }
-      }
-   },
-
-   deleteCustomer: async (id: string, confirm: boolean = false) => {
-      try {
-         // Construct the URL with proper query parameter format
-         const url = confirm
-            ? `/customers/${id}?confirm=true`
-            : `/customers/${id}`;
-         console.log("Delete URL:", url);
-
-         const response = await API.delete(url);
-         console.log("Delete response:", response.data);
-
-         // Handle mock data updates
-         if (response.data.success || response.status === 200) {
-            try {
-               const mockCustomers = localStorage.getItem("mockCustomers");
-               if (mockCustomers) {
-                  const customers = JSON.parse(mockCustomers);
-                  const updatedCustomers = customers.filter(
-                     (c: Customer) => c._id !== id
-                  );
-                  localStorage.setItem(
-                     "mockCustomers",
-                     JSON.stringify(updatedCustomers)
-                  );
-               }
-            } catch (e) {
-               console.error("Error updating localStorage:", e);
-            }
-         }
-
-         return response.data;
+         const newCustomer = await createCustomer(customerData);
+         console.log('Customer created successfully:', newCustomer);
+         return newCustomer;
       } catch (error) {
-         console.error(`Error deleting customer ${id}:`, error);
+         console.error('Error creating customer:', error);
          throw error;
       }
    },
+
+   updateCustomer: async (id: string, customerData: Partial<CustomerData>) => {
+      console.log(`Updating customer ${id}:`, customerData);
+      
+      // Get customers from localStorage
+      const storedCustomers = localStorage.getItem("mockCustomers");
+      if (!storedCustomers) {
+         throw new Error("No customers found in localStorage");
+      }
+      
+      try {
+         const customers = JSON.parse(storedCustomers);
+         const index = customers.findIndex((c: Customer) => c._id === id);
+         
+         if (index === -1) {
+            throw new Error(`Customer with ID ${id} not found`);
+         }
+         
+         // Update the customer
+         const updatedCustomer = {
+            ...customers[index],
+            ...customerData,
+            updatedAt: new Date().toISOString()
+         };
+         
+         customers[index] = updatedCustomer;
+         localStorage.setItem("mockCustomers", JSON.stringify(customers));
+         console.log(`Customer updated in localStorage`);
+         
+         return updatedCustomer;
+      } catch (error) {
+         console.error("Error updating customer in localStorage:", error);
+         throw error;
+      }
+   },
+
+   deleteCustomer: async (id: string) => {
+      console.log(`Deleting customer ${id}`);
+      
+      // Get customers from localStorage
+      const storedCustomers = localStorage.getItem("mockCustomers");
+      if (!storedCustomers) {
+         throw new Error("No customers found in localStorage");
+      }
+      
+      try {
+         const customers = JSON.parse(storedCustomers);
+         const updatedCustomers = customers.filter((c: Customer) => c._id !== id);
+         
+         // Check if any customer was removed
+         if (customers.length === updatedCustomers.length) {
+            throw new Error(`Customer with ID ${id} not found`);
+         }
+         
+         localStorage.setItem("mockCustomers", JSON.stringify(updatedCustomers));
+         console.log(`Customer deleted from localStorage`);
+         
+         return { success: true, message: "Customer deleted successfully" };
+      } catch (error) {
+         console.error("Error deleting customer from localStorage:", error);
+         throw error;
+      }
+   }
 };
 
 // Appointment API
 export const appointmentAPI = {
    getAppointments: async () => {
-      const response = await API.get<Appointment[]>("/appointments");
-      return response.data;
+      try {
+         console.log(`Fetching appointments from ${API.defaults.baseURL}/appointments`);
+         const response = await API.get<Appointment[]>("/appointments");
+         return response.data;
+      } catch (error) {
+         console.error("Error fetching appointments:", error);
+         
+         // Return empty array as fallback
+         return [];
+      }
    },
 
    getRecentAppointments: async () => {
-      const response = await API.get<Appointment[]>("/appointments/recent");
-      return response.data;
+      try {
+         const response = await API.get<Appointment[]>("/appointments/recent");
+         return response.data;
+      } catch (error) {
+         console.error("Error fetching recent appointments:", error);
+         return [];
+      }
    },
 
    getAppointmentById: async (id: string) => {
-      const response = await API.get<Appointment>(`/appointments/${id}`);
-      return response.data;
+      try {
+         const response = await API.get<Appointment>(`/appointments/${id}`);
+         return response.data;
+      } catch (error) {
+         console.error(`Error fetching appointment ${id}:`, error);
+         throw error;
+      }
    },
 
    createAppointment: async (appointmentData: AppointmentData) => {
       try {
          // Log the data being sent
-         console.log("Creating appointment with data:", {
-            ...appointmentData,
-            date: new Date(appointmentData.date).toISOString(),
-         });
-
-         // Validate required fields
-         if (!appointmentData.customer) throw new Error("Customer is required");
-         if (!appointmentData.service) throw new Error("Service is required");
-         if (!appointmentData.date) throw new Error("Date is required");
-         if (!appointmentData.time) throw new Error("Time is required");
-         if (!appointmentData.duration) throw new Error("Duration is required");
+         console.log("Creating appointment with data:", appointmentData);
 
          // Format the data
          const formattedData = {
@@ -813,24 +672,7 @@ export const appointmentAPI = {
 
          return response.data;
       } catch (error) {
-         // Enhanced error logging
-         if (axios.isAxiosError(error)) {
-            console.error("Appointment creation failed:", {
-               status: error.response?.status,
-               statusText: error.response?.statusText,
-               data: error.response?.data,
-               config: {
-                  url: error.config?.url,
-                  method: error.config?.method,
-                  data: error.config?.data,
-               },
-            });
-         } else {
-            console.error(
-               "Non-Axios error during appointment creation:",
-               error
-            );
-         }
+         console.error("Appointment creation failed:", error);
          throw error;
       }
    },
@@ -839,16 +681,26 @@ export const appointmentAPI = {
       id: string,
       appointmentData: Partial<AppointmentData>
    ) => {
-      const response = await API.put<Appointment>(
-         `/appointments/${id}`,
-         appointmentData
-      );
-      return response.data;
+      try {
+         const response = await API.put<Appointment>(
+            `/appointments/${id}`,
+            appointmentData
+         );
+         return response.data;
+      } catch (error) {
+         console.error("Error updating appointment:", error);
+         throw error;
+      }
    },
 
    deleteAppointment: async (id: string) => {
-      const response = await API.delete(`/appointments/${id}`);
-      return response.data;
+      try {
+         const response = await API.delete(`/appointments/${id}`);
+         return response.data;
+      } catch (error) {
+         console.error("Error deleting appointment:", error);
+         throw error;
+      }
    },
 };
 
@@ -1030,10 +882,221 @@ export interface DashboardStats {
 export const dashboardAPI = {
    getStats: async (): Promise<DashboardStats> => {
       try {
-         const response = await API.get("/dashboard/stats");
-         return response.data;
+         // Initialize the database connection
+         await indexedDBService.initDB();
+         
+         // Fetch all customers, appointments, and services from IndexedDB
+         const customers = await indexedDBService.getAllCustomers();
+         const appointments = await indexedDBService.getAllAppointments();
+         const services = await indexedDBService.getAllServices();
+         
+         // Calculate total customers
+         const totalCustomers = customers.length;
+         
+         // Get today's date in yyyy-MM-dd format
+         const today = new Date();
+         const todayStr = today.toISOString().split('T')[0];
+         
+         // Filter appointments for today
+         const appointmentsToday = appointments.filter(
+            appointment => appointment.date === todayStr
+         );
+         
+         // Get completed appointments for today
+         const completedAppointments = appointmentsToday.filter(
+            appointment => appointment.status === 'Completed'
+         ).length;
+         
+         // Calculate total revenue based on completed appointments
+         let totalRevenue = 0;
+         appointmentsToday.forEach(appointment => {
+            // Get the service price
+            let price = 0;
+            
+            // If the appointment has serviceInfo with price
+            if (appointment.serviceInfo && appointment.serviceInfo.price) {
+               price = appointment.serviceInfo.price;
+            } 
+            // If the appointment has service ID, find the service and get price
+            else if (typeof appointment.service === 'string') {
+               const service = services.find(s => s._id === appointment.service);
+               if (service) {
+                  price = service.price;
+               }
+            }
+            // If service is an object
+            else if (appointment.service && typeof appointment.service === 'object') {
+               price = (appointment.service as any).price || 0;
+            }
+            
+            if (appointment.status === 'Completed') {
+               totalRevenue += price;
+            }
+         });
+         
+         // Get the start of the current week (Monday)
+         const startOfWeek = new Date(today);
+         const day = startOfWeek.getDay();
+         const diff = startOfWeek.getDate() - day + (day === 0 ? -6 : 1);
+         startOfWeek.setDate(diff);
+         startOfWeek.setHours(0, 0, 0, 0);
+         
+         // Get the end of the current week (Sunday)
+         const endOfWeek = new Date(startOfWeek);
+         endOfWeek.setDate(endOfWeek.getDate() + 6);
+         endOfWeek.setHours(23, 59, 59, 999);
+         
+         // Get the start of the current month
+         const startOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
+         
+         // Get the end of the current month
+         const endOfMonth = new Date(today.getFullYear(), today.getMonth() + 1, 0);
+         endOfMonth.setHours(23, 59, 59, 999);
+         
+         // Calculate weekly revenue
+         let weeklyRevenue = 0;
+         appointments.forEach(appointment => {
+            const appointmentDate = new Date(appointment.date);
+            if (
+               appointmentDate >= startOfWeek && 
+               appointmentDate <= endOfWeek && 
+               appointment.status === 'Completed'
+            ) {
+               // Get the service price
+               let price = 0;
+               
+               // If the appointment has serviceInfo with price
+               if (appointment.serviceInfo && appointment.serviceInfo.price) {
+                  price = appointment.serviceInfo.price;
+               } 
+               // If the appointment has service ID, find the service and get price
+               else if (typeof appointment.service === 'string') {
+                  const service = services.find(s => s._id === appointment.service);
+                  if (service) {
+                     price = service.price;
+                  }
+               }
+               // If service is an object
+               else if (appointment.service && typeof appointment.service === 'object') {
+                  price = (appointment.service as any).price || 0;
+               }
+               
+               weeklyRevenue += price;
+            }
+         });
+         
+         // Calculate monthly revenue
+         let monthlyRevenue = 0;
+         appointments.forEach(appointment => {
+            const appointmentDate = new Date(appointment.date);
+            if (
+               appointmentDate >= startOfMonth && 
+               appointmentDate <= endOfMonth && 
+               appointment.status === 'Completed'
+            ) {
+               // Get the service price
+               let price = 0;
+               
+               // If the appointment has serviceInfo with price
+               if (appointment.serviceInfo && appointment.serviceInfo.price) {
+                  price = appointment.serviceInfo.price;
+               } 
+               // If the appointment has service ID, find the service and get price
+               else if (typeof appointment.service === 'string') {
+                  const service = services.find(s => s._id === appointment.service);
+                  if (service) {
+                     price = service.price;
+                  }
+               }
+               // If service is an object
+               else if (appointment.service && typeof appointment.service === 'object') {
+                  price = (appointment.service as any).price || 0;
+               }
+               
+               monthlyRevenue += price;
+            }
+         });
+         
+         // Calculate average revenue per appointment (if there are completed appointments)
+         const completedAppointmentsAll = appointments.filter(
+            appointment => appointment.status === 'Completed'
+         );
+         
+         let totalRevenueAll = 0;
+         completedAppointmentsAll.forEach(appointment => {
+            // Get the service price
+            let price = 0;
+            
+            // If the appointment has serviceInfo with price
+            if (appointment.serviceInfo && appointment.serviceInfo.price) {
+               price = appointment.serviceInfo.price;
+            } 
+            // If the appointment has service ID, find the service and get price
+            else if (typeof appointment.service === 'string') {
+               const service = services.find(s => s._id === appointment.service);
+               if (service) {
+                  price = service.price;
+               }
+            }
+            // If service is an object
+            else if (appointment.service && typeof appointment.service === 'object') {
+               price = (appointment.service as any).price || 0;
+            }
+            
+            totalRevenueAll += price;
+         });
+         
+         const averageRevenue = completedAppointmentsAll.length > 0 
+            ? totalRevenueAll / completedAppointmentsAll.length 
+            : 0;
+         
+         // Calculate average wait time (using service durations)
+         let totalDuration = 0;
+         let durationCount = 0;
+         
+         appointments.forEach(appointment => {
+            let duration = 0;
+            
+            // If the appointment has a duration property
+            if (appointment.duration) {
+               duration = parseInt(appointment.duration, 10);
+            }
+            // If the appointment has serviceInfo with duration
+            else if (appointment.serviceInfo && appointment.serviceInfo.duration) {
+               duration = parseInt(appointment.serviceInfo.duration, 10);
+            }
+            // If the appointment has service ID, find the service and get duration
+            else if (typeof appointment.service === 'string') {
+               const service = services.find(s => s._id === appointment.service);
+               if (service) {
+                  duration = parseInt(service.duration, 10);
+               }
+            }
+            // If service is an object
+            else if (appointment.service && typeof appointment.service === 'object') {
+               duration = parseInt((appointment.service as any).duration, 10) || 0;
+            }
+            
+            if (duration > 0) {
+               totalDuration += duration;
+               durationCount++;
+            }
+         });
+         
+         const averageWaitTime = durationCount > 0 ? totalDuration / durationCount : 0;
+         
+         // Return the calculated statistics
+         return {
+            totalCustomers,
+            completedAppointments,
+            totalRevenue,
+            weeklyRevenue,
+            monthlyRevenue,
+            averageRevenue,
+            averageWaitTime
+         };
       } catch (error) {
-         console.error("Error fetching dashboard stats:", error);
+         console.error("Error calculating dashboard stats:", error);
          throw error;
       }
    },

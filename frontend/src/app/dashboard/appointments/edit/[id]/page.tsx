@@ -13,6 +13,8 @@ import { toast } from "react-hot-toast";
 import { useTheme } from "@/components/ThemeProvider";
 import * as React from "react";
 import type { Appointment } from "@/types/appointment";
+import { indexedDBService } from "@/services/indexedDB";
+import { fetchAppointmentById, updateAppointment } from "@/services/appointmentService";
 
 interface AppointmentData {
    customer: string;
@@ -20,7 +22,7 @@ interface AppointmentData {
    date: string;
    time: string;
    duration: string;
-   status: "Waiting" | "Cancelled" | "Completed";
+   status: "Pending" | "Confirmed" | "Canceled" | "Completed";
    notes: string;
    customerInfo?: {
       name: string;
@@ -29,6 +31,8 @@ interface AppointmentData {
    };
    serviceInfo?: {
       name: string;
+      price?: number;
+      duration?: string;
    };
 }
 
@@ -50,99 +54,121 @@ export default function EditAppointment({
       date: "",
       time: "",
       duration: "60",
-      status: "Waiting",
+      status: "Pending",
       notes: "",
    });
    const [formErrors, setFormErrors] = useState<any>({});
    const { darkMode } = useTheme();
-   const [debugMode, setDebugMode] = useState(false);
 
    // Fetch customers, services, and appointment data on component mount
    useEffect(() => {
       const loadData = async () => {
          try {
             setLoading(true);
+            console.log("Starting to load data for appointment ID:", appointmentId);
 
-            // Load customers
+            // 1. Initialize database
             try {
-               const fetchedCustomers = await customerAPI.getCustomers();
-               console.log("Fetched customers:", fetchedCustomers);
-               setCustomers(fetchedCustomers || []);
-            } catch (error) {
-               console.error("Error fetching customers:", error);
-               const storedCustomers = localStorage.getItem("mockCustomers");
-               if (storedCustomers) {
-                  setCustomers(JSON.parse(storedCustomers));
-               }
+               await indexedDBService.initDB();
+               console.log("IndexedDB initialized successfully");
+            } catch (dbError) {
+               console.error("Error initializing database:", dbError);
+               toast.error("Failed to initialize database");
             }
 
-            // Load services
+            // 2. Load the appointment using our enhanced function
+            let appointmentData;
             try {
-               const fetchedServices = await serviceAPI.getServices();
-               console.log("Fetched services:", fetchedServices);
-               setServices(fetchedServices || []);
-            } catch (error) {
-               console.error("Error fetching services:", error);
-               const storedServices = localStorage.getItem("mockServices");
-               if (storedServices) {
-                  setServices(JSON.parse(storedServices));
+               console.log("Fetching appointment with ID:", appointmentId);
+               appointmentData = await fetchAppointmentById(appointmentId);
+               
+               if (!appointmentData) {
+                  console.error("No appointment found with ID:", appointmentId);
+                  toast.error("Could not find the appointment data");
+                  router.push("/dashboard/appointments");
+                  return;
                }
-            }
-
-            // Get the appointment
-            try {
-               // Get directly from localStorage
-               const storedAppointments =
-                  localStorage.getItem("storedAppointments");
-               if (storedAppointments) {
-                  const appointments = JSON.parse(storedAppointments);
-                  const foundAppointment = appointments.find(
-                     (a: any) => a._id === appointmentId
-                  );
-
-                  if (foundAppointment) {
-                     console.log(
-                        "Fetched appointment from localStorage:",
-                        foundAppointment
-                     );
-                     setAppointment(foundAppointment);
-
-                     // Set form data from appointment
-                     const customerId =
-                        typeof foundAppointment.customer === "object"
-                           ? foundAppointment.customer._id
-                           : foundAppointment.customer;
-
-                     const serviceId =
-                        typeof foundAppointment.service === "object"
-                           ? foundAppointment.service._id
-                           : foundAppointment.service;
-
-                     setFormData({
-                        customerId,
-                        serviceId,
-                        date: foundAppointment.date,
-                        time: foundAppointment.time,
-                        duration: foundAppointment.duration,
-                        status: foundAppointment.status || "Waiting",
-                        notes: foundAppointment.notes || "",
-                     });
-                  } else {
-                     throw new Error("Appointment not found");
-                  }
-               } else {
-                  throw new Error("No appointments found in storage");
-               }
-            } catch (error) {
-               console.error("Error fetching appointment:", error);
+               
+               console.log("Appointment data loaded successfully:", appointmentData);
+               setAppointment(appointmentData);
+            } catch (apptError) {
+               console.error("Error fetching appointment:", apptError);
                toast.error("Could not load appointment data");
                router.push("/dashboard/appointments");
+               return;
+            }
+
+            // 3. Load customers
+            try {
+               console.log("Loading customers...");
+               const fetchedCustomers = await indexedDBService.getAllCustomers();
+               console.log(`Loaded ${fetchedCustomers.length} customers from IndexedDB`);
+               setCustomers(fetchedCustomers || []);
+            } catch (custError) {
+               console.error("Error fetching customers:", custError);
+               // Try localStorage fallback
+               const storedCustomers = localStorage.getItem("mockCustomers");
+               if (storedCustomers) {
+                  try {
+                     const parsedCustomers = JSON.parse(storedCustomers);
+                     setCustomers(parsedCustomers);
+                     console.log("Used fallback customer data from localStorage");
+                  } catch (parseError) {
+                     console.error("Error parsing localStorage customers:", parseError);
+                  }
+               }
+            }
+
+            // 4. Load services
+            try {
+               console.log("Loading services...");
+               const fetchedServices = await indexedDBService.getAllServices();
+               console.log(`Loaded ${fetchedServices.length} services from IndexedDB`);
+               setServices(fetchedServices || []);
+            } catch (servError) {
+               console.error("Error fetching services:", servError);
+               // Try localStorage fallback
+               const storedServices = localStorage.getItem("mockServices");
+               if (storedServices) {
+                  try {
+                     const parsedServices = JSON.parse(storedServices);
+                     setServices(parsedServices);
+                     console.log("Used fallback service data from localStorage");
+                  } catch (parseError) {
+                     console.error("Error parsing localStorage services:", parseError);
+                  }
+               }
+            }
+
+            // 5. Set form data from appointment
+            if (appointmentData) {
+               // Extract customer ID - could be string or object
+               const customerId = 
+                  typeof appointmentData.customer === "object" && appointmentData.customer !== null
+                     ? appointmentData.customer._id 
+                     : appointmentData.customer;
+               
+               // Extract service ID - could be string or object
+               const serviceId = 
+                  typeof appointmentData.service === "object" && appointmentData.service !== null
+                     ? appointmentData.service._id
+                     : appointmentData.service;
+               
+               console.log("Setting form data with customer ID:", customerId, "and service ID:", serviceId);
+               
+               setFormData({
+                  customerId,
+                  serviceId,
+                  date: appointmentData.date || "",
+                  time: appointmentData.time || "",
+                  duration: appointmentData.duration || "60",
+                  status: appointmentData.status || "Pending",
+                  notes: appointmentData.notes || "",
+               });
             }
          } catch (error) {
-            console.error("Error loading data:", error);
-            toast.error(
-               "Failed to load required data. Please try refreshing the page."
-            );
+            console.error("Overall error loading data:", error);
+            toast.error("Failed to load required data");
          } finally {
             setLoading(false);
          }
@@ -157,12 +183,20 @@ export default function EditAppointment({
       >
    ) => {
       const { name, value } = e.target;
-      setFormData((prev) => ({
-         ...prev,
-         [name]: value,
-      }));
+      console.log(`Form field changed: ${name} = ${value}`);
+      
+      setFormData((prev) => {
+         const updated = {
+            ...prev,
+            [name]: value,
+         };
+         console.log("Updated form data:", updated);
+         return updated;
+      });
+      
       // Clear error when field is edited
       if (formErrors[name]) {
+         console.log(`Clearing error for field: ${name}`);
          setFormErrors((prev: any) => ({ ...prev, [name]: undefined }));
       }
    };
@@ -173,6 +207,13 @@ export default function EditAppointment({
 
       setLoading(true);
       try {
+         // First make sure the appointment still exists in our IndexedDB
+         if (!appointment) {
+            toast.error("Cannot update: Original appointment data not found");
+            router.push("/dashboard/appointments");
+            return;
+         }
+
          // Find the selected customer and service details
          const selectedCustomer = customers.find(
             (c) => c._id === formData.customerId
@@ -190,13 +231,13 @@ export default function EditAppointment({
          }
 
          // Format data for update with customer and service info
-         const appointmentData: Partial<AppointmentData> = {
+         const appointmentData = {
             customer: formData.customerId.trim(),
             service: formData.serviceId.trim(),
             date: formData.date,
             time: formData.time,
             duration: formData.duration,
-            status: formData.status as "Waiting" | "Cancelled" | "Completed",
+            status: formData.status,
             notes: formData.notes || "",
             // Add additional info to help with display when API is down
             customerInfo: {
@@ -206,68 +247,19 @@ export default function EditAppointment({
             },
             serviceInfo: {
                name: selectedService.name,
+               price: selectedService.price,
+               duration: selectedService.duration,
             },
          };
 
          console.log("Updating appointment with data:", appointmentData);
 
-         // Update the appointment directly using localStorage
-         const storedAppointments = localStorage.getItem("storedAppointments");
-         if (storedAppointments) {
-            const appointments = JSON.parse(storedAppointments);
-            const index = appointments.findIndex(
-               (a: any) => a._id === appointmentId
-            );
-
-            if (index !== -1) {
-               // Create updated appointment object
-               const updatedAppointment = {
-                  ...appointments[index],
-                  ...appointmentData,
-                  updatedAt: new Date().toISOString(),
-                  customer: {
-                     _id: selectedCustomer._id,
-                     name: `${selectedCustomer.firstName} ${selectedCustomer.lastName}`,
-                     firstName: selectedCustomer.firstName,
-                     lastName: selectedCustomer.lastName,
-                     email: selectedCustomer.email || "",
-                  },
-                  service: {
-                     _id: selectedService._id,
-                     name: selectedService.name,
-                     duration: selectedService.duration,
-                     price: selectedService.price,
-                  },
-                  // Set status color based on status
-                  statusColor:
-                     formData.status === "Confirmed"
-                        ? "from-green-500 to-green-600"
-                        : formData.status === "Canceled"
-                        ? "from-red-500 to-red-600"
-                        : "from-yellow-500 to-yellow-600", // Pending (default)
-               };
-
-               // Update in array
-               appointments[index] = updatedAppointment;
-
-               // Save back to localStorage
-               localStorage.setItem(
-                  "storedAppointments",
-                  JSON.stringify(appointments)
-               );
-               console.log(
-                  "Appointment updated in localStorage:",
-                  updatedAppointment
-               );
-
-               toast.success("Appointment updated successfully");
-               router.push("/dashboard/appointments");
-            } else {
-               toast.error("Appointment not found");
-            }
-         } else {
-            toast.error("No appointments found in storage");
-         }
+         // Use the updateAppointment function from appointmentService
+         const updatedAppointment = await updateAppointment(appointmentId, appointmentData);
+         console.log("Appointment updated successfully:", updatedAppointment);
+         
+         toast.success("Appointment updated successfully");
+         router.push("/dashboard/appointments");
       } catch (error: any) {
          console.error("Error updating appointment:", error);
          const errorMessage = error.message || "Failed to update appointment";
@@ -285,13 +277,31 @@ export default function EditAppointment({
       if (!formData.serviceId) errors.serviceId = "Service is required";
       if (!formData.date) errors.date = "Date is required";
       if (!formData.time) errors.time = "Time is required";
-      if (!formData.duration) errors.duration = "Duration is required";
-
+      
       // Duration validation
-      if (formData.duration && isNaN(Number(formData.duration))) {
-         errors.duration = "Duration must be a number";
+      if (!formData.duration) {
+         errors.duration = "Duration is required";
+      } else if (isNaN(Number(formData.duration)) || Number(formData.duration) <= 0) {
+         errors.duration = "Duration must be a positive number";
       }
 
+      // Date validation - make sure it's a valid date
+      if (formData.date) {
+         const datePattern = /^\d{4}-\d{2}-\d{2}$/;
+         if (!datePattern.test(formData.date)) {
+            errors.date = "Invalid date format (should be YYYY-MM-DD)";
+         }
+      }
+
+      // Time validation - make sure it's a valid time
+      if (formData.time) {
+         const timePattern = /^\d{2}:\d{2}$/;
+         if (!timePattern.test(formData.time)) {
+            errors.time = "Invalid time format (should be HH:MM)";
+         }
+      }
+
+      console.log("Validation errors:", errors);
       setFormErrors(errors);
       return Object.keys(errors).length === 0;
    };
@@ -315,20 +325,49 @@ export default function EditAppointment({
       { value: "Pending", label: "Pending" },
       { value: "Confirmed", label: "Confirmed" },
       { value: "Canceled", label: "Canceled" },
+      { value: "Completed", label: "Completed" }
    ];
 
    if (loading && !appointment) {
       return (
-         <div className="flex items-center justify-center h-screen">
-            <div className="text-center">
-               <div
-                  className="spinner-border animate-spin inline-block w-8 h-8 border-4 rounded-full text-indigo-500 border-t-transparent"
-                  role="status"
-               >
-                  <span className="visually-hidden">Loading...</span>
+         <div className="flex flex-col items-center justify-center min-h-screen">
+            <div className="w-16 h-16 relative">
+               <div className="absolute inset-0 flex items-center justify-center">
+                  <div className={`h-12 w-12 border-4 border-t-transparent border-${darkMode ? "purple-600" : "indigo-600"} rounded-full animate-spin`}></div>
                </div>
-               <p className="mt-2 text-gray-300">Loading appointment data...</p>
+               <div className="absolute inset-0 flex items-center justify-center">
+                  <div className={`h-8 w-8 border-4 border-t-transparent border-${darkMode ? "blue-400" : "blue-500"} rounded-full animate-spin`} style={{ animationDirection: 'reverse', animationDuration: '0.75s' }}></div>
+               </div>
             </div>
+            <p className={`mt-4 font-medium ${darkMode ? "text-white" : "text-gray-800"}`}>Loading appointment data...</p>
+            <p className={`text-sm mt-2 ${darkMode ? "text-gray-400" : "text-gray-500"}`}>This may take a few moments</p>
+         </div>
+      );
+   }
+
+   if (!appointment && !loading) {
+      return (
+         <div className="flex flex-col items-center justify-center min-h-screen">
+            <div className={`rounded-full p-4 bg-${darkMode ? "red-900/30" : "red-100"} mb-4`}>
+               <svg xmlns="http://www.w3.org/2000/svg" className={`h-10 w-10 ${darkMode ? "text-red-500" : "text-red-600"}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+               </svg>
+            </div>
+            <h2 className={`text-xl font-semibold mb-2 ${darkMode ? "text-white" : "text-gray-800"}`}>Appointment Not Found</h2>
+            <p className={`text-center mb-6 ${darkMode ? "text-gray-400" : "text-gray-500"}`}>
+               We couldn't find the appointment you're looking for.
+            </p>
+            <Link
+               href="/dashboard/appointments"
+               className={`px-4 py-2 rounded-md font-medium flex items-center space-x-2 ${
+                  darkMode ? "bg-purple-600 text-white hover:bg-purple-700" : "bg-indigo-600 text-white hover:bg-indigo-700"
+               }`}
+            >
+               <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+               </svg>
+               <span>Return to Appointments</span>
+            </Link>
          </div>
       );
    }
