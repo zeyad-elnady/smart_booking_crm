@@ -1,0 +1,15 @@
+{
+  "watch": ["**/*.js"],
+  "ignore": [
+    "node_modules",
+    "data",
+    "*.json",
+    "data/*.json",
+    "*.log",
+    ".git",
+    ".vscode",
+    "public",
+    "temp"
+  ],
+  "ext": "js"
+} 

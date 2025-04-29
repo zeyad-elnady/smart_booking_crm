@@ -1,0 +1,33 @@
+{
+   "name": "smart-booking-crm",
+   "version": "1.0.0",
+   "description": "A modern CRM system for managing appointments, customers, and services",
+   "main": "index.js",
+   "scripts": {
+      "setup": "node setup-project.js",
+      "dev": "concurrently \"cd frontend && npm run dev\" \"cd express-backend && npm run dev\"",
+      "build": "cd frontend && npm run build",
+      "start": "cd frontend && npm start",
+      "clean": "rimraf node_modules && cd frontend && rimraf node_modules && cd ../express-backend && rimraf node_modules"
+   },
+   "dependencies": {
+      "@emotion/react": "^11.11.3",
+      "@emotion/styled": "^11.11.0",
+      "@mui/icons-material": "^5.15.10",
+      "@mui/material": "^5.15.10",
+      "@types/recharts": "^2.12.2",
+      "@types/uuid": "^9.0.8",
+      "recharts": "^2.12.0",
+      "uuid": "^9.0.1"
+   },
+   "devDependencies": {
+      "autoprefixer": "^10.4.17",
+      "concurrently": "^8.2.2",
+      "postcss": "^8.4.35",
+      "rimraf": "^5.0.5",
+      "tailwindcss": "^3.4.1"
+   },
+   "engines": {
+      "node": ">=18.0.0 <23.0.0"
+   }
+}

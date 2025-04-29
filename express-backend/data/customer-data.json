@@ -1,0 +1,5 @@
+{ \
+users\: [], \customers\: [ { \_id\: \sample-customer-1\, \firstName\: \John\, \lastName\: \Smith\, \email\: \john@example.com\, \phone\: \555-123-4567\, \notes\: \Regular
+customer\ }, { \_id\: \sample-customer-2\, \firstName\: \Sarah\, \lastName\: \Johnson\, \email\: \sarah@example.com\, \phone\: \555-987-6543\, \notes\: \Prefers
+afternoon
+appointments\ } ], \appointments\: [], \services\: [] }
