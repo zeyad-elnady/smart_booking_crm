@@ -148,7 +148,7 @@ export default function AddCustomer() {
                            htmlFor="email"
                            className="block mb-2 text-sm font-medium text-gray-300"
                         >
-                           Email <span className="text-red-500">*</span>
+                           Email
                         </label>
                         <div className="relative">
                            <Mail className="absolute left-3 top-2.5 w-5 h-5 text-gray-400" />
@@ -158,9 +158,8 @@ export default function AddCustomer() {
                               name="email"
                               value={formData.email}
                               onChange={handleChange}
-                              required
                               className="w-full px-4 py-2 pl-10 bg-gray-800/50 border border-gray-700 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent text-white placeholder-gray-400"
-                              placeholder="Enter email address"
+                              placeholder="Enter email address (optional)"
                            />
                         </div>
                      </div>

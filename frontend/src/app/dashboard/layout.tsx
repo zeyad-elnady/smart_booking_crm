@@ -6,6 +6,8 @@ import { useRouter } from 'next/navigation'
 import { authAPI } from '@/services/api'
 import { useTheme } from '@/components/ThemeProvider'
 import { LanguageProvider } from '@/context/LanguageContext'
+import { initializeDatabase } from '@/services/databaseInit'
+import DatabaseUpgradeAlert from '@/components/DatabaseUpgradeAlert'
 
 // Background shapes component
 const BackgroundShapes = () => {
@@ -35,7 +37,20 @@ export default function DashboardLayout({
     
     // Skip authentication check - immediately set as authorized
     setAuthorized(true)
-    setLoading(false)
+    
+    // Initialize database services
+    const init = async () => {
+      try {
+        await initializeDatabase();
+        console.log("Database services initialized");
+      } catch (error) {
+        console.error("Error initializing database:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    
+    init();
     
     /*
     // Check if user is authenticated
@@ -83,6 +98,7 @@ export default function DashboardLayout({
       <LanguageProvider>
         {mounted && <BackgroundShapes />}
         {mounted && <Navigation />}
+        {mounted && <DatabaseUpgradeAlert />}
         <main className="pt-24 pb-10 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto" suppressHydrationWarning={true}>
           <div className={`w-full p-6 sm:p-8 rounded-2xl shadow-xl ${darkMode ? 'glass-dark border border-white/5' : 'glass-light border border-black/5'}`} suppressHydrationWarning={true}>
             {children}

@@ -15,6 +15,7 @@ import {
    XMarkIcon,
    SunIcon,
    MoonIcon,
+   BanknotesIcon,
 } from "@heroicons/react/24/outline";
 
 export default function Navigation() {
@@ -33,7 +34,9 @@ export default function Navigation() {
          icon: CalendarIcon,
       },
       { name: t("customers"), href: "/dashboard/customers", icon: UserGroupIcon },
+      { name: t("employees"), href: "/dashboard/employees", icon: UserGroupIcon },
       { name: t("services"), href: "/dashboard/services", icon: Squares2X2Icon },
+      { name: t("finance"), href: "/dashboard/finance", icon: BanknotesIcon },
       { name: t("settings"), href: "/dashboard/settings", icon: Cog6ToothIcon },
    ];
 

@@ -116,10 +116,20 @@ export const fetchAppointments = async (params?: {
   endDate?: string;
 }): Promise<Appointment[]> => {
   try {
-    let appointments: Appointment[] = [];
+    // First ensure the database is initialized
+    console.log("Initializing database before fetching appointments");
+    await indexedDBService.initDB();
     
-    // First check IndexedDB for offline data
-    appointments = await indexedDBService.getAllAppointments();
+    console.log("Fetching appointments from IndexedDB");
+    // Get appointments from IndexedDB
+    let appointments: Appointment[] = [];
+    try {
+      appointments = await indexedDBService.getAllAppointments();
+      console.log(`Fetched ${appointments.length} appointments from IndexedDB`);
+    } catch (dbError) {
+      console.error("Error fetching from IndexedDB:", dbError);
+      appointments = [];
+    }
     
     // Filter by date range if provided
     if (params?.startDate || params?.endDate) {
@@ -138,7 +148,7 @@ export const fetchAppointments = async (params?: {
     
     return appointments;
   } catch (error) {
-    console.error("Error fetching appointments:", error);
+    console.error("Error in fetchAppointments:", error);
     toast.error("Failed to fetch appointments");
     return [];
   }
@@ -565,22 +575,6 @@ export const syncAppointments = async (): Promise<void> => {
       throw error;
    }
 };
-
-// Add event listeners for online/offline status
-if (typeof window !== "undefined") {
-   window.addEventListener("online", () => {
-      toast.success("Internet connection restored");
-      // Automatically trigger sync when connection is restored
-      syncAppointments().catch((error) => {
-         console.error("Failed to sync appointments:", error);
-         toast.error("Failed to sync appointments");
-      });
-   });
-
-   window.addEventListener("offline", () => {
-      toast.error("Working offline - changes will be saved locally");
-   });
-}
 
 /**
  * Fetches recent appointments

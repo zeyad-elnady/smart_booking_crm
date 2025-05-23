@@ -1,14 +1,18 @@
 import type { Appointment } from "@/types/appointment";
 import type { Customer } from "@/types/customer";
 import type { Service } from "@/types/service";
+import type { Transaction, Category } from "@/types/finance";
 import { appointmentAPI } from "./api";
 
 const DB_NAME = "smartBookingCRM";
-const DB_VERSION = 5;
+const DB_VERSION = 7;
 const APPOINTMENTS_STORE = "appointments";
 const CUSTOMERS_STORE = "customers";
 const SETTINGS_STORE = "settings";
 const SERVICES_STORE = "services";
+const EMPLOYEES_STORE = "employees";
+const TRANSACTIONS_STORE = "transactions";
+const CATEGORIES_STORE = "categories";
 
 export class IndexedDBService {
    db: IDBDatabase | null = null;
@@ -21,6 +25,16 @@ export class IndexedDBService {
          await this.deleteOldDatabase();
       } catch (error) {
          console.error("Error deleting old database:", error);
+      }
+      
+      // Check if we need a database upgrade
+      const currentVersion = await this.checkDatabaseVersion();
+      if (currentVersion && currentVersion < DB_VERSION) {
+         console.log(`Database needs upgrade from version ${currentVersion} to ${DB_VERSION}`);
+         // Show notification if in browser environment
+         if (typeof window !== 'undefined' && typeof localStorage !== 'undefined') {
+            localStorage.setItem('dbVersionUpgradeNeeded', 'true');
+         }
       }
       
       return new Promise((resolve, reject) => {
@@ -92,6 +106,39 @@ export class IndexedDBService {
                store.createIndex("name", "name", { unique: false });
                store.createIndex("category", "category", { unique: false });
                console.log(`Created ${SERVICES_STORE} store successfully`);
+            }
+            
+            // Create employees store if it doesn't exist
+            if (!db.objectStoreNames.contains(EMPLOYEES_STORE)) {
+               const store = db.createObjectStore(EMPLOYEES_STORE, {
+                  keyPath: "_id",
+               });
+               store.createIndex("role", "role", { unique: false });
+               store.createIndex("isActive", "isActive", { unique: false });
+               store.createIndex("email", "email", { unique: false });
+               console.log(`Created ${EMPLOYEES_STORE} store successfully`);
+            }
+            
+            // Create transactions store if it doesn't exist
+            if (!db.objectStoreNames.contains(TRANSACTIONS_STORE)) {
+               const store = db.createObjectStore(TRANSACTIONS_STORE, {
+                  keyPath: "_id",
+               });
+               store.createIndex("date", "date", { unique: false });
+               store.createIndex("type", "type", { unique: false });
+               store.createIndex("category", "category", { unique: false });
+               store.createIndex("status", "status", { unique: false });
+               console.log(`Created ${TRANSACTIONS_STORE} store successfully`);
+            }
+            
+            // Create categories store if it doesn't exist
+            if (!db.objectStoreNames.contains(CATEGORIES_STORE)) {
+               const store = db.createObjectStore(CATEGORIES_STORE, {
+                  keyPath: "_id",
+               });
+               store.createIndex("name", "name", { unique: false });
+               store.createIndex("type", "type", { unique: false });
+               console.log(`Created ${CATEGORIES_STORE} store successfully`);
             }
          };
       });
@@ -335,15 +382,38 @@ export class IndexedDBService {
    async getAllAppointments(): Promise<Appointment[]> {
       await this.ensureDBConnection();
       return new Promise((resolve, reject) => {
-         const transaction = this.db!.transaction(
-            [APPOINTMENTS_STORE],
-            "readonly"
-         );
+         if (!this.db) {
+            console.error("Database connection not established");
+            return resolve([]);
+         }
+
+         try {
+            const transaction = this.db.transaction([APPOINTMENTS_STORE], "readonly");
          const store = transaction.objectStore(APPOINTMENTS_STORE);
          const request = store.getAll();
 
-         request.onsuccess = () => resolve(request.result);
-         request.onerror = () => reject(request.error);
+            request.onsuccess = () => {
+               const appointments = request.result || [];
+               console.log(`Retrieved ${appointments.length} appointments from IndexedDB`);
+               resolve(appointments);
+            };
+            
+            request.onerror = (event) => {
+               console.error("Error fetching appointments:", event);
+               reject(request.error);
+            };
+            
+            transaction.oncomplete = () => {
+               console.log("Transaction completed for appointments fetch");
+            };
+            
+            transaction.onerror = (event) => {
+               console.error("Transaction error for appointments fetch:", event);
+            };
+         } catch (error) {
+            console.error("Exception in getAllAppointments:", error);
+            resolve([]);
+         }
       });
    }
    
@@ -947,25 +1017,27 @@ export class IndexedDBService {
    
    // Helper to clear a specific store - made public so it can be used externally
    async purgeStore(storeName: string): Promise<void> {
+      await this.ensureDBConnection();
+      
       return new Promise((resolve, reject) => {
-         if (!this.db) {
-            reject(new Error("Database not initialized"));
-            return;
+         try {
+            const transaction = this.db!.transaction([storeName], "readwrite");
+            const store = transaction.objectStore(storeName);
+            const request = store.clear();
+
+            request.onsuccess = () => {
+               console.log(`Successfully cleared ${storeName} store`);
+               resolve();
+            };
+
+            request.onerror = (event) => {
+               console.error(`Error clearing ${storeName} store:`, event);
+               reject(request.error);
+            };
+         } catch (error) {
+            console.error(`Error clearing ${storeName} store:`, error);
+            reject(error);
          }
-         
-         const transaction = this.db.transaction([storeName], "readwrite");
-         const store = transaction.objectStore(storeName);
-         const request = store.clear();
-         
-         request.onsuccess = () => {
-            console.log(`Cleared all data from ${storeName}`);
-            resolve();
-         };
-         
-         request.onerror = () => {
-            console.error(`Error clearing ${storeName}:`, request.error);
-            reject(request.error);
-         };
       });
    }
 
@@ -1031,7 +1103,8 @@ export class IndexedDBService {
          CUSTOMERS_STORE,
          APPOINTMENTS_STORE,
          SERVICES_STORE,
-         SETTINGS_STORE
+         SETTINGS_STORE,
+         EMPLOYEES_STORE
       ];
       
       for (const storeName of allStores) {
@@ -1182,7 +1255,161 @@ export class IndexedDBService {
 
    // Get all data from any store - helper used by getApproximateSize
    private async getAllFromStore(storeName: string): Promise<any[]> {
-      return this.getAllItems(storeName);
+      await this.ensureDBConnection();
+      return new Promise((resolve, reject) => {
+         const transaction = this.db!.transaction([storeName], "readonly");
+         const store = transaction.objectStore(storeName);
+         const request = store.getAll();
+
+         request.onsuccess = () => resolve(request.result);
+         request.onerror = () => reject(request.error);
+      });
+   }
+
+   // Check current database version without opening with upgrade flag
+   private async checkDatabaseVersion(): Promise<number | null> {
+      return new Promise((resolve) => {
+         try {
+            const request = indexedDB.open(DB_NAME);
+            
+            request.onsuccess = (event) => {
+               const db = (event.target as IDBOpenDBRequest).result;
+               const version = db.version;
+               db.close();
+               resolve(version);
+            };
+            
+            request.onerror = () => {
+               console.error("Error checking database version");
+               resolve(null);
+            };
+         } catch (error) {
+            console.error("Exception checking database version:", error);
+            resolve(null);
+         }
+      });
+   }
+
+   // === GENERAL STORE METHODS (for any store) ===
+   
+   async getAllFromStore(storeName: string): Promise<any[]> {
+      await this.ensureDBConnection();
+      return new Promise((resolve, reject) => {
+         const transaction = this.db!.transaction([storeName], "readonly");
+         const store = transaction.objectStore(storeName);
+         const request = store.getAll();
+
+         request.onsuccess = () => resolve(request.result);
+         request.onerror = () => reject(request.error);
+      });
+   }
+   
+   async getFromStore(storeName: string, id: string): Promise<any | null> {
+      await this.ensureDBConnection();
+      return new Promise((resolve, reject) => {
+         const transaction = this.db!.transaction([storeName], "readonly");
+         const store = transaction.objectStore(storeName);
+         const request = store.get(id);
+
+         request.onsuccess = () => resolve(request.result || null);
+         request.onerror = () => reject(request.error);
+      });
+   }
+   
+   async saveToStore(storeName: string, item: any): Promise<void> {
+      await this.ensureDBConnection();
+      return new Promise((resolve, reject) => {
+         const transaction = this.db!.transaction([storeName], "readwrite");
+         const store = transaction.objectStore(storeName);
+         const request = store.put(item);
+
+         request.onsuccess = () => resolve();
+         request.onerror = () => reject(request.error);
+      });
+   }
+   
+   async deleteFromStore(storeName: string, id: string): Promise<void> {
+      await this.ensureDBConnection();
+      return new Promise((resolve, reject) => {
+         const transaction = this.db!.transaction([storeName], "readwrite");
+         const store = transaction.objectStore(storeName);
+         const request = store.delete(id);
+
+         request.onsuccess = () => resolve();
+         request.onerror = () => reject(request.error);
+      });
+   }
+   
+   // === TRANSACTION METHODS ===
+   
+   async getAllTransactions(): Promise<Transaction[]> {
+      return this.getAllFromStore(TRANSACTIONS_STORE);
+   }
+   
+   async getTransactionById(id: string): Promise<Transaction | null> {
+      return this.getFromStore(TRANSACTIONS_STORE, id);
+   }
+   
+   async saveTransaction(transaction: Transaction): Promise<void> {
+      return this.saveToStore(TRANSACTIONS_STORE, transaction);
+   }
+   
+   async deleteTransaction(id: string): Promise<void> {
+      return this.deleteFromStore(TRANSACTIONS_STORE, id);
+   }
+   
+   async getTransactionsByDateRange(startDate: string, endDate: string): Promise<Transaction[]> {
+      const allTransactions = await this.getAllTransactions();
+      return allTransactions.filter((transaction) => {
+         const transactionDate = new Date(transaction.date);
+         const start = new Date(startDate);
+         const end = new Date(endDate);
+         
+         // Set hours to 0 for date-only comparison
+         start.setHours(0, 0, 0, 0);
+         end.setHours(23, 59, 59, 999);
+         
+         return transactionDate >= start && transactionDate <= end;
+      });
+   }
+   
+   async getTransactionsByType(type: 'income' | 'expense'): Promise<Transaction[]> {
+      const allTransactions = await this.getAllTransactions();
+      return allTransactions.filter(transaction => transaction.type === type);
+   }
+   
+   async getTransactionsByCategory(categoryId: string): Promise<Transaction[]> {
+      const allTransactions = await this.getAllTransactions();
+      return allTransactions.filter(transaction => {
+         if (typeof transaction.category === 'string') {
+            return transaction.category === categoryId;
+         } else {
+            return transaction.category._id === categoryId;
+         }
+      });
+   }
+   
+   // === CATEGORY METHODS ===
+   
+   async getAllCategories(): Promise<Category[]> {
+      return this.getAllFromStore(CATEGORIES_STORE);
+   }
+   
+   async getCategoryById(id: string): Promise<Category | null> {
+      return this.getFromStore(CATEGORIES_STORE, id);
+   }
+   
+   async saveCategory(category: Category): Promise<void> {
+      return this.saveToStore(CATEGORIES_STORE, category);
+   }
+   
+   async deleteCategory(id: string): Promise<void> {
+      return this.deleteFromStore(CATEGORIES_STORE, id);
+   }
+   
+   async getCategoriesByType(type: 'income' | 'expense'): Promise<Category[]> {
+      const allCategories = await this.getAllCategories();
+      return allCategories.filter(category => category.type === type);
    }
 }
 

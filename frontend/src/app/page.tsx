@@ -138,7 +138,7 @@ export default function Home() {
           designed specifically for service-based businesses.
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
-          <Link href="/dashboard" className={`px-8 py-4 rounded-xl text-lg font-medium transition-all duration-300 ${
+          <Link href="/get-started" className={`px-8 py-4 rounded-xl text-lg font-medium transition-all duration-300 ${
             darkMode
               ? 'glass-dark bg-gradient-to-r from-purple-600 to-blue-500 text-white hover:from-purple-700 hover:to-blue-600 shadow-lg hover:shadow-xl'
               : lightModeStyles.getStartedBtn

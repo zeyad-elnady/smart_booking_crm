@@ -84,7 +84,7 @@ export default function Appointments() {
    const [appointments, setAppointments] = useState<Appointment[]>([]);
    const [loading, setLoading] = useState(true);
    const [openStatusMenu, setOpenStatusMenu] = useState<string | null>(null);
-   const [selectedDate, setSelectedDate] = useState<string>(format(new Date(), "yyyy-MM-dd"));
+   const [selectedDate, setSelectedDate] = useState<string | null>(format(new Date(), "yyyy-MM-dd"));
    const [error, setError] = useState<string | null>(null);
    const [appointmentToDelete, setAppointmentToDelete] = useState<string | null>(null);
    const [isDeleting, setIsDeleting] = useState(false);
@@ -94,6 +94,9 @@ export default function Appointments() {
       const initializeAndLoad = async () => {
          try {
             setLoading(true);
+            setError(null);
+            console.log("Initializing IndexedDB and loading appointments");
+            
             // Initialize IndexedDB
             await indexedDBService.initDB();
             
@@ -105,6 +108,8 @@ export default function Appointments() {
 
             // Check if there are appointments marked as sample data in IndexedDB
             const allAppointments = await indexedDBService.getAllAppointments();
+            console.log(`Found ${allAppointments.length} appointments in IndexedDB`);
+            
             const sampleAppointments = allAppointments.filter(
                apt => apt._id.startsWith('sample_') || apt._id.startsWith('mock_')
             );
@@ -121,12 +126,17 @@ export default function Appointments() {
             await autoCompleteExpiredAppointments();
 
             // Load appointments
+            console.log("Fetching appointments from service");
             const currentAppointments = await fetchAppointments();
             
             // Make sure to filter out any appointments that might be marked for deletion
             const filteredAppointments = currentAppointments.filter(apt => !apt.pendingDelete);
+            console.log(`Setting ${filteredAppointments.length} appointments to state`);
             
             setAppointments(filteredAppointments);
+            if (filteredAppointments.length === 0) {
+               console.log("No appointments found");
+            }
          } catch (error) {
             console.error(
                "Error initializing IndexedDB or loading appointments:",
@@ -134,6 +144,7 @@ export default function Appointments() {
             );
             setError("Failed to load appointments. Please try again later.");
          } finally {
+            console.log("Finished loading appointments");
             setLoading(false);
          }
       };
@@ -468,9 +479,7 @@ export default function Appointments() {
 
    // Filter appointments by selected date
    const filteredAppointments = selectedDate
-      ? appointments.filter(
-         (appointment) => appointment.date === selectedDate
-      )
+      ? appointments.filter(appointment => appointment.date === selectedDate)
       : appointments;
 
    return (
@@ -538,6 +547,74 @@ export default function Appointments() {
                   </button>
                </div>
             </div>
+
+            {/* List view date filtering */}
+            {viewMode === "list" && (
+               <div className="mb-6 flex flex-wrap items-center gap-4">
+                  <div className={`rounded-lg overflow-hidden border ${darkMode ? "border-gray-700" : "border-gray-200"}`}>
+                     <div className="flex items-center">
+                        <input
+                           type="date"
+                           value={selectedDate || format(new Date(), "yyyy-MM-dd")}
+                           onChange={(e) => setSelectedDate(e.target.value)}
+                           className={`px-4 py-2 ${
+                              darkMode
+                                 ? "bg-gray-800 text-white border-gray-700"
+                                 : "bg-white text-gray-800 border-gray-200"
+                           } border-r`}
+                        />
+                        <button
+                           onClick={() => setSelectedDate(format(new Date(), "yyyy-MM-dd"))}
+                           className={`px-4 py-2 ${
+                              darkMode
+                                 ? "bg-gray-700 text-gray-300 hover:bg-gray-600"
+                                 : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+                           }`}
+                        >
+                           {t('today')}
+                        </button>
+                     </div>
+                  </div>
+                  <button
+                     onClick={() => setSelectedDate(null)}
+                     className={`px-4 py-2 rounded-lg transition flex items-center ${
+                        !selectedDate
+                           ? darkMode
+                              ? "bg-purple-600 text-white"
+                              : "bg-purple-600 text-white"
+                           : darkMode
+                           ? "bg-gray-700 text-gray-300"
+                           : "bg-gray-100 text-gray-600"
+                     }`}
+                  >
+                     {t('show_all')}
+                  </button>
+                  <button
+                     onClick={handleRefreshAppointments}
+                     className={`inline-flex items-center px-3 py-1.5 text-sm rounded-lg transition ${
+                        darkMode
+                           ? "bg-gray-800 hover:bg-gray-700 text-gray-300"
+                           : "bg-white hover:bg-gray-100 text-gray-600 border border-gray-200"
+                     }`}
+                  >
+                     <ArrowPathIcon
+                        className={`h-4 w-4 mr-2 ${loading ? "animate-spin" : ""}`}
+                     />
+                     {loading ? t("refreshing") : t("refresh")}
+                  </button>
+                  <div className="text-sm ml-2">
+                     {selectedDate ? (
+                        <span className={darkMode ? "text-gray-300" : "text-gray-600"}>
+                           {t('showing_appointments_for')} {format(parseISO(selectedDate), "MMMM d, yyyy")}
+                        </span>
+                     ) : (
+                        <span className={darkMode ? "text-gray-300" : "text-gray-600"}>
+                           {t('showing_all_appointments')}
+                        </span>
+                     )}
+                  </div>
+               </div>
+            )}
 
             {/* Calendar view controls */}
             {viewMode === "calendar" && (
@@ -659,6 +736,25 @@ export default function Appointments() {
                   <CalendarIcon className="h-12 w-12 mx-auto mb-4 opacity-50" />
                   <h3 className="text-lg font-medium mb-2">{t("no_appointments")}</h3>
                   <p className="mb-6">{t("add_your_first_appointment")}</p>
+                  <Link
+                     href="/dashboard/appointments/add"
+                     className={`px-4 py-2 rounded-lg transition inline-flex items-center ${
+                        darkMode
+                           ? "bg-purple-600 hover:bg-purple-700 text-white"
+                           : "bg-purple-600 hover:bg-purple-700 text-white"
+                     }`}
+                  >
+                     <PlusIcon className="h-5 w-5 mr-2" />
+                     {t("add_appointment")}
+                  </Link>
+               </div>
+            ) : viewMode === "list" && filteredAppointments.length === 0 ? (
+               <div className={`text-center py-12 ${darkMode ? "text-gray-300" : "text-gray-600"}`}>
+                  <CalendarIcon className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                  <h3 className="text-lg font-medium mb-2">
+                     {selectedDate ? `${t("no_appointments_for_date")} ${format(parseISO(selectedDate), "MMMM d, yyyy")}` : t("no_appointments")}
+                  </h3>
+                  <p className="mb-6">{t("try_different_date")}</p>
                   <Link
                      href="/dashboard/appointments/add"
                      className={`px-4 py-2 rounded-lg transition inline-flex items-center ${

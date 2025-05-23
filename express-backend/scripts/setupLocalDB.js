@@ -108,77 +108,13 @@ const initializeDatabase = async () => {
       return true;
     }
     
-    // Create a test user
-    const testUser = new User({
-      name: 'Test User',
-      email: 'test@example.com',
-      password: 'password123', // This will be hashed by the User model
-    });
-    
-    await testUser.save();
-    console.log('Created test user: test@example.com / password123');
-    
-    // Create some sample services
-    const services = [
-      {
-        name: 'Haircut',
-        description: 'Basic haircut service',
-        duration: '30 min',
-        price: 25,
-        user: testUser._id,
-      },
-      {
-        name: 'Hair Coloring',
-        description: 'Full hair coloring service',
-        duration: '90 min',
-        price: 75,
-        user: testUser._id,
-      },
-      {
-        name: 'Styling',
-        description: 'Hair styling service',
-        duration: '45 min',
-        price: 40,
-        user: testUser._id,
-      },
-    ];
-    
-    await Service.insertMany(services);
-    console.log('Created sample services');
-    
-    // Create some sample customers
-    const customers = [
-      {
-        firstName: 'John',
-        lastName: 'Doe',
-        email: 'john@example.com',
-        phone: '555-123-4567',
-        notes: 'Regular customer',
-        user: testUser._id,
-      },
-      {
-        firstName: 'Jane',
-        lastName: 'Smith',
-        email: 'jane@example.com',
-        phone: '555-987-6543',
-        notes: 'Prefers evening appointments',
-        user: testUser._id,
-      },
-    ];
-    
-    await Customer.insertMany(customers);
-    console.log('Created sample customers');
-    
-    console.log('Database initialization complete!');
-    return true;
   } catch (error) {
     console.error('Error initializing database:', error);
     return false;
   } finally {
     await mongoose.disconnect();
   }
-};
-
+}; 
 /**
  * Main setup function
  */

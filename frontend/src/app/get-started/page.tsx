@@ -144,13 +144,45 @@ export default function GetStarted() {
                      Get Started
                   </h1>
                   <p className="text-xl md:text-2xl mb-10 text-gray-200 leading-relaxed max-w-3xl mx-auto">
-                     Choose how you'd like to proceed with Smart Booking CRM
+                     Choose your role to access the appropriate view
                   </p>
 
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mt-12">
-                     {/* Existing user card */}
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-12">
+                     {/* Admin View Card */}
                      <div className="glass-dark border border-white/10 rounded-xl p-8 flex flex-col items-center hover:scale-105 transition-all duration-300">
-                        <div className="h-20 w-20 rounded-full bg-gradient-to-r from-indigo-500 to-blue-600 flex items-center justify-center mb-6">
+                        <div className="h-20 w-20 rounded-full bg-gradient-to-r from-purple-500 to-indigo-600 flex items-center justify-center mb-6">
+                           <svg
+                              xmlns="http://www.w3.org/2000/svg"
+                              className="h-10 w-10 text-white"
+                              fill="none"
+                              viewBox="0 0 24 24"
+                              stroke="currentColor"
+                           >
+                              <path
+                                 strokeLinecap="round"
+                                 strokeLinejoin="round"
+                                 strokeWidth={2}
+                                 d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4"
+                              />
+                           </svg>
+                        </div>
+                        <h2 className="text-2xl font-bold mb-4 gradient-text">
+                           Admin View
+                        </h2>
+                        <p className="text-gray-300 text-center mb-8">
+                           Full access to manage staff, finances, settings and all system features.
+                        </p>
+                        <Link
+                           href="/dashboard"
+                           className="glass-dark bg-gradient-to-r from-purple-600 to-blue-500 hover:from-purple-700 hover:to-blue-600 text-white font-bold py-3 px-8 rounded-full text-lg transition-all duration-300 hover:scale-105 flex items-center justify-center btn-premium w-full"
+                        >
+                           Access Admin
+                        </Link>
+                     </div>
+
+                     {/* Doctor View Card */}
+                     <div className="glass-dark border border-white/10 rounded-xl p-8 flex flex-col items-center hover:scale-105 transition-all duration-300">
+                        <div className="h-20 w-20 rounded-full bg-gradient-to-r from-blue-500 to-cyan-600 flex items-center justify-center mb-6">
                            <svg
                               xmlns="http://www.w3.org/2000/svg"
                               className="h-10 w-10 text-white"
@@ -167,21 +199,20 @@ export default function GetStarted() {
                            </svg>
                         </div>
                         <h2 className="text-2xl font-bold mb-4 gradient-text">
-                           Already have an account?
+                           Doctor View
                         </h2>
                         <p className="text-gray-300 text-center mb-8">
-                           Login to your existing account to manage your
-                           bookings, services, and customers.
+                           Manage appointments, patient records, and your personal schedule.
                         </p>
                         <Link
-                           href="/login"
-                           className="glass-dark bg-gradient-to-r from-purple-600 to-blue-500 hover:from-purple-700 hover:to-blue-600 text-white font-bold py-3 px-8 rounded-full text-lg transition-all duration-300 hover:scale-105 flex items-center justify-center btn-premium w-full"
+                           href="/doctor-dashboard"
+                           className="glass-dark bg-gradient-to-r from-blue-600 to-cyan-500 hover:from-blue-700 hover:to-cyan-600 text-white font-bold py-3 px-8 rounded-full text-lg transition-all duration-300 hover:scale-105 flex items-center justify-center btn-premium w-full"
                         >
-                           Login
+                           Access Doctor View
                         </Link>
                      </div>
 
-                     {/* New user card */}
+                     {/* Secretary View Card */}
                      <div className="glass-dark border border-white/10 rounded-xl p-8 flex flex-col items-center hover:scale-105 transition-all duration-300">
                         <div className="h-20 w-20 rounded-full bg-gradient-to-r from-green-500 to-emerald-600 flex items-center justify-center mb-6">
                            <svg
@@ -195,22 +226,21 @@ export default function GetStarted() {
                                  strokeLinecap="round"
                                  strokeLinejoin="round"
                                  strokeWidth={2}
-                                 d="M12 6v6m0 0v6m0-6h6m-6 0H6"
+                                 d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"
                               />
                            </svg>
                         </div>
                         <h2 className="text-2xl font-bold mb-4 gradient-text">
-                           New to Smart Booking?
+                           Secretary View
                         </h2>
                         <p className="text-gray-300 text-center mb-8">
-                           Create a new account and set up your business with
-                           our step-by-step wizard.
+                           Schedule appointments, manage the front desk, and handle customer inquiries.
                         </p>
                         <Link
-                           href="/register"
+                           href="/secretary-dashboard"
                            className="glass-dark bg-gradient-to-r from-green-600 to-emerald-500 hover:from-green-700 hover:to-emerald-600 text-white font-bold py-3 px-8 rounded-full text-lg transition-all duration-300 hover:scale-105 flex items-center justify-center btn-premium w-full"
                         >
-                           Create Account
+                           Access Secretary View
                         </Link>
                      </div>
                   </div>

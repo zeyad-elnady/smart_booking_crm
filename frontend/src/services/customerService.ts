@@ -94,7 +94,7 @@ export const createCustomer = async (
       await indexedDBService.initDB();
       
       // Check for duplicate email
-      if (customerData.email) {
+      if (customerData.email && customerData.email.trim() !== '') {
          const existingCustomersByEmail = await indexedDBService.searchCustomers({ email: customerData.email });
          if (existingCustomersByEmail.length > 0) {
             throw new Error("Customer with this email already exists");
@@ -129,7 +129,7 @@ export const createCustomer = async (
          _id: nextId,
          firstName: customerData.firstName || "",
          lastName: customerData.lastName || "",
-         email: customerData.email || "",
+         email: customerData.email || undefined,
          phone: customerData.phone || "",
          address: customerData.address || "",
          notes: customerData.notes || "",
@@ -252,7 +252,7 @@ interface AppointmentCustomer {
    _id: string;
    firstName: string;
    lastName: string;
-   email: string;
+   email?: string;
    phone?: string;
 }
 
