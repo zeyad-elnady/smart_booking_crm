@@ -144,7 +144,7 @@ const startServer = async () => {
       await localDataService.initializeStorage();
       
       // Start the server
-      const PORT = process.env.PORT || 5000;
+      const PORT = 12345; // Force port 12345 instead of using process.env.PORT
       app.listen(PORT, () => {
          console.log(`Server running on port ${PORT}`);
       });

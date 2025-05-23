@@ -83,7 +83,14 @@ export default function AddAppointment() {
       status: "Pending",
       notes: "",
    });
-   const [formErrors, setFormErrors] = useState<any>({});
+   const [formErrors, setFormErrors] = useState<{
+      customerId?: string;
+      serviceId?: string;
+      date?: string;
+      time?: string;
+      status?: string;
+      notes?: string;
+   }>({});
    const { darkMode } = useTheme();
    const [mounted, setMounted] = useState(false);
    
@@ -186,13 +193,24 @@ export default function AddAppointment() {
          [name]: value,
       }));
       // Clear error when field is edited
-      if (formErrors[name]) {
-         setFormErrors((prev: any) => ({ ...prev, [name]: undefined }));
+      const key = name as keyof typeof formErrors;
+      if (formErrors[key]) {
+         setFormErrors((prev: {
+            customerId?: string;
+            serviceId?: string;
+            date?: string;
+            time?: string;
+            status?: string;
+            notes?: string;
+         }) => ({
+            ...prev,
+            [key]: undefined
+         }));
       }
    };
 
    const handleNewCustomerChange = (
-      e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
+      e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>
    ) => {
       const { name, value } = e.target;
       setNewCustomerData((prev) => ({
@@ -631,7 +649,14 @@ export default function AddAppointment() {
                                     }));
                                     // Clear errors when selection is made
                                     if (formErrors.date || formErrors.time) {
-                                       setFormErrors(prev => ({
+                                       setFormErrors((prev: {
+                                          customerId?: string;
+                                          serviceId?: string;
+                                          date?: string;
+                                          time?: string;
+                                          status?: string;
+                                          notes?: string;
+                                       }) => ({
                                           ...prev,
                                           date: undefined,
                                           time: undefined

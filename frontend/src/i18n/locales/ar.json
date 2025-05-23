@@ -1,0 +1,55 @@
+{
+  "common": {
+    "dashboard": "لوحة التحكم",
+    "appointments": "المواعيد",
+    "clients": "العملاء",
+    "services": "الخدمات",
+    "settings": "الإعدادات",
+    "profile": "الملف الشخصي",
+    "logout": "تسجيل الخروج",
+    "search": "بحث",
+    "add": "إضافة",
+    "edit": "تعديل",
+    "delete": "حذف",
+    "save": "حفظ",
+    "cancel": "إلغاء",
+    "confirm": "تأكيد",
+    "loading": "جاري التحميل...",
+    "error": "خطأ",
+    "success": "نجاح"
+  },
+  "auth": {
+    "login": "تسجيل الدخول",
+    "register": "تسجيل",
+    "email": "البريد الإلكتروني",
+    "password": "كلمة المرور",
+    "forgotPassword": "نسيت كلمة المرور؟",
+    "rememberMe": "تذكرني"
+  },
+  "appointments": {
+    "newAppointment": "موعد جديد",
+    "upcoming": "القادم",
+    "past": "السابق",
+    "date": "التاريخ",
+    "time": "الوقت",
+    "client": "العميل",
+    "service": "الخدمة",
+    "status": "الحالة",
+    "notes": "ملاحظات"
+  },
+  "clients": {
+    "newClient": "عميل جديد",
+    "name": "الاسم",
+    "phone": "الهاتف",
+    "email": "البريد الإلكتروني",
+    "address": "العنوان",
+    "notes": "ملاحظات"
+  },
+  "services": {
+    "newService": "خدمة جديدة",
+    "name": "الاسم",
+    "duration": "المدة",
+    "price": "السعر",
+    "description": "الوصف"
+  }
+} 

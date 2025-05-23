@@ -1,0 +1,55 @@
+{
+  "common": {
+    "dashboard": "Dashboard",
+    "appointments": "Appointments",
+    "clients": "Clients",
+    "services": "Services",
+    "settings": "Settings",
+    "profile": "Profile",
+    "logout": "Logout",
+    "search": "Search",
+    "add": "Add",
+    "edit": "Edit",
+    "delete": "Delete",
+    "save": "Save",
+    "cancel": "Cancel",
+    "confirm": "Confirm",
+    "loading": "Loading...",
+    "error": "Error",
+    "success": "Success"
+  },
+  "auth": {
+    "login": "Login",
+    "register": "Register",
+    "email": "Email",
+    "password": "Password",
+    "forgotPassword": "Forgot Password?",
+    "rememberMe": "Remember Me"
+  },
+  "appointments": {
+    "newAppointment": "New Appointment",
+    "upcoming": "Upcoming",
+    "past": "Past",
+    "date": "Date",
+    "time": "Time",
+    "client": "Client",
+    "service": "Service",
+    "status": "Status",
+    "notes": "Notes"
+  },
+  "clients": {
+    "newClient": "New Client",
+    "name": "Name",
+    "phone": "Phone",
+    "email": "Email",
+    "address": "Address",
+    "notes": "Notes"
+  },
+  "services": {
+    "newService": "New Service",
+    "name": "Name",
+    "duration": "Duration",
+    "price": "Price",
+    "description": "Description"
+  }
+} 

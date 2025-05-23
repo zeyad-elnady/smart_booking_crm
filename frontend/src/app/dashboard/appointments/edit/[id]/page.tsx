@@ -12,7 +12,7 @@ import { useRouter } from "next/navigation";
 import { toast } from "react-hot-toast";
 import { useTheme } from "@/components/ThemeProvider";
 import * as React from "react";
-import type { Appointment } from "@/types/appointment";
+import type { Appointment, AppointmentStatus } from "@/types/appointment";
 import { indexedDBService } from "@/services/indexedDB";
 import { fetchAppointmentById, updateAppointment } from "@/services/appointmentService";
 
@@ -201,20 +201,11 @@ export default function EditAppointment({
       }
    };
 
-   const handleSubmit = async (e: React.FormEvent) => {
+   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
       e.preventDefault();
       if (!validateForm()) return;
 
-      setLoading(true);
       try {
-         // First make sure the appointment still exists in our IndexedDB
-         if (!appointment) {
-            toast.error("Cannot update: Original appointment data not found");
-            router.push("/dashboard/appointments");
-            return;
-         }
-
-         // Find the selected customer and service details
          const selectedCustomer = customers.find(
             (c) => c._id === formData.customerId
          );
@@ -223,47 +214,41 @@ export default function EditAppointment({
          );
 
          if (!selectedCustomer || !selectedService) {
-            toast.error(
-               "Selected customer or service not found. Please try again."
-            );
-            setLoading(false);
+            toast.error("Please select both a customer and a service");
             return;
          }
 
-         // Format data for update with customer and service info
-         const appointmentData = {
-            customer: formData.customerId.trim(),
-            service: formData.serviceId.trim(),
-            date: formData.date,
+         const appointmentDate = new Date(`${formData.date}T${formData.time}`);
+
+         const appointmentData: Partial<Appointment> = {
+            customer: formData.customerId,
+            service: formData.serviceId,
+            date: appointmentDate.toISOString(),
             time: formData.time,
             duration: formData.duration,
-            status: formData.status,
-            notes: formData.notes || "",
-            // Add additional info to help with display when API is down
+            status: formData.status as AppointmentStatus,
+            notes: formData.notes,
             customerInfo: {
                name: `${selectedCustomer.firstName} ${selectedCustomer.lastName}`,
                firstName: selectedCustomer.firstName,
-               lastName: selectedCustomer.lastName,
+               lastName: selectedCustomer.lastName
             },
             serviceInfo: {
                name: selectedService.name,
-               price: selectedService.price,
-               duration: selectedService.duration,
-            },
+               price: typeof selectedService.price === 'string' ? parseFloat(selectedService.price) : selectedService.price,
+               duration: selectedService.duration
+            }
          };
-
-         console.log("Updating appointment with data:", appointmentData);
 
          // Use the updateAppointment function from appointmentService
          const updatedAppointment = await updateAppointment(appointmentId, appointmentData);
          console.log("Appointment updated successfully:", updatedAppointment);
-         
+
          toast.success("Appointment updated successfully");
          router.push("/dashboard/appointments");
-      } catch (error: any) {
+      } catch (error) {
          console.error("Error updating appointment:", error);
-         const errorMessage = error.message || "Failed to update appointment";
-         toast.error(errorMessage);
+         toast.error("Failed to update appointment");
       } finally {
          setLoading(false);
       }

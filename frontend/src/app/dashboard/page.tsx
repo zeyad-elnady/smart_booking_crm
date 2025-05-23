@@ -11,6 +11,7 @@ import {
 } from "@heroicons/react/24/outline";
 import { authAPI, dashboardAPI } from "@/services/api";
 import { useTheme } from "@/components/ThemeProvider";
+import { useLanguage } from "@/context/LanguageContext";
 import { format } from "date-fns";
 import DashboardCharts from '@/components/dashboard/DashboardCharts';
 import { indexedDBService } from '@/services/indexedDB';
@@ -66,29 +67,6 @@ type RevenuePeriod = 'day' | 'week' | 'month';
 // Add a new type and state for revenue trend period
 type RevenueTrendPeriod = 'week' | 'month' | 'year';
 
-const statDefinitions: StatDefinition[] = [
-   {
-      name: "Revenue",
-      key: "totalRevenue",
-      icon: <CurrencyDollarIcon className="h-6 w-6" />,
-      color: "bg-blue-500",
-      prefix: "$",
-      revenuePeriod: true,
-   },
-   {
-      name: "Total Customers",
-      key: "totalCustomers",
-      icon: <UsersIcon className="h-6 w-6" />,
-      color: "bg-teal-500",
-   },
-   {
-      name: "Completed Today",
-      key: "completedAppointments",
-      icon: <CalendarIcon className="h-6 w-6" />,
-      color: "bg-pink-500",
-   },
-];
-
 interface ApiDashboardStats {
    totalCustomers: number;
    averageRevenue: number;
@@ -142,6 +120,7 @@ const SERVICE_COLORS_STORAGE_KEY = 'serviceCustomColors';
 
 export default function Dashboard() {
    const { darkMode } = useTheme();
+   const { t } = useLanguage(); // Add useLanguage hook
    const [mounted, setMounted] = useState(false);
    const [user, setUser] = useState<User | null>(null);
    const [showServicePrompt, setShowServicePrompt] = useState(true);
@@ -165,27 +144,51 @@ export default function Dashboard() {
    const [recentAppointments, setRecentAppointments] = useState<Appointment[]>([]);
    const [dbInitError, setDbInitError] = useState<string | null>(null);
 
+   // Define statDefinitions inside the component to use t() function
+   const statDefinitions: StatDefinition[] = [
+      {
+         name: t('revenue'),
+         key: "totalRevenue",
+         icon: <CurrencyDollarIcon className="h-6 w-6" />,
+         color: "bg-blue-500",
+         prefix: t('egp'),
+         revenuePeriod: true,
+      },
+      {
+         name: t('total_customers'),
+         key: "totalCustomers",
+         icon: <UsersIcon className="h-6 w-6" />,
+         color: "bg-teal-500",
+      },
+      {
+         name: t('completed_today'),
+         key: "completedAppointments",
+         icon: <CalendarIcon className="h-6 w-6" />,
+         color: "bg-pink-500",
+      },
+   ];
+
    const [chartData, setChartData] = useState<ChartData>({
       revenueData: [
-         { name: 'Today', value: 0 },
+         { name: t('today'), value: 0 },
       ],
       appointmentsByStatus: [
-         { name: 'Pending', value: 0, color: '#FFBB28' },
-         { name: 'Confirmed', value: 0, color: '#00C49F' },
-         { name: 'Canceled', value: 0, color: '#FF8042' },
-         { name: 'Completed', value: 0, color: '#0088FE' },
+         { name: t('pending'), value: 0, color: '#FFBB28' },
+         { name: t('confirmed'), value: 0, color: '#00C49F' },
+         { name: t('canceled'), value: 0, color: '#FF8042' },
+         { name: t('completed'), value: 0, color: '#0088FE' },
       ],
       weeklyRevenue: [
-         { day: 'Mon', revenue: 0 },
-         { day: 'Tue', revenue: 0 },
-         { day: 'Wed', revenue: 0 },
-         { day: 'Thu', revenue: 0 },
-         { day: 'Fri', revenue: 0 },
-         { day: 'Sat', revenue: 0 },
-         { day: 'Sun', revenue: 0 },
+         { day: t('mon'), revenue: 0 },
+         { day: t('tue'), revenue: 0 },
+         { day: t('wed'), revenue: 0 },
+         { day: t('thu'), revenue: 0 },
+         { day: t('fri'), revenue: 0 },
+         { day: t('sat'), revenue: 0 },
+         { day: t('sun'), revenue: 0 },
       ],
       servicePopularity: [
-         { name: 'Loading...', value: 0, color: '#CBD5E1' }
+         { name: t('loading'), value: 0, color: '#CBD5E1' }
       ],
       confirmedAppointmentsRevenue: 0
    });
@@ -221,13 +224,13 @@ export default function Dashboard() {
    const getRevenuePeriodName = (): string => {
       switch (revenuePeriod) {
          case 'day':
-            return 'Today';
+            return t('today');
          case 'week':
-            return 'This Week';
+            return t('this_week');
          case 'month':
-            return 'This Month';
+            return t('this_month');
          default:
-            return 'Today';
+            return t('today');
       }
    };
 
@@ -235,13 +238,13 @@ export default function Dashboard() {
    const getTrendPeriodName = (): string => {
       switch (revenueTrendPeriod) {
          case 'week':
-            return 'Weekly';
+            return t('weekly');
          case 'month':
-            return 'Monthly'; 
+            return t('monthly'); 
          case 'year':
-            return 'Yearly';
+            return t('yearly');
          default:
-            return 'Weekly';
+            return t('weekly');
       }
    };
 
@@ -509,10 +512,10 @@ export default function Dashboard() {
          console.log(`Total revenue for goals: ${confirmedAppointmentsRevenue}`);
          
          const updatedStatusData = [
-            { name: 'Pending', value: statusCounts.Pending, color: '#FFBB28' },
-            { name: 'Confirmed', value: statusCounts.Confirmed, color: '#00C49F' },
-            { name: 'Canceled', value: statusCounts.Canceled, color: '#FF8042' },
-            { name: 'Completed', value: statusCounts.Completed, color: '#0088FE' },
+            { name: t('pending'), value: statusCounts.Pending, color: '#FFBB28' },
+            { name: t('confirmed'), value: statusCounts.Confirmed, color: '#00C49F' },
+            { name: t('canceled'), value: statusCounts.Canceled, color: '#FF8042' },
+            { name: t('completed'), value: statusCounts.Completed, color: '#0088FE' },
          ];
 
          // Generate trend data based on selected period

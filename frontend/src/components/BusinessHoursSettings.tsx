@@ -4,7 +4,9 @@ import { useTheme } from '@/components/ThemeProvider';
 import { useLocalStorage } from '@/hooks/useLocalStorage';
 import { format24To12, format12To24 } from '@/utils/timeUtils';
 
-const dayMap = {
+type DayName = 'monday' | 'tuesday' | 'wednesday' | 'thursday' | 'friday' | 'saturday' | 'sunday';
+
+const dayMap: Record<DayName, number> = {
   monday: 1,
   tuesday: 2,
   wednesday: 3,
@@ -21,7 +23,7 @@ export default function BusinessHoursSettings() {
   const [settings, setSettings] = useLocalStorage('businessHoursSettings', businessSettings);
   
   // State for days open
-  const [daysOpen, setDaysOpen] = useState({
+  const [daysOpen, setDaysOpen] = useState<Record<DayName, boolean>>({
     monday: settings.daysOpen.monday.open,
     tuesday: settings.daysOpen.tuesday.open,
     wednesday: settings.daysOpen.wednesday.open,
@@ -40,38 +42,36 @@ export default function BusinessHoursSettings() {
     const updatedSettings = {...settings};
     
     // Update days open
-    Object.keys(daysOpen).forEach(day => {
+    (Object.keys(daysOpen) as DayName[]).forEach(day => {
       updatedSettings.daysOpen[day].open = daysOpen[day];
+      updatedSettings.daysOpen[day].start = format12To24(openingTime12h);
+      updatedSettings.daysOpen[day].end = format12To24(closingTime12h);
     });
-    
-    // Convert 12h times to 24h for storage
-    updatedSettings.workingHours.start = format12To24(openingTime12h);
-    updatedSettings.workingHours.end = format12To24(closingTime12h);
     
     // Update days off array based on daysOpen
     updatedSettings.workingHours.daysOff = Object.entries(daysOpen)
       .filter(([_, isOpen]) => !isOpen)
-      .map(([day]) => dayMap[day]);
+      .map(([day]) => dayMap[day as DayName]);
     
     // Save settings
     setSettings(updatedSettings);
     
     // Make settings globally accessible
-    window.businessHoursSettings = updatedSettings;
+    (window as any).businessHoursSettings = updatedSettings;
     
     // Dispatch custom event to notify other components
     const event = new CustomEvent('businessHoursChanged', { detail: updatedSettings });
     window.dispatchEvent(event);
   }, [daysOpen, openingTime12h, closingTime12h, setSettings]);
   
-  const handleDayToggle = (day) => {
+  const handleDayToggle = (day: DayName) => {
     setDaysOpen(prev => ({
       ...prev,
       [day]: !prev[day]
     }));
   };
   
-  const handleTimeChange = (value, setter) => {
+  const handleTimeChange = (value: string, setter: (value: string) => void) => {
     setter(value);
   };
   
@@ -82,7 +82,7 @@ export default function BusinessHoursSettings() {
       <div className="mb-8">
         <h3 className="text-lg font-medium mb-4">Days Open</h3>
         <div className="flex flex-wrap gap-2">
-          {Object.keys(daysOpen).map(day => (
+          {(Object.keys(daysOpen) as DayName[]).map(day => (
             <button
               key={day}
               onClick={() => handleDayToggle(day)}

@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useTheme } from "@/components/ThemeProvider";
+import { useLanguage } from "@/context/LanguageContext";
 // Import only the icons we're actually using to reduce bundle size
 import { 
   UserIcon, 
@@ -17,7 +18,9 @@ import {
   ChevronRightIcon,
   ClockIcon,
   PlusIcon,
-  TrashIcon
+  TrashIcon,
+  LanguageIcon,
+  GlobeAltIcon
 } from "@heroicons/react/24/outline";
 import { toast } from "react-hot-toast";
 import Cropper from 'react-easy-crop';
@@ -35,7 +38,8 @@ const PROFILE_SETTINGS_KEY = "profileSettings";
 
 export default function Settings() {
   const { darkMode } = useTheme();
-   const [loading, setLoading] = useState(true);
+  const { language, toggleLanguage, t } = useLanguage();
+  const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState("profile");
   const [saving, setSaving] = useState(false);
   const [editingField, setEditingField] = useState<string | null>(null);
@@ -620,7 +624,7 @@ export default function Settings() {
         <div className="flex items-center space-x-2">
           <div className="h-5 w-5 bg-purple-500 rounded-full animate-pulse"></div>
           <span className={darkMode ? "text-white" : "text-gray-800"}>
-               Loading settings...
+               {t("loading_settings")}
           </span>
             </div>
          </div>
@@ -634,7 +638,7 @@ export default function Settings() {
       
       <div className="relative p-6 max-w-7xl mx-auto">
         <h1 className={`text-3xl font-bold mb-8 ${darkMode ? "text-white" : "text-gray-800"}`}>
-          Settings
+          {t("settings")}
         </h1>
         
         <div className="flex flex-col md:flex-row gap-6">
@@ -653,7 +657,7 @@ export default function Settings() {
                   }`}
                 >
                   <UserIcon className="h-5 w-5 mr-3" />
-                  <span>Profile</span>
+                  <span>{t("profile")}</span>
                   {activeTab === "profile" && <ChevronRightIcon className="h-4 w-4 ml-auto" />}
                 </button>
                 
@@ -668,7 +672,7 @@ export default function Settings() {
                   }`}
                 >
                   <BellIcon className="h-5 w-5 mr-3" />
-                  <span>Notifications</span>
+                  <span>{t("notifications")}</span>
                   {activeTab === "notifications" && <ChevronRightIcon className="h-4 w-4 ml-auto" />}
                 </button>
                 
@@ -683,7 +687,7 @@ export default function Settings() {
                   }`}
                 >
                   <EyeIcon className="h-5 w-5 mr-3" />
-                  <span>Privacy</span>
+                  <span>{t("privacy")}</span>
                   {activeTab === "privacy" && <ChevronRightIcon className="h-4 w-4 ml-auto" />}
                 </button>
                 
@@ -698,8 +702,23 @@ export default function Settings() {
                   }`}
                 >
                   <ClockIcon className="h-5 w-5 mr-3" />
-                  <span>Working Hours</span>
+                  <span>{t("working_hours")}</span>
                   {activeTab === "hours" && <ChevronRightIcon className="h-4 w-4 ml-auto" />}
+                </button>
+                
+                <button
+                  onClick={() => setActiveTab("language")}
+                  className={`flex items-center w-full px-3 py-2 text-sm font-medium rounded-lg transition ${
+                    activeTab === "language" 
+                      ? "bg-purple-600/50 text-white"
+                      : darkMode 
+                          ? "text-gray-300 hover:bg-gray-800/70 hover:text-white"
+                          : "text-gray-700 hover:bg-gray-100 hover:text-gray-900"
+                  }`}
+                >
+                  <GlobeAltIcon className="h-5 w-5 mr-3" />
+                  <span>{t("language")}</span>
+                  {activeTab === "language" && <ChevronRightIcon className="h-4 w-4 ml-auto" />}
                 </button>
                 
                 <button
@@ -713,7 +732,7 @@ export default function Settings() {
                   }`}
                 >
                   <ChevronRightIcon className="h-5 w-5 mr-3" />
-                  <span>Booking Link</span>
+                  <span>{t("booking_link")}</span>
                   {activeTab === "service_link" && <ChevronRightIcon className="h-4 w-4 ml-auto" />}
                 </button>
               </nav>
@@ -721,9 +740,9 @@ export default function Settings() {
             
             <div className={`hidden md:block ${darkMode ? "bg-gray-900/60" : "bg-white/80"} backdrop-blur-md rounded-2xl p-4 ${darkMode ? "border border-white/10" : "border border-gray-200"} shadow-xl`}>
               <div className={`text-xs ${darkMode ? "text-gray-400" : "text-gray-600"}`}>
-                <p>Smart Booking CRM</p>
-                <p>Version 1.0.0</p>
-                <p className="mt-2">© 2023 All rights reserved</p>
+                <p>{t("smart_booking")}</p>
+                <p>{t("version")} 1.0.0</p>
+                <p className="mt-2">© 2023 {t("all_rights_reserved")}</p>
               </div>
             </div>
           </div>
@@ -734,7 +753,7 @@ export default function Settings() {
               {/* Profile Section */}
               {activeTab === "profile" && (
                 <div className="opacity-100">
-                  <h2 className={`text-xl font-semibold mb-6 ${darkMode ? "text-white" : "text-gray-800"}`}>Profile Settings</h2>
+                  <h2 className={`text-xl font-semibold mb-6 ${darkMode ? "text-white" : "text-gray-800"}`}>{t("profile_settings")}</h2>
                   
                   <div className="flex flex-col md:flex-row items-start md:items-center gap-6 mb-8">
                     <div className="relative">
@@ -774,7 +793,7 @@ export default function Settings() {
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                       {/* Name Field */}
                       <div>
-                        <label className={`block text-sm font-medium ${darkMode ? "text-gray-400" : "text-gray-600"} mb-1`}>Full Name</label>
+                        <label className={`block text-sm font-medium ${darkMode ? "text-gray-400" : "text-gray-600"} mb-1`}>{t("full_name")}</label>
                         <div className="flex items-center">
                           {editingField === 'name' ? (
                             <div className="flex-1 flex items-center">
@@ -819,7 +838,7 @@ export default function Settings() {
                       
                       {/* Email Field */}
                       <div>
-                        <label className={`block text-sm font-medium ${darkMode ? "text-gray-400" : "text-gray-600"} mb-1`}>Email Address</label>
+                        <label className={`block text-sm font-medium ${darkMode ? "text-gray-400" : "text-gray-600"} mb-1`}>{t("email_address")}</label>
                <div className="flex items-center">
                           {editingField === 'email' ? (
                             <div className="flex-1 flex items-center">
@@ -864,7 +883,7 @@ export default function Settings() {
                
                       {/* Phone Field */}
                       <div>
-                        <label className={`block text-sm font-medium ${darkMode ? "text-gray-400" : "text-gray-600"} mb-1`}>Phone Number</label>
+                        <label className={`block text-sm font-medium ${darkMode ? "text-gray-400" : "text-gray-600"} mb-1`}>{t("phone_number")}</label>
                <div className="flex items-center">
                           {editingField === 'phone' ? (
                             <div className="flex-1 flex items-center">
@@ -905,7 +924,7 @@ export default function Settings() {
                
                       {/* Role Field - Read only */}
                       <div>
-                        <label className={`block text-sm font-medium ${darkMode ? "text-gray-400" : "text-gray-600"} mb-1`}>Role</label>
+                        <label className={`block text-sm font-medium ${darkMode ? "text-gray-400" : "text-gray-600"} mb-1`}>{t("role")}</label>
                <div className="flex items-center">
                           <span className={`flex-1 ${darkMode ? "text-white" : "text-gray-800"}`}>{profile.role}</span>
                         </div>
@@ -918,14 +937,14 @@ export default function Settings() {
               {/* Notifications Section */}
               {activeTab === "notifications" && (
                 <div>
-                  <h2 className={`text-xl font-semibold mb-6 ${darkMode ? "text-white" : "text-gray-800"}`}>Notification Settings</h2>
+                  <h2 className={`text-xl font-semibold mb-6 ${darkMode ? "text-white" : "text-gray-800"}`}>{t("notification_settings")}</h2>
                   
                   <div className="space-y-6">
                     <div>
                       <label className="flex items-center justify-between cursor-pointer">
                         <div>
-                          <span className={darkMode ? "text-white" : "text-gray-800"}>Email Notifications</span>
-                          <p className={darkMode ? "text-gray-400" : "text-gray-600"}>Receive email notifications for important updates</p>
+                          <span className={darkMode ? "text-white" : "text-gray-800"}>{t("email_notifications")}</span>
+                          <p className={darkMode ? "text-gray-400" : "text-gray-600"}>{t("receive_email_notifications_for_important_updates")}</p>
                         </div>
                         <div className="relative">
                           <input 
@@ -943,8 +962,8 @@ export default function Settings() {
                     <div>
                       <label className="flex items-center justify-between cursor-pointer">
                         <div>
-                          <span className={darkMode ? "text-white" : "text-gray-800"}>Browser Notifications</span>
-                          <p className={darkMode ? "text-gray-400" : "text-gray-600"}>Show desktop notifications for important alerts</p>
+                          <span className={darkMode ? "text-white" : "text-gray-800"}>{t("browser_notifications")}</span>
+                          <p className={darkMode ? "text-gray-400" : "text-gray-600"}>{t("show_desktop_notifications_for_important_alerts")}</p>
                         </div>
                         <div className="relative">
                           <input 
@@ -962,8 +981,8 @@ export default function Settings() {
                     <div>
                       <label className="flex items-center justify-between cursor-pointer">
                         <div>
-                          <span className={darkMode ? "text-white" : "text-gray-800"}>Appointment Reminders</span>
-                          <p className={darkMode ? "text-gray-400" : "text-gray-600"}>Get notifications about upcoming appointments</p>
+                          <span className={darkMode ? "text-white" : "text-gray-800"}>{t("appointment_reminders")}</span>
+                          <p className={darkMode ? "text-gray-400" : "text-gray-600"}>{t("get_notifications_about_upcoming_appointments")}</p>
                         </div>
                         <div className="relative">
                           <input 
@@ -984,14 +1003,14 @@ export default function Settings() {
               {/* Privacy Section */}
               {activeTab === "privacy" && (
                 <div>
-                  <h2 className={`text-xl font-semibold mb-6 ${darkMode ? "text-white" : "text-gray-800"}`}>Privacy Settings</h2>
+                  <h2 className={`text-xl font-semibold mb-6 ${darkMode ? "text-white" : "text-gray-800"}`}>{t("privacy_settings")}</h2>
                   
                   <div className="space-y-6">
                     <div>
                       <label className="flex items-center justify-between cursor-pointer">
                         <div>
-                          <span className={darkMode ? "text-white" : "text-gray-800"}>Share Usage Data</span>
-                          <p className={darkMode ? "text-gray-400" : "text-gray-600"}>Share anonymous usage data to improve our service</p>
+                          <span className={darkMode ? "text-white" : "text-gray-800"}>{t("share_usage_data")}</span>
+                          <p className={darkMode ? "text-gray-400" : "text-gray-600"}>{t("share_anonymous_usage_data_to_improve_our_service")}</p>
                         </div>
                         <div className="relative">
                           <input 
@@ -1009,8 +1028,8 @@ export default function Settings() {
                     <div>
                       <label className="flex items-center justify-between cursor-pointer">
                         <div>
-                          <span className={darkMode ? "text-white" : "text-gray-800"}>Allow Analytics</span>
-                          <p className={darkMode ? "text-gray-400" : "text-gray-600"}>Allow us to collect analytics on app usage</p>
+                          <span className={darkMode ? "text-white" : "text-gray-800"}>{t("allow_analytics")}</span>
+                          <p className={darkMode ? "text-gray-400" : "text-gray-600"}>{t("allow_us_to_collect_analytics_on_app_usage")}</p>
                         </div>
                         <div className="relative">
                           <input 
@@ -1026,15 +1045,15 @@ export default function Settings() {
                     </div>
                     
                     <div className={`pt-4 border-t ${darkMode ? "border-gray-700" : "border-gray-200"}`}>
-                      <h3 className={`text-lg font-medium ${darkMode ? "text-white" : "text-gray-800"} mb-4`}>Data Management</h3>
+                      <h3 className={`text-lg font-medium ${darkMode ? "text-white" : "text-gray-800"} mb-4`}>{t("data_management")}</h3>
                       <button
                         onClick={handleClearData}
                         className="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 transition"
                         disabled={saving}
                       >
-                        {saving ? 'Processing...' : 'Export Your Data'}
+                        {saving ? 'Processing...' : t("export_your_data")}
                       </button>
-                      <p className={`${darkMode ? "text-gray-400" : "text-gray-600"} text-sm mt-2`}>Download a copy of your personal data stored in this application.</p>
+                      <p className={`${darkMode ? "text-gray-400" : "text-gray-600"} text-sm mt-2`}>{t("download_a_copy_of_your_personal_data_stored_in_this_application")}</p>
                     </div>
                   </div>
                 </div>
@@ -1043,13 +1062,13 @@ export default function Settings() {
               {/* Working Hours Section */}
               {activeTab === "hours" && (
                 <div>
-                  <h2 className={`text-xl font-semibold mb-6 ${darkMode ? "text-white" : "text-gray-800"}`}>Business Hours</h2>
+                  <h2 className={`text-xl font-semibold mb-6 ${darkMode ? "text-white" : "text-gray-800"}`}>{t("business_hours")}</h2>
                   
                   <div className="space-y-6">
                     {/* Days of Week Selection */}
                     <div>
                       <label className={`block mb-2 text-sm font-medium ${darkMode ? "text-gray-400" : "text-gray-600"}`}>
-                        Days Open
+                        {t("days_open")}
                       </label>
                       <div className="flex flex-wrap gap-2">
                         {["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"].map((day, index) => (
@@ -1074,7 +1093,7 @@ export default function Settings() {
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <div>
                         <label className={`block mb-2 text-sm font-medium ${darkMode ? "text-gray-400" : "text-gray-600"}`}>
-                          Opening Time
+                          {t("opening_time")}
                         </label>
                         <input
                           type="time"
@@ -1090,7 +1109,7 @@ export default function Settings() {
                       
                       <div>
                         <label className={`block mb-2 text-sm font-medium ${darkMode ? "text-gray-400" : "text-gray-600"}`}>
-                          Closing Time
+                          {t("closing_time")}
                         </label>
                         <input
                           type="time"
@@ -1108,7 +1127,7 @@ export default function Settings() {
                     {/* Service Availability */}
                     <div className="mt-10">
                       <h3 className={`text-lg font-medium mb-4 ${darkMode ? "text-white" : "text-gray-800"}`}>
-                        Service Availability
+                        {t("service_availability")}
                       </h3>
                       
                       {/* List of services */}
@@ -1116,7 +1135,7 @@ export default function Settings() {
                         {services.length === 0 ? (
                           <div className={`p-4 rounded-lg ${darkMode ? "bg-gray-800" : "bg-gray-100"}`}>
                             <p className={`text-center ${darkMode ? "text-gray-400" : "text-gray-600"}`}>
-                              No services found. Add services in the Services section first.
+                              {t("no_services_found_add_services_in_the_services_section_first")}
                             </p>
                           </div>
                         ) : (
@@ -1153,7 +1172,7 @@ export default function Settings() {
                                     htmlFor={`allDay-${service._id}`}
                                     className={`text-sm ${darkMode ? "text-gray-300" : "text-gray-700"}`}
                                   >
-                                    Available all day
+                                    {t("available_all_day")}
                                   </label>
                                 </div>
                                 
@@ -1161,7 +1180,7 @@ export default function Settings() {
                                   <div className="grid grid-cols-2 gap-2">
                                     <div>
                                       <label className={`block text-xs ${darkMode ? "text-gray-400" : "text-gray-600"}`}>
-                                        From
+                                        {t("from")}
                                       </label>
                                       <input
                                         type="time"
@@ -1176,7 +1195,7 @@ export default function Settings() {
                                     </div>
                                     <div>
                                       <label className={`block text-xs ${darkMode ? "text-gray-400" : "text-gray-600"}`}>
-                                        To
+                                        {t("to")}
                                       </label>
                                       <input
                                         type="time"
@@ -1201,16 +1220,83 @@ export default function Settings() {
                 </div>
               )}
               
+              {/* Language Settings Section */}
+              {activeTab === "language" && (
+                <div className="opacity-100">
+                  <h2 className={`text-xl font-semibold mb-6 ${darkMode ? "text-white" : "text-gray-800"}`}>{t("language_settings")}</h2>
+                  
+                  <div className="space-y-6">
+                    <div>
+                      <label className={`block text-sm font-medium ${darkMode ? "text-gray-400" : "text-gray-600"} mb-3`}>
+                        {t("select_application_language")}
+                      </label>
+                      
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <button
+                          onClick={language === 'ar' ? toggleLanguage : undefined}
+                          className={`flex items-center justify-between px-4 py-3 rounded-lg border transition-all ${
+                            language === 'en' 
+                              ? `${darkMode ? "border-purple-500 bg-purple-900/20" : "border-purple-500 bg-purple-50"}`
+                              : `${darkMode ? "border-gray-700 hover:border-purple-500/50" : "border-gray-300 hover:border-purple-500/50"}`
+                          }`}
+                        >
+                          <div className="flex items-center">
+                            <span className="text-xl mr-3">🇺🇸</span>
+                            <span className={darkMode ? "text-white" : "text-gray-800"}>{t("english")}</span>
+                          </div>
+                          
+                          {language === 'en' && (
+                            <div className={`h-3 w-3 rounded-full ${darkMode ? "bg-purple-500" : "bg-purple-600"}`}></div>
+                          )}
+                        </button>
+                        
+                        <button
+                          onClick={language === 'en' ? toggleLanguage : undefined}
+                          className={`flex items-center justify-between px-4 py-3 rounded-lg border transition-all ${
+                            language === 'ar' 
+                              ? `${darkMode ? "border-purple-500 bg-purple-900/20" : "border-purple-500 bg-purple-50"}`
+                              : `${darkMode ? "border-gray-700 hover:border-purple-500/50" : "border-gray-300 hover:border-purple-500/50"}`
+                          }`}
+                        >
+                          <div className="flex items-center">
+                            <span className="text-xl mr-3">🇪🇬</span>
+                            <span className={darkMode ? "text-white" : "text-gray-800"}>{t("arabic")}</span>
+                          </div>
+                          
+                          {language === 'ar' && (
+                            <div className={`h-3 w-3 rounded-full ${darkMode ? "bg-purple-500" : "bg-purple-600"}`}></div>
+                          )}
+                        </button>
+                      </div>
+                    </div>
+                    
+                    <div className={`p-4 rounded-lg ${darkMode ? "bg-purple-900/20 border border-purple-500/20" : "bg-purple-50 border border-purple-100"}`}>
+                      <p className={`text-sm ${darkMode ? "text-purple-300" : "text-purple-700"}`}>
+                        {t("rtl_ltr_info")}
+                      </p>
+                    </div>
+                    
+                    {language === 'ar' && (
+                      <div className={`p-4 rounded-lg ${darkMode ? "bg-blue-900/20 border border-blue-500/20" : "bg-blue-50 border border-blue-100"}`}>
+                        <p className={`text-sm ${darkMode ? "text-blue-300" : "text-blue-700"}`}>
+                          {t("arabic_selected_message")}
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+              
               {/* Service Link Tab */}
               {activeTab === "service_link" && (
                 <div>
                   <div className={`p-4 rounded-lg ${darkMode ? 'bg-gray-800' : 'bg-white'} mb-4`}>
-                    <h2 className="text-xl font-semibold mb-4">Setup Your Booking Page</h2>
+                    <h2 className="text-xl font-semibold mb-4">{t("setup_your_booking_page")}</h2>
                     
                     {hasServiceLink ? (
                       <div>
                         <div className="mb-6">
-                          <p className="mb-4">Your current booking link setup:</p>
+                          <p className="mb-4">{t("your_current_booking_link_setup")}:</p>
                           <div className={`p-4 rounded-md ${darkMode ? 'bg-gray-700' : 'bg-gray-100'} mb-4`}>
                             <div className="flex justify-between items-center">
                               <div>
@@ -1229,10 +1315,10 @@ export default function Settings() {
                       </div>
                     ) : (
                       <div>
-                        <p className="mb-4">Would you like to set up a direct link to your most popular service? This makes it easy to share with your customers.</p>
+                        <p className="mb-4">{t("would_you_like_to_set_up_a_direct_link_to_your_most_popular_service")} {t("this_makes_it_easy_to_share_with_your_customers")}</p>
                         
                         <div className="mb-6">
-                          <label className="block mb-2 font-medium">Service Name</label>
+                          <label className="block mb-2 font-medium">{t("service_name")}</label>
                           <input
                             type="text"
                             value={serviceName}
@@ -1242,7 +1328,7 @@ export default function Settings() {
                         </div>
                         
                         <div className="mb-6">
-                          <label className="block mb-2 font-medium">Service Link</label>
+                          <label className="block mb-2 font-medium">{t("service_link")}</label>
                           <input
                             type="text"
                             value={serviceLink}
@@ -1257,7 +1343,7 @@ export default function Settings() {
                             onClick={handleDeclineServiceLink}
                             className={`py-2 px-4 rounded-md ${darkMode ? 'bg-gray-700 hover:bg-gray-600' : 'bg-gray-200 hover:bg-gray-300'}`}
                           >
-                            Not Now
+                            {t("not_now")}
                           </button>
                           <button
                             onClick={handleSaveServiceLink}
@@ -1267,7 +1353,7 @@ export default function Settings() {
                             {saving ? (
                               <ArrowPathIcon className="h-5 w-5 inline animate-spin" />
                             ) : (
-                              "Save Service Link"
+                              t("save_service_link")
                             )}
                           </button>
                         </div>
@@ -1276,10 +1362,10 @@ export default function Settings() {
                   </div>
 
                   <div className={`p-4 rounded-lg ${darkMode ? 'bg-gray-800' : 'bg-white'}`}>
-                    <h3 className="font-medium mb-2">About Booking Links</h3>
+                    <h3 className="font-medium mb-2">{t("about_booking_links")}</h3>
                     <p className={`text-sm ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>
-                      Setting up a booking link allows your customers to quickly access your booking page for a specific service.
-                      Share this link on social media, your website, or in emails to make it easier for customers to book with you.
+                      {t("setting_up_a_booking_link_allows_your_customers_to_quickly_access_your_booking_page_for_a_specific_service")}
+                      {t("share_this_link_on_social_media_your_website_or_in_emails_to_make_it_easier_for_customers_to_book_with_you")}
                     </p>
                   </div>
                 </div>
@@ -1294,10 +1380,10 @@ export default function Settings() {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
           <div className={`w-11/12 max-w-md p-6 rounded-2xl shadow-2xl ${darkMode ? "bg-gray-900" : "bg-white"}`}>
             <h3 className={`text-lg font-semibold mb-4 ${darkMode ? "text-white" : "text-gray-800"}`}>
-              Crop Profile Picture
+              {t("crop_profile_picture")}
             </h3>
             <p className={`mb-4 text-sm ${darkMode ? "text-gray-400" : "text-gray-600"}`}>
-              Drag or resize the image to see how it will appear in your profile.
+              {t("drag_or_resize_the_image_to_see_how_it_will_appear_in_your_profile")}
             </p>
             <div className="relative h-64 mb-4">
               {selectedImage && (
@@ -1316,7 +1402,7 @@ export default function Settings() {
             </div>
             <div className="mb-4">
               <label className={`block text-sm font-medium ${darkMode ? "text-gray-400" : "text-gray-600"} mb-1`}>
-                Zoom
+                {t("zoom")}
               </label>
               <input
                 type="range"
@@ -1337,13 +1423,13 @@ export default function Settings() {
                     : "bg-gray-200 text-gray-800 hover:bg-gray-300"
                 } transition-colors`}
               >
-                Cancel
+                {t("cancel")}
               </button>
               <button
                 onClick={handleCropImage}
                 className="px-4 py-2 bg-purple-600 text-white rounded-lg text-sm font-medium hover:bg-purple-700 transition-colors"
               >
-                Save
+                {t("save")}
               </button>
             </div>
           </div>

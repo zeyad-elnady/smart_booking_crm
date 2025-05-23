@@ -1,22 +1,38 @@
 'use client';
 
 import { TrashIcon } from '@heroicons/react/24/outline';
+import { useLanguage } from '@/context/LanguageContext';
 
 interface DeleteAppointmentDialogProps {
   isOpen: boolean;
-  onClose: () => void;
+  onCancel?: () => void;
+  onClose?: () => void;
   onConfirm: () => void;
   darkMode?: boolean;
   isDeleting?: boolean;
+  title?: string;
+  message?: string;
+  confirmButtonText?: string;
+  cancelButtonText?: string;
 }
 
 export default function DeleteAppointmentDialog({
   isOpen,
   onClose,
+  onCancel,
   onConfirm,
   darkMode = false,
-  isDeleting = false
+  isDeleting = false,
+  title,
+  message,
+  confirmButtonText,
+  cancelButtonText
 }: DeleteAppointmentDialogProps) {
+  const { t } = useLanguage();
+  
+  // Support both onClose and onCancel for backward compatibility
+  const handleCancel = onCancel || onClose;
+  
   if (!isOpen) return null;
 
   return (
@@ -35,13 +51,13 @@ export default function DeleteAppointmentDialog({
           <h3 className={`text-xl font-semibold ${
             darkMode ? "text-white" : "text-gray-900"
           }`}>
-            Delete Appointment
+            {title || t('confirm_delete')}
           </h3>
           <div className={`mt-2 ${
             darkMode ? "text-gray-300" : "text-gray-500"
           }`}>
-            <p>Are you sure you want to delete this appointment?</p>
-            <p className="mt-1">This action cannot be undone.</p>
+            <p>{message || t('delete_appointment_confirmation')}</p>
+            <p className="mt-1">{t('this_action_cannot_be_undone', 'This action cannot be undone.')}</p>
           </div>
         </div>
 
@@ -53,10 +69,10 @@ export default function DeleteAppointmentDialog({
                 ? "bg-gray-700 text-gray-300 hover:bg-gray-600"
                 : "bg-gray-200 text-gray-600 hover:bg-gray-300"
             } transition-colors`}
-            onClick={onClose}
+            onClick={handleCancel}
             disabled={isDeleting}
           >
-            Cancel
+            {cancelButtonText || t('cancel')}
           </button>
           <button
             type="button"
@@ -74,10 +90,10 @@ export default function DeleteAppointmentDialog({
                   <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                   <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                 </svg>
-                Deleting...
+                {t('deleting', 'Deleting...')}
               </>
             ) : (
-              <>Delete</>
+              <>{confirmButtonText || t('delete')}</>
             )}
           </button>
         </div>

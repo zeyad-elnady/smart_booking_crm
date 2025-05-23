@@ -18,6 +18,7 @@ import {
    XCircleIcon,
 } from "@heroicons/react/24/outline";
 import { useTheme } from "@/components/ThemeProvider";
+import { useLanguage } from "@/context/LanguageContext";
 import {
    format,
    startOfWeek,
@@ -72,6 +73,7 @@ const statusOptions: AppointmentStatus[] = [
 export default function Appointments() {
    const router = useRouter();
    const { darkMode } = useTheme();
+   const { t } = useLanguage();
    const [viewMode, setViewMode] = useState("list"); // 'list' or 'calendar'
    const [calendarMode, setCalendarMode] = useState("week"); // 'week' or 'month'
    const [currentDate, setCurrentDate] = useState(new Date());
@@ -472,117 +474,206 @@ export default function Appointments() {
       : appointments;
 
    return (
-      <div className={`min-h-screen ${darkMode ? "bg-gradient-to-br from-gray-900 via-purple-900/20 to-gray-900" : "bg-gradient-to-br from-white via-purple-100/30 to-white"} p-0 relative`}>
+      <div className={`min-h-screen ${darkMode ? "bg-gradient-to-br from-gray-900 via-purple-900/20 to-gray-900" : "bg-gradient-to-br from-white via-purple-100/30 to-white"} p-0 overflow-x-hidden relative`}>
          {/* Decorative element */}
          <div className={`absolute top-0 right-0 w-1/3 h-1/3 ${darkMode ? "bg-indigo-500/10" : "bg-indigo-500/5"} rounded-full blur-3xl`}></div>
          
-         <div className="relative p-6 max-w-7xl mx-auto space-y-6">
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-6">
+         <div className="relative p-6 max-w-7xl mx-auto">
+            <div className="flex justify-between items-center mb-6 flex-wrap gap-4">
                <div>
                   <h1 className={`text-3xl font-bold ${darkMode ? "text-white" : "text-gray-800"}`}>
-                     Appointments
+                     {t("appointments")}
                   </h1>
                   <p className={`mt-1 ${darkMode ? "text-gray-300" : "text-gray-600"}`}>
-                     A list of all appointments in your business including their status and details.
+                     {t("appointments_list_description")}
                   </p>
                </div>
-               <div className="mt-4 sm:mt-0 flex flex-wrap gap-3 items-center">
-                  <div className="inline-flex rounded-full shadow-sm">
-                     <button
-                        type="button"
-                        onClick={switchToListView}
-                        className={`px-3 py-2 text-sm font-medium rounded-full ${
-                           viewMode === "list"
-                              ? darkMode
-                                 ? "bg-purple-600 text-white hover:bg-purple-700"
-                                 : "bg-white text-gray-900 hover:bg-gray-50 border border-gray-200"
-                              : darkMode
-                              ? "glass text-white hover:bg-white/10"
-                              : "bg-white text-gray-600 hover:bg-gray-50 border border-gray-200"
-                        } transition-all`}
-                     >
-                        <QueueListIcon className="h-5 w-5" />
-                     </button>
-                     <button
-                        type="button"
-                        onClick={switchToCalendarView}
-                        className={`px-3 py-2 text-sm font-medium rounded-full ml-2 ${
-                           viewMode === "calendar"
-                              ? darkMode
-                                 ? "bg-purple-600 text-white hover:bg-purple-700"
-                                 : "bg-white text-gray-900 hover:bg-gray-50 border border-gray-200"
-                              : darkMode
-                              ? "glass text-white hover:bg-white/10"
-                              : "bg-white text-gray-600 hover:bg-gray-50 border border-gray-200"
-                        } transition-all`}
-                     >
-                        <CalendarIcon className="h-5 w-5" />
-                     </button>
-                  </div>
-                  <div
-                     className={`border rounded-lg ${
-                        darkMode
-                           ? "bg-gray-800/50 border-gray-700"
-                           : "bg-gray-50 border-gray-300"
-                     } p-2`}
-                  >
-                     <input
-                        type="date"
-                        value={selectedDate}
-                        onChange={(e) => setSelectedDate(e.target.value)}
-                        className={`outline-none ${
-                           darkMode ? "bg-gray-800/50 text-white" : "bg-gray-50 text-gray-900"
-                        }`}
-                     />
-                  </div>
-                  
-                  <button
-                     onClick={handleRefreshAppointments}
-                     disabled={loading}
-                     className={`inline-flex items-center px-4 py-2 text-sm font-medium rounded-lg transition ${
-                        darkMode
-                           ? "bg-gray-800 text-gray-300 hover:bg-gray-700"
-                           : "bg-white text-gray-700 border border-gray-200 hover:bg-gray-50"
-                     } ${loading ? "opacity-70 cursor-not-allowed" : ""}`}
-                  >
-                     <ArrowPathIcon 
-                        className={`h-5 w-5 mr-2 ${loading ? "animate-spin" : ""}`} 
-                     />
-                     {loading ? "Loading..." : "Refresh"}
-                  </button>
+               <div className="flex items-center space-x-2">
                   <Link
                      href="/dashboard/appointments/add"
-                     className={`inline-flex items-center px-4 py-2 text-sm font-medium rounded-lg transition ${
+                     className={`px-4 py-2 rounded-lg transition flex items-center ${
                         darkMode
-                           ? "bg-purple-600 text-white hover:bg-purple-700"
-                           : "bg-purple-600 text-white hover:bg-purple-700"
+                           ? "bg-purple-600 hover:bg-purple-700 text-white"
+                           : "bg-purple-600 hover:bg-purple-700 text-white"
                      }`}
                   >
                      <PlusIcon className="h-5 w-5 mr-2" />
-                     Add Appointment
+                     {t("add_appointment")}
                   </Link>
                </div>
             </div>
 
-            {/* Loading State */}
-            {loading && (
-               <div className={`${darkMode ? "bg-gray-900/60 border-white/10" : "bg-white/80 border-gray-200"} backdrop-blur-md rounded-2xl p-6 border shadow-xl flex justify-center items-center py-12`}>
-                  <LoadingSpinner />
+            {/* View toggle */}
+            <div className="mb-6">
+               <div className={`inline-flex rounded-lg overflow-hidden border ${darkMode ? "border-gray-700" : "border-gray-200"}`}>
+                  <button
+                     onClick={switchToListView}
+                     className={`px-4 py-2 flex items-center transition ${
+                        viewMode === "list"
+                           ? darkMode
+                              ? "bg-gray-800 text-white"
+                              : "bg-gray-100 text-gray-900"
+                           : darkMode
+                           ? "bg-gray-900 text-gray-400 hover:text-white"
+                           : "bg-white text-gray-500 hover:text-gray-700"
+                     }`}
+                  >
+                     <QueueListIcon className="h-5 w-5 mr-2" />
+                     {t("list_view")}
+                  </button>
+                  <button
+                     onClick={switchToCalendarView}
+                     className={`px-4 py-2 flex items-center transition ${
+                        viewMode === "calendar"
+                           ? darkMode
+                              ? "bg-gray-800 text-white"
+                              : "bg-gray-100 text-gray-900"
+                           : darkMode
+                           ? "bg-gray-900 text-gray-400 hover:text-white"
+                           : "bg-white text-gray-500 hover:text-gray-700"
+                     }`}
+                  >
+                     <CalendarIcon className="h-5 w-5 mr-2" />
+                     {t("calendar_view")}
+                  </button>
                </div>
-            )}
+            </div>
 
-            {/* Error State */}
-            {error && (
-               <div className={`${darkMode ? "bg-gray-900/60 border-white/10" : "bg-white/80 border-gray-200"} backdrop-blur-md rounded-2xl p-6 border shadow-xl`}>
-                  <div className={`text-center py-8 ${darkMode ? "text-red-400" : "text-red-600"}`}>
-                     {error}
+            {/* Calendar view controls */}
+            {viewMode === "calendar" && (
+               <div className="mb-6">
+                  <div className="flex justify-between items-center">
+                     <div className={`inline-flex rounded-lg overflow-hidden border ${darkMode ? "border-gray-700" : "border-gray-200"} mr-4`}>
+                        <button
+                           onClick={() => setCalendarMode("week")}
+                           className={`px-4 py-2 flex items-center transition ${
+                              calendarMode === "week"
+                                 ? darkMode
+                                    ? "bg-gray-800 text-white"
+                                    : "bg-gray-100 text-gray-900"
+                                 : darkMode
+                                 ? "bg-gray-900 text-gray-400 hover:text-white"
+                                 : "bg-white text-gray-500 hover:text-gray-700"
+                           }`}
+                        >
+                           {t("week_view")}
+                        </button>
+                        <button
+                           onClick={() => setCalendarMode("month")}
+                           className={`px-4 py-2 flex items-center transition ${
+                              calendarMode === "month"
+                                 ? darkMode
+                                    ? "bg-gray-800 text-white"
+                                    : "bg-gray-100 text-gray-900"
+                                 : darkMode
+                                 ? "bg-gray-900 text-gray-400 hover:text-white"
+                                 : "bg-white text-gray-500 hover:text-gray-700"
+                           }`}
+                        >
+                           {t("month_view")}
+                        </button>
+                     </div>
+                     <div className="flex items-center">
+                        {calendarMode === "week" ? (
+                           <>
+                              <button
+                                 onClick={goToPrevWeek}
+                                 className={`p-2 rounded-full ${
+                                    darkMode
+                                       ? "hover:bg-gray-800"
+                                       : "hover:bg-gray-100"
+                                 }`}
+                              >
+                                 <ChevronLeftIcon className="h-5 w-5" />
+                              </button>
+                              <span className={`mx-4 ${darkMode ? "text-white" : "text-gray-800"}`}>
+                                 {format(currentWeek[0], "MMMM d")} - {format(currentWeek[6], "MMMM d, yyyy")}
+                              </span>
+                              <button
+                                 onClick={goToNextWeek}
+                                 className={`p-2 rounded-full ${
+                                    darkMode
+                                       ? "hover:bg-gray-800"
+                                       : "hover:bg-gray-100"
+                                 }`}
+                              >
+                                 <ChevronRightIcon className="h-5 w-5" />
+                              </button>
+                           </>
+                        ) : (
+                           <>
+                              <button
+                                 onClick={goToPrevMonth}
+                                 className={`p-2 rounded-full ${
+                                    darkMode
+                                       ? "hover:bg-gray-800"
+                                       : "hover:bg-gray-100"
+                                 }`}
+                              >
+                                 <ChevronLeftIcon className="h-5 w-5" />
+                              </button>
+                              <span className={`mx-4 ${darkMode ? "text-white" : "text-gray-800"}`}>
+                                 {format(currentDate, "MMMM yyyy")}
+                              </span>
+                              <button
+                                 onClick={goToNextMonth}
+                                 className={`p-2 rounded-full ${
+                                    darkMode
+                                       ? "hover:bg-gray-800"
+                                       : "hover:bg-gray-100"
+                                 }`}
+                              >
+                                 <ChevronRightIcon className="h-5 w-5" />
+                              </button>
+                           </>
+                        )}
+                     </div>
+                     <button
+                        onClick={handleRefreshAppointments}
+                        className={`inline-flex items-center px-3 py-1.5 text-sm rounded-lg transition ${
+                           darkMode
+                              ? "bg-gray-800 hover:bg-gray-700 text-gray-300"
+                              : "bg-white hover:bg-gray-100 text-gray-600 border border-gray-200"
+                        }`}
+                     >
+                        <ArrowPathIcon
+                           className={`h-4 w-4 mr-2 ${loading ? "animate-spin" : ""}`}
+                        />
+                        {loading ? t("refreshing") : t("refresh")}
+                     </button>
                   </div>
                </div>
             )}
 
-            {/* List View */}
-            {!loading && !error && viewMode === "list" ? (
-               filteredAppointments.length > 0 ? (
+            {/* Content */}
+            {error ? (
+               <div className={`p-4 rounded-lg ${darkMode ? "bg-red-900/20 text-red-200" : "bg-red-100 text-red-600"}`}>
+                  {error}
+               </div>
+            ) : loading ? (
+               <div className="flex justify-center py-12">
+                  <LoadingSpinner size="lg" />
+               </div>
+            ) : appointments.length === 0 ? (
+               <div className={`text-center py-12 ${darkMode ? "text-gray-300" : "text-gray-600"}`}>
+                  <CalendarIcon className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                  <h3 className="text-lg font-medium mb-2">{t("no_appointments")}</h3>
+                  <p className="mb-6">{t("add_your_first_appointment")}</p>
+                  <Link
+                     href="/dashboard/appointments/add"
+                     className={`px-4 py-2 rounded-lg transition inline-flex items-center ${
+                        darkMode
+                           ? "bg-purple-600 hover:bg-purple-700 text-white"
+                           : "bg-purple-600 hover:bg-purple-700 text-white"
+                     }`}
+                  >
+                     <PlusIcon className="h-5 w-5 mr-2" />
+                     {t("add_appointment")}
+                  </Link>
+               </div>
+            ) : (
+               viewMode === "list" ? (
+                  // List view implementation
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                      {filteredAppointments.map((appointment) => (
                         <div
@@ -622,7 +713,7 @@ export default function Appointments() {
                                     }}
                                     className={`px-3 py-1.5 rounded-full text-xs font-medium transition-colors ${getStatusColor(appointment.status)} flex items-center gap-1 shadow-sm`}
                                  >
-                                    {getAppointmentStatus(appointment)}
+                                    {t(appointment.status?.toLowerCase() || 'pending')}
                                     <ChevronDownIcon className="h-3 w-3" />
                                  </button>
 
@@ -650,7 +741,7 @@ export default function Appointments() {
                                                 <span
                                                    className={`inline-block w-full px-2 py-1 rounded text-xs font-medium ${getStatusColor(status)}`}
                                                 >
-                                                   {status}
+                                                   {t(status.toLowerCase())}
                                                 </span>
                                              </button>
                                           ))}
@@ -686,16 +777,16 @@ export default function Appointments() {
 
                            <div className={`flex items-center justify-end space-x-2 mt-4 pt-4 border-t ${darkMode ? "border-gray-700" : "border-gray-200"}`}>
                               <Link
-                                 href={`/dashboard/appointments/${appointment._id}`}
+                                 href={`/dashboard/appointments/edit/${appointment._id}`}
                                  className={`inline-flex items-center px-3 py-1.5 text-sm font-medium rounded-md ${
                                     darkMode
-                                       ? "text-purple-400 hover:text-purple-300 bg-purple-600/10 hover:bg-purple-600/20"
-                                       : "text-purple-600 hover:text-purple-500 bg-purple-50 hover:bg-purple-100"
+                                       ? "text-blue-400 hover:text-blue-300 bg-blue-600/10 hover:bg-blue-600/20"
+                                       : "text-blue-600 hover:text-blue-500 bg-blue-50 hover:bg-blue-100"
                                  }`}
                                  onClick={(e) => e.stopPropagation()}
                               >
                                  <PencilIcon className="h-4 w-4 mr-1.5" />
-                                 Edit
+                                 {t("edit")}
                               </Link>
                               <button
                                  onClick={(e) => {
@@ -709,429 +800,407 @@ export default function Appointments() {
                                  }`}
                               >
                                  <TrashIcon className="h-4 w-4 mr-1.5" />
-                                 Delete
+                                 {t("delete")}
                               </button>
                            </div>
                         </div>
                      ))}
                   </div>
                ) : (
-                  <div className={`${darkMode ? "bg-gray-900/60 border-white/10" : "bg-white/80 border-gray-200"} backdrop-blur-md rounded-2xl p-6 border shadow-xl`}>
-                     <div className="text-center py-12">
-                        <p className={`text-lg ${darkMode ? "text-gray-400" : "text-gray-600"}`}>
-                           {selectedDate
-                              ? "No appointments found for the selected date."
-                              : "No appointments found."}
-                        </p>
+                  // Calendar view implementation
+                  <div className={`${darkMode ? "bg-gray-900/60 border-white/10" : "bg-white/80 border-gray-200"} backdrop-blur-md rounded-2xl border shadow-xl overflow-hidden`}>
+                     {/* Calendar Week Header */}
+                     {calendarMode === "week" ? (
+                        <>
+                           <div className="grid grid-cols-7 border-b border-white/10">
+                              {currentWeek.map((day, i) => (
+                                 <div
+                                    key={i}
+                                    className={`px-2 py-3 text-center ${
+                                       isSameDay(day, new Date())
+                                          ? darkMode 
+                                            ? "bg-indigo-900/30 text-white font-medium" 
+                                            : "bg-indigo-50 text-indigo-800 font-medium"
+                                          : darkMode 
+                                            ? "text-gray-400" 
+                                            : "text-gray-600"
+                                    }`}
+                                 >
+                                    <p className="text-xs uppercase">
+                                       {format(day, "EEE")}
+                                    </p>
+                                    <p className="text-sm mt-1">{format(day, "d")}</p>
+                                 </div>
+                              ))}
+                           </div>
+
+                           {/* Calendar Week Content */}
+                           <div className="grid grid-cols-7 min-h-[300px]">
+                              {currentWeek.map((day, dayIndex) => {
+                                 const dayAppointments = getAppointmentsForDay(day);
+
+                                 return (
+                                    <div
+                                       key={dayIndex}
+                                       className={`border-r ${darkMode ? "border-white/10" : "border-gray-200"} last:border-r-0 ${
+                                          isSameDay(day, new Date())
+                                             ? darkMode ? "bg-indigo-900/10" : "bg-indigo-50/30"
+                                             : ""
+                                       }`}
+                                    >
+                                       {dayAppointments.length > 0 ? (
+                                          <div className="p-2 space-y-2">
+                                             {dayAppointments.map((apt, i) => (
+                                                <div
+                                                   key={i}
+                                                   onClick={() =>
+                                                      handleAppointmentClick(
+                                                         apt
+                                                      )
+                                                   }
+                                                   className={`p-2 rounded-md text-xs cursor-pointer transition-colors shadow-sm ${
+                                                      getStatusColor(apt.status)
+                                                   }`}
+                                                >
+                                                   <div className="flex items-center space-x-1">
+                                                      <div className="h-5 w-5 rounded-full bg-white border border-gray-200 flex items-center justify-center text-gray-900 text-xs">
+                                                         {getCustomerInitial(apt)}
+                                                      </div>
+                                                      <p className="font-medium text-white truncate">
+                                                         {getCustomerName(apt)}
+                                                      </p>
+                                                   </div>
+                                                   <div className="mt-1 text-white/80">
+                                                      {apt.time} - {getServiceName(apt)}
+                                                   </div>
+                                                </div>
+                                             ))}
+                                          </div>
+                                       ) : (
+                                          <div className="h-full flex items-center justify-center text-xs text-gray-500 p-2 text-center">
+                                             {t("no_appointments")}
+                                          </div>
+                                       )}
+                                    </div>
+                                 );
+                              })}
+                           </div>
+                        </>
+                     ) : (
+                        <>
+                           {/* Month Calendar Header */}
+                           <div className="grid grid-cols-7 border-b border-white/10">
+                              {["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"].map(
+                                 (day, i) => (
+                                    <div
+                                       key={i}
+                                       className={`px-2 py-3 text-center ${
+                                          darkMode ? "text-gray-400" : "text-gray-600"
+                                       }`}
+                                    >
+                                       <p className="text-xs uppercase">{day}</p>
+                                    </div>
+                                 )
+                              )}
+                           </div>
+
+                           {/* Month Calendar Content */}
+                           <div className="grid grid-cols-7 grid-rows-6 min-h-[500px]">
+                              {monthDays.map((day, dayIndex) => {
+                                 const dayAppointments = getAppointmentsForDay(day);
+                                 const isToday = day
+                                    ? isSameDay(day, new Date())
+                                    : false;
+
+                                 return (
+                                    <div
+                                       key={dayIndex}
+                                       className={`border-r border-b ${darkMode ? "border-white/10" : "border-gray-200"} last:border-r-0 ${
+                                          isToday 
+                                             ? darkMode ? "bg-indigo-900/10" : "bg-indigo-50/30" 
+                                             : ""
+                                       } ${
+                                          day ? "" : darkMode ? "opacity-30 bg-gray-800/20" : "opacity-30 bg-gray-100"
+                                       }`}
+                                    >
+                                       {day && (
+                                          <>
+                                             <div
+                                                className={`p-1 text-right ${
+                                                   isToday
+                                                      ? darkMode ? "text-white font-medium" : "text-indigo-800 font-medium"
+                                                      : darkMode ? "text-gray-400" : "text-gray-600"
+                                                }`}
+                                             >
+                                                <span className="text-xs">
+                                                   {format(day, "d")}
+                                                </span>
+                                             </div>
+
+                                             <div className="p-1">
+                                                {dayAppointments.length > 0 ? (
+                                                   <div className="space-y-1">
+                                                      {dayAppointments
+                                                         .slice(0, 2)
+                                                         .map((apt, i) => (
+                                                            <div
+                                                               key={i}
+                                                               onClick={() =>
+                                                                  handleAppointmentClick(
+                                                                     apt
+                                                                  )
+                                                               }
+                                                               className={`p-1 rounded-sm text-xs cursor-pointer transition-colors shadow-sm ${
+                                                                  getStatusColor(apt.status)
+                                                               } truncate`}
+                                                            >
+                                                               <div className="flex items-center space-x-1">
+                                                                  <div className="h-3 w-3 rounded-full bg-white border border-gray-200 flex items-center justify-center"></div>
+                                                                  <p className="font-medium text-white truncate text-[10px]">
+                                                                     {getCustomerName(
+                                                                        apt
+                                                                     )}
+                                                                  </p>
+                                                               </div>
+                                                            </div>
+                                                         ))}
+                                                      {dayAppointments.length > 2 && (
+                                                         <div className="text-[10px] text-center text-indigo-400">
+                                                            +
+                                                            {dayAppointments.length -
+                                                                2}{" "}
+                                                            {t("more")}
+                                                         </div>
+                                                      )}
+                                                   </div>
+                                                ) : (
+                                                   <div className="h-full"></div>
+                                                )}
+                                             </div>
+                                          </>
+                                       )}
+                                    </div>
+                                 );
+                              })}
+                           </div>
+                        </>
+                     )}
+
+                     {/* Calendar footer */}
+                     <div className={`border-t ${darkMode ? "border-white/10" : "border-gray-200"} px-4 py-3 text-xs ${darkMode ? "text-gray-400" : "text-gray-600"}`}>
+                        {t("click_appointment_to_view")}{" "}
+                        <Link
+                           href="/dashboard/appointments/add"
+                           className={`${darkMode ? "text-purple-400" : "text-purple-600"} hover:underline`}
+                        >
+                           {t("add_appointment")}
+                        </Link>
                      </div>
                   </div>
                )
-            ) : !loading && !error && viewMode === "calendar" ? (
-               <div className={`${darkMode ? "bg-gray-900/60 border-white/10" : "bg-white/80 border-gray-200"} backdrop-blur-md rounded-2xl border shadow-xl overflow-hidden`}>
-                  <div className="px-5 py-4 border-b border-white/10 flex justify-between items-center">
-                     <h3 className={`text-lg font-medium ${darkMode ? "text-white" : "text-gray-800"}`}>
-                        {calendarMode === "week"
-                           ? "Week Calendar"
-                           : `${format(currentDate, "MMMM yyyy")}`}
-                     </h3>
+            )}
 
-                     <div className="flex items-center">
-                        {/* Calendar Mode Toggle */}
-                        <div className="mr-4 inline-flex space-x-2">
-                           <button
-                              type="button"
-                              onClick={() => setCalendarMode("week")}
-                              className={`px-3 py-1.5 text-xs font-medium rounded-full ${
-                                 calendarMode === "week"
-                                    ? darkMode
-                                       ? "bg-purple-600 text-white hover:bg-purple-700"
-                                       : "bg-white text-gray-900 hover:bg-gray-50 border border-gray-200"
-                                    : darkMode
-                                    ? "glass text-white hover:bg-white/10"
-                                    : "bg-white text-gray-600 hover:bg-gray-50 border border-gray-200"
-                              } transition-all`}
-                           >
-                              Week
-                           </button>
-                           <button
-                              type="button"
-                              onClick={() => setCalendarMode("month")}
-                              className={`px-3 py-1.5 text-xs font-medium rounded-full ${
-                                 calendarMode === "month"
-                                    ? darkMode
-                                       ? "bg-purple-600 text-white hover:bg-purple-700"
-                                       : "bg-white text-gray-900 hover:bg-gray-50 border border-gray-200"
-                                    : darkMode
-                                    ? "glass text-white hover:bg-white/10"
-                                    : "bg-white text-gray-600 hover:bg-gray-50 border border-gray-200"
-                              } transition-all`}
-                           >
-                              Month
-                           </button>
-                        </div>
-
-                        {/* Navigation buttons */}
-                        <div className="flex space-x-2">
-                           <button
-                              onClick={
-                                 calendarMode === "week"
-                                    ? goToPrevWeek
-                                    : goToPrevMonth
-                              }
-                              className={`p-1.5 rounded-full ${
-                                 darkMode
-                                    ? "hover:bg-white/10"
-                                    : "bg-white hover:bg-gray-50 border border-gray-200"
-                              } transition-colors`}
-                           >
-                              <ChevronLeftIcon
-                                 className={`h-5 w-5 ${
-                                    darkMode ? "text-gray-300" : "text-gray-600"
-                                 }`}
-                              />
-                           </button>
-                           <button
-                              onClick={
-                                 calendarMode === "week"
-                                    ? goToNextWeek
-                                    : goToNextMonth
-                              }
-                              className={`p-1.5 rounded-full ${
-                                 darkMode
-                                    ? "hover:bg-white/10"
-                                    : "bg-white hover:bg-gray-50 border border-gray-200"
-                              } transition-colors`}
-                           >
-                              <ChevronRightIcon
-                                 className={`h-5 w-5 ${
-                                    darkMode ? "text-gray-300" : "text-gray-600"
-                                 }`}
-                              />
-                           </button>
-                        </div>
-                     </div>
-                  </div>
-
-                  {/* Week or Month Calendar Rendering - Keeping the original implementation for now */}
-                  {/* ... existing calendar code continues here ... */}
-                  {calendarMode === "week" ? (
-                     <>
-                        {/* Week Calendar View */}
-                        {/* Calendar Week Header */}
-                        <div className="grid grid-cols-7 border-b border-white/10">
-                           {currentWeek.map((day, i) => (
-                              <div
-                                 key={i}
-                                 className={`px-2 py-3 text-center ${
-                                    isSameDay(day, new Date())
-                                       ? "bg-indigo-900/30 text-white font-medium"
-                                       : "text-gray-400"
-                                 }`}
-                              >
-                                 <p className="text-xs uppercase">
-                                    {format(day, "EEE")}
-                                 </p>
-                                 <p className="text-sm mt-1">{format(day, "d")}</p>
-                              </div>
-                           ))}
-                        </div>
-
-                        {/* Calendar Content */}
-                        <div className="grid grid-cols-7 min-h-[300px]">
-                           {currentWeek.map((day, dayIndex) => {
-                              const dayAppointments = getAppointmentsForDay(day);
-
-                              return (
-                                 <div
-                                    key={dayIndex}
-                                    className={`border-r border-white/10 last:border-r-0 ${
-                                       isSameDay(day, new Date())
-                                          ? "bg-indigo-900/10"
-                                          : ""
-                                    }`}
-                                 >
-                                    {dayAppointments.length > 0 ? (
-                                       <div className="p-2 space-y-2">
-                                          {dayAppointments.map((apt, i) => (
-                                             <div
-                                                key={i}
-                                                onClick={() =>
-                                                   handleAppointmentClick(apt)
-                                                }
-                                                className={`p-2 rounded-md text-xs cursor-pointer transition-colors shadow-sm ${
-                                                   getStatusColor(apt.status)
-                                                }`}
-                                             >
-                                                <div className="flex items-center space-x-1">
-                                                   <div className="h-5 w-5 rounded-full bg-white border border-gray-200 flex items-center justify-center text-gray-900 text-xs">
-                                                      {getCustomerInitial(apt)}
-                                                   </div>
-                                                   <p className="font-medium text-white truncate">
-                                                      {getCustomerName(apt)}
-                                                   </p>
-                                                </div>
-                                                <div className="mt-1 text-gray-300">
-                                                   {getServiceName(apt)}
-                                                </div>
-                                             </div>
-                                          ))}
-                                       </div>
-                                    ) : (
-                                       <div className="h-full flex items-center justify-center text-xs text-gray-500 p-2 text-center">
-                                          No appointments
-                                       </div>
-                                    )}
-                                 </div>
-                              );
-                           })}
-                        </div>
-                     </>
-                  ) : (
-                     <>
-                        {/* Month Calendar View */}
-                        {/* Calendar Month Header */}
-                        <div className="grid grid-cols-7 border-b border-white/10">
-                           {["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"].map(
-                              (day, i) => (
-                                 <div
-                                    key={i}
-                                    className="px-2 py-3 text-center text-gray-400"
-                                 >
-                                    <p className="text-xs uppercase">{day}</p>
-                                 </div>
-                              )
-                           )}
-                        </div>
-
-                        {/* Calendar Month Content */}
-                        <div className="grid grid-cols-7 grid-rows-6 min-h-[500px]">
-                           {monthDays.map((day, dayIndex) => {
-                              const dayAppointments = getAppointmentsForDay(day);
-                              const isToday = day
-                                 ? isSameDay(day, new Date())
-                                 : false;
-
-                              return (
-                                 <div
-                                    key={dayIndex}
-                                    className={`border-r border-b border-white/10 last:border-r-0 ${
-                                       isToday ? "bg-indigo-900/10" : ""
-                                    } ${day ? "" : "opacity-30 bg-gray-800/20"}`}
-                                 >
-                                    {day && (
-                                       <>
-                                          <div
-                                             className={`p-1 text-right ${
-                                                isToday
-                                                   ? "text-white font-medium"
-                                                   : "text-gray-400"
-                                             }`}
-                                          >
-                                             <span className="text-xs">
-                                                {format(day, "d")}
-                                             </span>
-                                          </div>
-
-                                          <div className="p-1">
-                                             {dayAppointments.length > 0 ? (
-                                                <div className="space-y-1">
-                                                   {dayAppointments
-                                                      .slice(0, 2)
-                                                      .map((apt, i) => (
-                                                         <div
-                                                            key={i}
-                                                            onClick={() =>
-                                                               handleAppointmentClick(
-                                                                  apt
-                                                               )
-                                                            }
-                                                            className={`p-1 rounded-sm text-xs cursor-pointer transition-colors shadow-sm ${
-                                                               getStatusColor(apt.status)
-                                                            } truncate`}
-                                                         >
-                                                            <div className="flex items-center space-x-1">
-                                                               <div className="h-3 w-3 rounded-full bg-white border border-gray-200 flex items-center justify-center"></div>
-                                                               <p className="font-medium text-white truncate text-[10px]">
-                                                                  {getCustomerName(
-                                                                     apt
-                                                                  )}
-                                                               </p>
-                                                            </div>
-                                                         </div>
-                                                      ))}
-                                                   {dayAppointments.length > 2 && (
-                                                      <div className="text-[10px] text-center text-indigo-400">
-                                                         +
-                                                         {dayAppointments.length -
-                                                             2}{" "}
-                                                         more
-                                                      </div>
-                                                   )}
-                                                </div>
-                                             ) : (
-                                                <div className="h-full"></div>
-                                             )}
-                                          </div>
-                                       </>
-                                    )}
-                                 </div>
-                              );
-                           })}
-                        </div>
-                     </>
-                  )}
-
-                  {/* End of calendar view */}
-                  <div className={`border-t ${darkMode ? "border-white/10" : "border-gray-200"} px-4 py-3 text-xs ${darkMode ? "text-gray-400" : "text-gray-600"}`}>
-                     Click on any appointment to view details or{" "}
-                     <Link
-                        href="/dashboard/appointments/add"
-                        className={`${darkMode ? "text-purple-400" : "text-purple-600"} hover:underline`}
-                     >
-                        add a new one
-                     </Link>
-                  </div>
-               </div>
-            ) : null}
-
-            {/* Appointment Detail Modal */}
+            {/* Appointment Details Modal */}
             {selectedAppointment && (
-               <div className="fixed inset-0 flex items-center justify-center z-50 backdrop-blur-sm bg-black/50">
+               <div className="fixed inset-0 flex items-center justify-center z-50 px-4 sm:px-0">
                   <div
-                     className={`relative w-full max-w-md mx-auto p-6 rounded-lg shadow-xl ${
-                        darkMode ? "bg-gray-900/90 border border-white/10" : "bg-white border border-gray-200"
+                     className="absolute inset-0 bg-black/50"
+                     onClick={closeAppointmentModal}
+                  ></div>
+                  <div
+                     className={`relative rounded-2xl shadow-xl max-w-2xl w-full mx-auto overflow-hidden ${
+                        darkMode ? "bg-gray-900" : "bg-white"
                      }`}
                   >
-                     <button
-                        className={`absolute top-3 right-3 ${darkMode ? "text-gray-400 hover:text-gray-300" : "text-gray-500 hover:text-gray-700"}`}
-                        onClick={closeAppointmentModal}
-                     >
-                        <XMarkIcon className="h-6 w-6" />
-                     </button>
-
-                     <h3
-                        className={`text-xl font-bold mb-4 ${
-                           darkMode ? "text-white" : "text-gray-900"
-                        }`}
-                     >
-                        Appointment Details
-                     </h3>
-
-                     <div className="mb-4 flex items-center">
-                        <div className={`h-12 w-12 rounded-full flex items-center justify-center ${
-                           darkMode
-                              ? "bg-purple-600/20 text-purple-400"
-                              : "bg-purple-100 text-purple-600"
-                        }`}>
-                           <span className="text-xl font-semibold">
-                              {getCustomerInitial(selectedAppointment)}
-                           </span>
-                        </div>
-                        <div className="ml-4">
-                           <div
-                              className={`text-lg font-medium ${
-                                 darkMode ? "text-white" : "text-gray-900"
-                              }`}
-                           >
-                              {getCustomerName(selectedAppointment)}
-                           </div>
-                           <div
-                              className={`${
-                                 darkMode ? "text-gray-400" : "text-gray-600"
-                              }`}
-                           >
-                              {getServiceName(selectedAppointment)}
-                           </div>
-                        </div>
-                     </div>
-
                      <div
-                        className={`grid grid-cols-2 gap-4 mb-4 text-sm ${
-                           darkMode ? "text-gray-300" : "text-gray-700"
-                        }`}
+                        className={`p-6 ${
+                           darkMode ? "border-gray-700" : "border-gray-200"
+                        } border-b`}
                      >
-                        <div>
-                           <div className="font-medium mb-1">Date</div>
-                           <div>{selectedAppointment.date}</div>
-                        </div>
-                        <div>
-                           <div className="font-medium mb-1">Time</div>
-                           <div>{selectedAppointment.time}</div>
-                        </div>
-                        <div>
-                           <div className="font-medium mb-1">Status</div>
-                           <div>
-                              <span
-                                 className={`inline-flex items-center rounded-full px-3 py-1.5 text-xs font-medium shadow-sm ${
-                                    getStatusColor(selectedAppointment.status)
-                                 }`}
-                              >
-                                 {selectedAppointment.status}
-                              </span>
-                           </div>
-                        </div>
-                     </div>
-
-                     {selectedAppointment.notes && (
-                        <div
-                           className={`mb-4 text-sm ${
-                              darkMode ? "text-gray-300" : "text-gray-700"
+                        <h3
+                           className={`text-xl font-semibold ${
+                              darkMode ? "text-white" : "text-gray-800"
                            }`}
                         >
-                           <div className="font-medium mb-1">Notes</div>
-                           <div
-                              className={`p-3 rounded-md ${
-                                 darkMode ? "bg-gray-800/70" : "bg-gray-50"
-                              }`}
-                           >
-                              {selectedAppointment.notes}
+                           {t("appointment_details")}
+                        </h3>
+                     </div>
+                     <div className="p-6">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                           <div>
+                              <h4
+                                 className={`text-sm font-medium mb-1 ${
+                                    darkMode ? "text-gray-400" : "text-gray-600"
+                                 }`}
+                              >
+                                 {t("date")}
+                              </h4>
+                              <p
+                                 className={`${
+                                    darkMode ? "text-white" : "text-gray-800"
+                                 }`}
+                              >
+                                 {format(
+                                    parseISO(selectedAppointment.date),
+                                    "MMMM d, yyyy"
+                                 )}
+                              </p>
+                           </div>
+                           <div>
+                              <h4
+                                 className={`text-sm font-medium mb-1 ${
+                                    darkMode ? "text-gray-400" : "text-gray-600"
+                                 }`}
+                              >
+                                 {t("time")}
+                              </h4>
+                              <p
+                                 className={`${
+                                    darkMode ? "text-white" : "text-gray-800"
+                                 }`}
+                              >
+                                 {selectedAppointment.time}
+                              </p>
+                           </div>
+                           <div>
+                              <h4
+                                 className={`text-sm font-medium mb-1 ${
+                                    darkMode ? "text-gray-400" : "text-gray-600"
+                                 }`}
+                              >
+                                 {t("customer")}
+                              </h4>
+                              <p
+                                 className={`${
+                                    darkMode ? "text-white" : "text-gray-800"
+                                 }`}
+                              >
+                                 {getCustomerName(selectedAppointment)}
+                              </p>
+                           </div>
+                           <div>
+                              <h4
+                                 className={`text-sm font-medium mb-1 ${
+                                    darkMode ? "text-gray-400" : "text-gray-600"
+                                 }`}
+                              >
+                                 {t("service")}
+                              </h4>
+                              <p
+                                 className={`${
+                                    darkMode ? "text-white" : "text-gray-800"
+                                 }`}
+                              >
+                                 {getServiceName(selectedAppointment)}
+                              </p>
+                           </div>
+                           <div>
+                              <h4
+                                 className={`text-sm font-medium mb-1 ${
+                                    darkMode ? "text-gray-400" : "text-gray-600"
+                                 }`}
+                              >
+                                 {t("status")}
+                              </h4>
+                              <div className="flex items-center">
+                                 <span
+                                    className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusColor(
+                                       selectedAppointment.status
+                                    )}`}
+                                 >
+                                    {t(selectedAppointment.status?.toLowerCase() || 'pending')}
+                                 </span>
+                              </div>
+                           </div>
+                           <div>
+                              <h4
+                                 className={`text-sm font-medium mb-1 ${
+                                    darkMode ? "text-gray-400" : "text-gray-600"
+                                 }`}
+                              >
+                                 {t("price")}
+                              </h4>
+                              <p
+                                 className={`${
+                                    darkMode ? "text-white" : "text-gray-800"
+                                 }`}
+                              >
+                                 {selectedAppointment.price ? `${t('egp')} ${selectedAppointment.price}` : "-"}
+                              </p>
                            </div>
                         </div>
-                     )}
-
-                     <div className="flex justify-end space-x-3 mt-6">
+                        {selectedAppointment.notes && (
+                           <div className="mt-6">
+                              <h4
+                                 className={`text-sm font-medium mb-2 ${
+                                    darkMode ? "text-gray-400" : "text-gray-600"
+                                 }`}
+                              >
+                                 {t("notes")}
+                              </h4>
+                              <p
+                                 className={`${
+                                    darkMode ? "text-gray-300" : "text-gray-600"
+                                 }`}
+                              >
+                                 {selectedAppointment.notes}
+                              </p>
+                           </div>
+                        )}
+                     </div>
+                     <div
+                        className={`p-4 ${
+                           darkMode ? "border-gray-700" : "border-gray-200"
+                        } border-t flex justify-end space-x-3`}
+                     >
                         <button
                            onClick={closeAppointmentModal}
-                           className={`px-4 py-2 rounded-lg text-sm font-medium ${
+                           className={`px-4 py-2 rounded-lg ${
                               darkMode
-                                 ? "bg-gray-800 text-gray-300 hover:bg-gray-700"
-                                 : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+                                 ? "hover:bg-gray-800 text-gray-400"
+                                 : "hover:bg-gray-100 text-gray-600"
                            } transition-colors`}
                         >
-                           Close
+                           {t("close")}
                         </button>
                         <Link
-                           href={`/dashboard/appointments/${selectedAppointment._id}`}
-                           className={`px-4 py-2 rounded-lg text-sm font-medium ${
+                           href={`/dashboard/appointments/edit/${selectedAppointment._id}`}
+                           className={`px-4 py-2 rounded-lg ${
                               darkMode
-                                 ? "bg-purple-600 text-white hover:bg-purple-700"
-                                 : "bg-purple-600 text-white hover:bg-purple-700"
+                                 ? "bg-blue-600 hover:bg-blue-700 text-white"
+                                 : "bg-blue-600 hover:bg-blue-700 text-white"
                            } transition-colors`}
                         >
-                           Edit Appointment
+                           {t("edit")}
                         </Link>
                         <button
                            onClick={() => handleDeleteAppointment(selectedAppointment._id)}
-                           className={`px-4 py-2 rounded-lg text-sm font-medium ${
+                           className={`px-4 py-2 rounded-lg ${
                               darkMode
-                                 ? "bg-red-600/20 text-red-400 hover:bg-red-600/40"
-                                 : "bg-red-50 text-red-600 hover:bg-red-100"
+                                 ? "bg-red-600 hover:bg-red-700 text-white"
+                                 : "bg-red-600 hover:bg-red-700 text-white"
                            } transition-colors`}
                         >
-                           Delete
+                           {t("delete")}
                         </button>
                      </div>
                   </div>
                </div>
             )}
 
-            <DeleteAppointmentDialog
-               isOpen={appointmentToDelete !== null}
-               onClose={handleCancelDelete}
-               onConfirm={handleConfirmDelete}
-               darkMode={darkMode}
-               isDeleting={isDeleting}
-            />
+            {/* Delete Confirmation Dialog */}
+            {appointmentToDelete && (
+               <DeleteAppointmentDialog
+                  isOpen={appointmentToDelete !== null}
+                  isDeleting={isDeleting}
+                  onCancel={handleCancelDelete}
+                  onConfirm={handleConfirmDelete}
+                  title={t("confirm_delete")}
+                  message={t("delete_appointment_confirmation")}
+                  confirmButtonText={t("delete")}
+                  cancelButtonText={t("cancel")}
+               />
+            )}
          </div>
       </div>
    );

@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useTheme } from "@/components/ThemeProvider";
+import { useLanguage } from "@/context/LanguageContext";
 import {
    HomeIcon,
    CalendarIcon,
@@ -16,24 +17,25 @@ import {
    MoonIcon,
 } from "@heroicons/react/24/outline";
 
-// Navigation links with icons for reusability
-const navigationLinks = [
-   { name: "Dashboard", href: "/dashboard", icon: HomeIcon },
-   {
-      name: "Appointments",
-      href: "/dashboard/appointments",
-      icon: CalendarIcon,
-   },
-   { name: "Customers", href: "/dashboard/customers", icon: UserGroupIcon },
-   { name: "Services", href: "/dashboard/services", icon: Squares2X2Icon },
-   { name: "Settings", href: "/dashboard/settings", icon: Cog6ToothIcon },
-];
-
 export default function Navigation() {
    const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
    const [mounted, setMounted] = useState(false);
    const pathname = usePathname();
    const { darkMode, toggleTheme } = useTheme();
+   const { t } = useLanguage();
+
+   // Navigation links with icons for reusability - moved inside component to use t()
+   const navigationLinks = [
+      { name: t("dashboard"), href: "/dashboard", icon: HomeIcon },
+      {
+         name: t("appointments"),
+         href: "/dashboard/appointments",
+         icon: CalendarIcon,
+      },
+      { name: t("customers"), href: "/dashboard/customers", icon: UserGroupIcon },
+      { name: t("services"), href: "/dashboard/services", icon: Squares2X2Icon },
+      { name: t("settings"), href: "/dashboard/settings", icon: Cog6ToothIcon },
+   ];
 
    useEffect(() => {
       setMounted(true);
@@ -78,7 +80,7 @@ export default function Navigation() {
                      >
                         <img
                            src="/icon.svg"
-                           alt="Smart Booking"
+                           alt={t("smart_booking")}
                            className={`h-6 w-6 ${
                               darkMode ? "opacity-85" : "opacity-90"
                            }`}
@@ -91,7 +93,7 @@ export default function Navigation() {
                            }}
                         />
                      </span>
-                     Smart Booking
+                     {t("smart_booking")}
                   </Link>
                </div>
 
@@ -137,7 +139,7 @@ export default function Navigation() {
                   <button
                      onClick={toggleTheme}
                      className="relative w-14 h-7 rounded-full bg-purple-600/20 border border-purple-500/30 transition-all duration-300 ease-in-out focus:outline-none flex items-center justify-start overflow-hidden"
-                     aria-label="Toggle theme"
+                     aria-label={t("toggle_theme")}
                   >
                      <div
                         className={`absolute h-6 w-6 rounded-full transition-all duration-500 ease-in-out transform ${
@@ -167,7 +169,7 @@ export default function Navigation() {
                            : "text-gray-500 hover:text-gray-900 hover:bg-gray-100"
                      }`}
                   >
-                     <span className="sr-only">Open main menu</span>
+                     <span className="sr-only">{t("open_main_menu")}</span>
                      {mobileMenuOpen ? (
                         <XMarkIcon
                            className="block h-6 w-6"
@@ -248,10 +250,8 @@ export default function Navigation() {
                            </div>
                         </div>
                      </div>
-                     <span
-                        className={darkMode ? "text-gray-300" : "text-gray-600"}
-                     >
-                        Toggle Theme
+                     <span className={darkMode ? "text-gray-300" : "text-gray-600"}>
+                        {t(darkMode ? "light_mode" : "dark_mode")}
                      </span>
                   </button>
                </div>

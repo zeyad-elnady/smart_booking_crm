@@ -33,7 +33,7 @@ const CACHE_TTL = 30000; // 30 seconds cache TTL
 
 // Ensure data directory exists
 if (!fs.existsSync(DATA_DIR)) {
-   fs.mkdirSync(DATA_DIR, { recursive: true });
+    fs.mkdirSync(DATA_DIR, { recursive: true });
 }
 
 /**
@@ -42,24 +42,24 @@ if (!fs.existsSync(DATA_DIR)) {
  * @returns {string} - Encrypted text
  */
 const encrypt = (text) => {
-   try {
-      // Create a random initialization vector
-      const iv = crypto.randomBytes(16);
-      // Create cipher using the key and iv
-      const cipher = crypto.createCipheriv(
-         "aes-256-cbc",
-         Buffer.from(ENCRYPTION_KEY.padEnd(32).slice(0, 32)),
-         iv
-      );
-      // Encrypt the text
-      let encrypted = cipher.update(text, "utf8", "hex");
-      encrypted += cipher.final("hex");
-      // Return iv + encrypted data
-      return iv.toString("hex") + ":" + encrypted;
-   } catch (error) {
-      console.error("Encryption error:", error);
-      return text; // Fallback to unencrypted text on error
-   }
+    try {
+        // Create a random initialization vector
+        const iv = crypto.randomBytes(16);
+        // Create cipher using the key and iv
+        const cipher = crypto.createCipheriv(
+            "aes-256-cbc",
+            Buffer.from(ENCRYPTION_KEY.padEnd(32).slice(0, 32)),
+            iv
+        );
+        // Encrypt the text
+        let encrypted = cipher.update(text, "utf8", "hex");
+        encrypted += cipher.final("hex");
+        // Return iv + encrypted data
+        return iv.toString("hex") + ":" + encrypted;
+    } catch (error) {
+        console.error("Encryption error:", error);
+        return text; // Fallback to unencrypted text on error
+    }
 };
 
 /**
@@ -68,33 +68,33 @@ const encrypt = (text) => {
  * @returns {string} - Decrypted text
  */
 const decrypt = (text) => {
-   try {
-      // If text doesn't contain the separator, it's not encrypted
-      if (!text || !text.includes(":")) {
-         return text;
-      }
+    try {
+        // If text doesn't contain the separator, it's not encrypted
+        if (!text || !text.includes(":")) {
+            return text;
+        }
 
-      // Split iv and encrypted data
-      const parts = text.split(":");
-      const iv = Buffer.from(parts[0], "hex");
-      const encryptedText = parts[1];
+        // Split iv and encrypted data
+        const parts = text.split(":");
+        const iv = Buffer.from(parts[0], "hex");
+        const encryptedText = parts[1];
 
-      // Create decipher
-      const decipher = crypto.createDecipheriv(
-         "aes-256-cbc",
-         Buffer.from(ENCRYPTION_KEY.padEnd(32).slice(0, 32)),
-         iv
-      );
+        // Create decipher
+        const decipher = crypto.createDecipheriv(
+            "aes-256-cbc",
+            Buffer.from(ENCRYPTION_KEY.padEnd(32).slice(0, 32)),
+            iv
+        );
 
-      // Decrypt the data
-      let decrypted = decipher.update(encryptedText, "hex", "utf8");
-      decrypted += decipher.final("utf8");
+        // Decrypt the data
+        let decrypted = decipher.update(encryptedText, "hex", "utf8");
+        decrypted += decipher.final("utf8");
 
-      return decrypted;
-   } catch (error) {
-      console.error("Decryption error:", error);
-      return text; // Return original text on error
-   }
+        return decrypted;
+    } catch (error) {
+        console.error("Decryption error:", error);
+        return text; // Return original text on error
+    }
 };
 
 /**
@@ -103,14 +103,14 @@ const decrypt = (text) => {
  * @returns {Buffer} - Compressed data
  */
 const compressData = (data) => {
-   try {
-      const jsonString = JSON.stringify(data);
-      return zlib.gzipSync(jsonString);
-   } catch (error) {
-      console.error("Compression error:", error);
-      // Fallback to uncompressed JSON
-      return Buffer.from(JSON.stringify(data));
-   }
+    try {
+        const jsonString = JSON.stringify(data);
+        return zlib.gzipSync(jsonString);
+    } catch (error) {
+        console.error("Compression error:", error);
+        // Fallback to uncompressed JSON
+        return Buffer.from(JSON.stringify(data));
+    }
 };
 
 /**
@@ -119,27 +119,27 @@ const compressData = (data) => {
  * @returns {Object} - Decompressed data
  */
 const decompressData = (compressedData) => {
-   try {
-      const decompressedData = zlib.gunzipSync(compressedData);
-      return JSON.parse(decompressedData.toString());
-   } catch (error) {
-      // Try to parse as uncompressed JSON if gunzip fails
-      try {
-         return JSON.parse(compressedData.toString());
-      } catch (parseError) {
-         console.error("Decompression error:", error);
-         console.error("Parse error:", parseError);
-         // Return empty data structure if all fails
-         return {
-            users: [],
-            customers: [],
-            appointments: [],
-            services: [],
-            lastUpdated: new Date().toISOString(),
-            error: "Data recovery failed",
-         };
-      }
-   }
+    try {
+        const decompressedData = zlib.gunzipSync(compressedData);
+        return JSON.parse(decompressedData.toString());
+    } catch (error) {
+        // Try to parse as uncompressed JSON if gunzip fails
+        try {
+            return JSON.parse(compressedData.toString());
+        } catch (parseError) {
+            console.error("Decompression error:", error);
+            console.error("Parse error:", parseError);
+            // Return empty data structure if all fails
+            return {
+                users: [],
+                customers: [],
+                appointments: [],
+                services: [],
+                lastUpdated: new Date().toISOString(),
+                error: "Data recovery failed",
+            };
+        }
+    }
 };
 
 /**
@@ -149,53 +149,53 @@ const decompressData = (compressedData) => {
  * @returns {Object} - Validated data and validation errors
  */
 const validateAgainstSchema = (collection, data) => {
-   try {
-      let model;
+    try {
+        let model;
 
-      // Get the appropriate model
-      switch (collection) {
-         case "users":
-            model = require("../models/User");
-            break;
-         case "customers":
-            model = require("../models/Customer");
-            break;
-         case "services":
-            model = require("../models/Service");
-            break;
-         case "appointments":
-            model = require("../models/Appointment");
-            break;
-         default:
-            return { isValid: true, data }; // No validation for unknown collections
-      }
+        // Get the appropriate model
+        switch (collection) {
+            case "users":
+                model = require("../models/User");
+                break;
+            case "customers":
+                model = require("../models/Customer");
+                break;
+            case "services":
+                model = require("../models/Service");
+                break;
+            case "appointments":
+                model = require("../models/Appointment");
+                break;
+            default:
+                return { isValid: true, data }; // No validation for unknown collections
+        }
 
-      // Create a new model instance without saving to DB
-      const document = new model(data);
+        // Create a new model instance without saving to DB
+        const document = new model(data);
 
-      // Validate the document
-      const validationError = document.validateSync();
+        // Validate the document
+        const validationError = document.validateSync();
 
-      if (validationError) {
-         const errors = {};
+        if (validationError) {
+            const errors = {};
 
-         // Format validation errors
-         Object.keys(validationError.errors).forEach((key) => {
-            errors[key] = validationError.errors[key].message;
-         });
+            // Format validation errors
+            Object.keys(validationError.errors).forEach((key) => {
+                errors[key] = validationError.errors[key].message;
+            });
 
-         return {
-            isValid: false,
-            errors,
-            data, // Return original data even if invalid
-         };
-      }
+            return {
+                isValid: false,
+                errors,
+                data, // Return original data even if invalid
+            };
+        }
 
-      return { isValid: true, data };
-   } catch (error) {
-      console.error("Validation error:", error);
-      return { isValid: true, data }; // Skip validation on error
-   }
+        return { isValid: true, data };
+    } catch (error) {
+        console.error("Validation error:", error);
+        return { isValid: true, data }; // Skip validation on error
+    }
 };
 
 /**
@@ -206,140 +206,140 @@ const validateAgainstSchema = (collection, data) => {
  * @returns {Object} - Processed data
  */
 const processSensitiveData = (collection, data, isEncrypt) => {
-   // Skip if data is null or not an object
-   if (!data || typeof data !== "object") {
-      return data;
-   }
+    // Skip if data is null or not an object
+    if (!data || typeof data !== "object") {
+        return data;
+    }
 
-   const processedData = { ...data };
+    const processedData = {...data };
 
-   // Process based on collection type
-   switch (collection) {
-      case "users":
-         // Encrypt/decrypt sensitive user fields
-         if (processedData.email) {
-            processedData.email = isEncrypt
-               ? encrypt(processedData.email)
-               : decrypt(processedData.email);
-         }
-         // Don't store plaintext passwords in the JSON file
-         if (processedData.password && isEncrypt) {
-            processedData.password = "[PROTECTED]";
-         }
-         break;
+    // Process based on collection type
+    switch (collection) {
+        case "users":
+            // Encrypt/decrypt sensitive user fields
+            if (processedData.email) {
+                processedData.email = isEncrypt ?
+                    encrypt(processedData.email) :
+                    decrypt(processedData.email);
+            }
+            // Don't store plaintext passwords in the JSON file
+            if (processedData.password && isEncrypt) {
+                processedData.password = "[PROTECTED]";
+            }
+            break;
 
-      case "customers":
-         // Encrypt/decrypt sensitive customer fields
-         if (processedData.email) {
-            processedData.email = isEncrypt
-               ? encrypt(processedData.email)
-               : decrypt(processedData.email);
-         }
-         if (processedData.phone) {
-            processedData.phone = isEncrypt
-               ? encrypt(processedData.phone)
-               : decrypt(processedData.phone);
-         }
-         break;
+        case "customers":
+            // Encrypt/decrypt sensitive customer fields
+            if (processedData.email) {
+                processedData.email = isEncrypt ?
+                    encrypt(processedData.email) :
+                    decrypt(processedData.email);
+            }
+            if (processedData.phone) {
+                processedData.phone = isEncrypt ?
+                    encrypt(processedData.phone) :
+                    decrypt(processedData.phone);
+            }
+            break;
 
-      case "appointments":
-         // No sensitive data to encrypt in appointments
-         break;
+        case "appointments":
+            // No sensitive data to encrypt in appointments
+            break;
 
-      case "services":
-         // No sensitive data to encrypt in services
-         break;
-   }
+        case "services":
+            // No sensitive data to encrypt in services
+            break;
+    }
 
-   return processedData;
+    return processedData;
 };
 
 /**
  * Rotate backup files and clean up old ones
  */
 const rotateBackups = () => {
-   try {
-      const backupFiles = fs
-         .readdirSync(DATA_DIR)
-         .filter((file) => file.startsWith("backup-") && file.endsWith(".json"))
-         .sort((a, b) => {
-            // Sort by creation time, newest first
-            return (
-               fs.statSync(path.join(DATA_DIR, b)).mtime.getTime() -
-               fs.statSync(path.join(DATA_DIR, a)).mtime.getTime()
-            );
-         });
+    try {
+        const backupFiles = fs
+            .readdirSync(DATA_DIR)
+            .filter((file) => file.startsWith("backup-") && file.endsWith(".json"))
+            .sort((a, b) => {
+                // Sort by creation time, newest first
+                return (
+                    fs.statSync(path.join(DATA_DIR, b)).mtime.getTime() -
+                    fs.statSync(path.join(DATA_DIR, a)).mtime.getTime()
+                );
+            });
 
-      // Keep only the newest MAX_BACKUPS files
-      if (backupFiles.length > MAX_BACKUPS) {
-         const filesToDelete = backupFiles.slice(MAX_BACKUPS);
+        // Keep only the newest MAX_BACKUPS files
+        if (backupFiles.length > MAX_BACKUPS) {
+            const filesToDelete = backupFiles.slice(MAX_BACKUPS);
 
-         filesToDelete.forEach((file) => {
-            try {
-               fs.unlinkSync(path.join(DATA_DIR, file));
-               console.log(`Deleted old backup: ${file}`);
-            } catch (error) {
-               console.error(`Failed to delete backup ${file}:`, error);
-            }
-         });
-      }
-   } catch (error) {
-      console.error("Error rotating backups:", error);
-   }
+            filesToDelete.forEach((file) => {
+                try {
+                    fs.unlinkSync(path.join(DATA_DIR, file));
+                    console.log(`Deleted old backup: ${file}`);
+                } catch (error) {
+                    console.error(`Failed to delete backup ${file}:`, error);
+                }
+            });
+        }
+    } catch (error) {
+        console.error("Error rotating backups:", error);
+    }
 };
 
 // Initialize empty data file if it doesn't exist
 if (!fs.existsSync(LOCAL_DATA_FILE)) {
-   const initialData = {
-      users: [],
-      customers: [],
-      appointments: [],
-      services: [],
-      lastUpdated: new Date().toISOString(),
-   };
+    const initialData = {
+        users: [],
+        customers: [],
+        appointments: [],
+        services: [],
+        lastUpdated: new Date().toISOString(),
+    };
 
-   try {
-      // Save as compressed file
-      fs.writeFileSync(LOCAL_DATA_FILE, compressData(initialData));
-      console.log("Initialized local data storage with empty collections");
-   } catch (error) {
-      console.error("Failed to initialize local data storage:", error);
-      // Try uncompressed fallback
-      fs.writeFileSync(LOCAL_DATA_FILE, JSON.stringify(initialData, null, 2));
-      console.log("Initialized local data storage with uncompressed fallback");
-   }
+    try {
+        // Save as compressed file
+        fs.writeFileSync(LOCAL_DATA_FILE, compressData(initialData));
+        console.log("Initialized local data storage with empty collections");
+    } catch (error) {
+        console.error("Failed to initialize local data storage:", error);
+        // Try uncompressed fallback
+        fs.writeFileSync(LOCAL_DATA_FILE, JSON.stringify(initialData, null, 2));
+        console.log("Initialized local data storage with uncompressed fallback");
+    }
 } else {
-   // Validate existing file structure
-   try {
-      const compressedData = fs.readFileSync(LOCAL_DATA_FILE);
-      const data = decompressData(compressedData);
-      
-      // Check if structure is valid
-      const requiredCollections = ['users', 'customers', 'appointments', 'services'];
-      let needsUpdate = false;
-      
-      requiredCollections.forEach(collection => {
-         if (!data[collection]) {
-            console.log(`Data file missing ${collection} collection, will fix`);
-            data[collection] = [];
-            needsUpdate = true;
-         } else if (!Array.isArray(data[collection])) {
-            console.log(`Data file has invalid ${collection} collection (not an array), will fix`);
-            data[collection] = [];
-            needsUpdate = true;
-         }
-      });
-      
-      // Update file if needed
-      if (needsUpdate) {
-         console.log("Fixing invalid data file structure");
-         data.lastUpdated = new Date().toISOString();
-         fs.writeFileSync(LOCAL_DATA_FILE, compressData(data));
-         console.log("Data file structure fixed");
-      }
-   } catch (error) {
-      console.error("Error validating existing data file:", error);
-   }
+    // Validate existing file structure
+    try {
+        const compressedData = fs.readFileSync(LOCAL_DATA_FILE);
+        const data = decompressData(compressedData);
+
+        // Check if structure is valid
+        const requiredCollections = ['users', 'customers', 'appointments', 'services'];
+        let needsUpdate = false;
+
+        requiredCollections.forEach(collection => {
+            if (!data[collection]) {
+                console.log(`Data file missing ${collection} collection, will fix`);
+                data[collection] = [];
+                needsUpdate = true;
+            } else if (!Array.isArray(data[collection])) {
+                console.log(`Data file has invalid ${collection} collection (not an array), will fix`);
+                data[collection] = [];
+                needsUpdate = true;
+            }
+        });
+
+        // Update file if needed
+        if (needsUpdate) {
+            console.log("Fixing invalid data file structure");
+            data.lastUpdated = new Date().toISOString();
+            fs.writeFileSync(LOCAL_DATA_FILE, compressData(data));
+            console.log("Data file structure fixed");
+        }
+    } catch (error) {
+        console.error("Error validating existing data file:", error);
+    }
 }
 
 /**
@@ -347,91 +347,91 @@ if (!fs.existsSync(LOCAL_DATA_FILE)) {
  * @returns {Object} The parsed data
  */
 const readLocalData = () => {
-   // Return cached data if available and not expired
-   const now = Date.now();
-   if (dataCache && lastCacheUpdate && (now - lastCacheUpdate) < CACHE_TTL) {
-      return dataCache;
-   }
+    // Return cached data if available and not expired
+    const now = Date.now();
+    if (dataCache && lastCacheUpdate && (now - lastCacheUpdate) < CACHE_TTL) {
+        return dataCache;
+    }
 
-   try {
-      console.log("Attempting to read local data file");
-      // Try to read as compressed data
-      const compressedData = fs.readFileSync(LOCAL_DATA_FILE);
-      const data = decompressData(compressedData);
+    try {
+        console.log("Attempting to read local data file");
+        // Try to read as compressed data
+        const compressedData = fs.readFileSync(LOCAL_DATA_FILE);
+        const data = decompressData(compressedData);
 
-      // Ensure all required collections exist and are arrays
-      const requiredCollections = ['users', 'customers', 'appointments', 'services'];
-      let dataValid = true;
-      
-      requiredCollections.forEach(collection => {
-         if (!data[collection]) {
-            console.log(`Missing ${collection} collection, initializing as empty array`);
-            data[collection] = [];
-            dataValid = false;
-         } else if (!Array.isArray(data[collection])) {
-            console.log(`${collection} is not an array (type: ${typeof data[collection]}), fixing`);
-            data[collection] = [];
-            dataValid = false;
-         }
-      });
-      
-      // If we had to fix something, save the corrected data
-      if (!dataValid) {
-         console.log("Data structure was invalid, saving corrected version");
-         writeLocalData(data);
-      }
+        // Ensure all required collections exist and are arrays
+        const requiredCollections = ['users', 'customers', 'appointments', 'services'];
+        let dataValid = true;
 
-      console.log(`Successfully read data with ${data.customers.length} customers and ${data.services ? data.services.length : 0} services`);
+        requiredCollections.forEach(collection => {
+            if (!data[collection]) {
+                console.log(`Missing ${collection} collection, initializing as empty array`);
+                data[collection] = [];
+                dataValid = false;
+            } else if (!Array.isArray(data[collection])) {
+                console.log(`${collection} is not an array (type: ${typeof data[collection]}), fixing`);
+                data[collection] = [];
+                dataValid = false;
+            }
+        });
 
-      // Decrypt sensitive fields
-      Object.keys(data).forEach((collection) => {
-         if (Array.isArray(data[collection])) {
-            data[collection] = data[collection].map((item) =>
-               processSensitiveData(collection, item, false)
-            );
-         }
-      });
+        // If we had to fix something, save the corrected data
+        if (!dataValid) {
+            console.log("Data structure was invalid, saving corrected version");
+            writeLocalData(data);
+        }
 
-      // Update cache
-      dataCache = data;
-      lastCacheUpdate = now;
+        console.log(`Successfully read data with ${data.customers.length} customers and ${data.services ? data.services.length : 0} services`);
 
-      return data;
-   } catch (error) {
-      console.error("Error reading local data:", error);
+        // Decrypt sensitive fields
+        Object.keys(data).forEach((collection) => {
+            if (Array.isArray(data[collection])) {
+                data[collection] = data[collection].map((item) =>
+                    processSensitiveData(collection, item, false)
+                );
+            }
+        });
 
-      // Create a new data file with sample data
-      console.log("Creating new data file with default empty collections");
-      const newData = {
-         users: [],
-         customers: [],
-         appointments: [],
-         services: [],
-         lastUpdated: new Date().toISOString()
-      };
+        // Update cache
+        dataCache = data;
+        lastCacheUpdate = now;
 
-      try {
-         // Write as plain JSON for simplicity
-         fs.writeFileSync(LOCAL_DATA_FILE, JSON.stringify(newData, null, 2));
-         console.log("Created new local data file with empty collections");
-         
-         // Update cache with the new data
-         dataCache = newData;
-         lastCacheUpdate = now;
-         
-         return newData;
-      } catch (writeError) {
-         console.error("Error creating new data file:", writeError);
-         return {
+        return data;
+    } catch (error) {
+        console.error("Error reading local data:", error);
+
+        // Create a new data file with sample data
+        console.log("Creating new data file with default empty collections");
+        const newData = {
             users: [],
             customers: [],
             appointments: [],
             services: [],
-            lastUpdated: new Date().toISOString(),
-            error: "Recovery failed"
-         };
-      }
-   }
+            lastUpdated: new Date().toISOString()
+        };
+
+        try {
+            // Write as plain JSON for simplicity
+            fs.writeFileSync(LOCAL_DATA_FILE, JSON.stringify(newData, null, 2));
+            console.log("Created new local data file with empty collections");
+
+            // Update cache with the new data
+            dataCache = newData;
+            lastCacheUpdate = now;
+
+            return newData;
+        } catch (writeError) {
+            console.error("Error creating new data file:", writeError);
+            return {
+                users: [],
+                customers: [],
+                appointments: [],
+                services: [],
+                lastUpdated: new Date().toISOString(),
+                error: "Recovery failed"
+            };
+        }
+    }
 };
 
 /**
@@ -439,30 +439,30 @@ const readLocalData = () => {
  * @param {Object} data - The data to write
  */
 const writeLocalData = (data) => {
-   try {
-      // Update timestamp
-      data.lastUpdated = new Date().toISOString();
+    try {
+        // Update timestamp
+        data.lastUpdated = new Date().toISOString();
 
-      // Encrypt sensitive data
-      const encryptedData = { ...data };
-      Object.keys(encryptedData).forEach((collection) => {
-         if (Array.isArray(encryptedData[collection])) {
-            encryptedData[collection] = encryptedData[collection].map((item) =>
-               processSensitiveData(collection, item, true)
-            );
-         }
-      });
+        // Encrypt sensitive data
+        const encryptedData = {...data };
+        Object.keys(encryptedData).forEach((collection) => {
+            if (Array.isArray(encryptedData[collection])) {
+                encryptedData[collection] = encryptedData[collection].map((item) =>
+                    processSensitiveData(collection, item, true)
+                );
+            }
+        });
 
-      // Compress and write to file
-      fs.writeFileSync(LOCAL_DATA_FILE, compressData(encryptedData));
+        // Compress and write to file
+        fs.writeFileSync(LOCAL_DATA_FILE, compressData(encryptedData));
 
-      // Update the cache
-      dataCache = data;
-      lastCacheUpdate = Date.now();
+        // Update the cache
+        dataCache = data;
+        lastCacheUpdate = Date.now();
 
-      // Create a backup copy - TEMPORARILY DISABLED to prevent nodemon restart loop
-      // Uncomment this in production, but for development it causes nodemon to restart in a loop
-      /*
+        // Create a backup copy - TEMPORARILY DISABLED to prevent nodemon restart loop
+        // Uncomment this in production, but for development it causes nodemon to restart in a loop
+        /*
     const backupFileName = `backup-${new Date().toISOString().replace(/:/g, '-')}.json`;
     fs.writeFileSync(
       path.join(DATA_DIR, backupFileName),
@@ -472,20 +472,20 @@ const writeLocalData = (data) => {
     // Clean up old backups
     rotateBackups();
     */
-   } catch (error) {
-      console.error("Error writing local data:", error);
+    } catch (error) {
+        console.error("Error writing local data:", error);
 
-      // Try uncompressed fallback
-      try {
-         fs.writeFileSync(LOCAL_DATA_FILE, JSON.stringify(data, null, 2));
-         
-         // Still update cache even with fallback
-         dataCache = data;
-         lastCacheUpdate = Date.now();
-      } catch (fallbackError) {
-         console.error("Fallback write failed:", fallbackError);
-      }
-   }
+        // Try uncompressed fallback
+        try {
+            fs.writeFileSync(LOCAL_DATA_FILE, JSON.stringify(data, null, 2));
+
+            // Still update cache even with fallback
+            dataCache = data;
+            lastCacheUpdate = Date.now();
+        } catch (fallbackError) {
+            console.error("Fallback write failed:", fallbackError);
+        }
+    }
 };
 
 /**
@@ -493,71 +493,71 @@ const writeLocalData = (data) => {
  * Forces next read to load from disk
  */
 const clearCache = () => {
-   dataCache = null;
-   lastCacheUpdate = null;
-   console.log("Local data cache cleared");
+    dataCache = null;
+    lastCacheUpdate = null;
+    console.log("Local data cache cleared");
 };
 
 /**
  * Synchronize MongoDB data with local storage
  * This helps keep both storages in sync when MongoDB is available
  */
-const syncWithMongoDB = async () => {
-   if (!isMongoConnected()) {
-      return false;
-   }
+const syncWithMongoDB = async() => {
+    if (!isMongoConnected()) {
+        return false;
+    }
 
-   try {
-      console.log("Synchronizing MongoDB with local storage...");
+    try {
+        console.log("Synchronizing MongoDB with local storage...");
 
-      // Import models
-      const User = require("../models/User");
-      const Customer = require("../models/Customer");
-      const Service = require("../models/Service");
-      const Appointment = require("../models/Appointment");
+        // Import models
+        const User = require("../models/User");
+        const Customer = require("../models/Customer");
+        const Service = require("../models/Service");
+        const Appointment = require("../models/Appointment");
 
-      // Fetch all data from MongoDB
-      const users = await User.find({}).lean();
-      const customers = await Customer.find({}).lean();
-      const services = await Service.find({}).lean();
-      const appointments = await Appointment.find({}).lean();
+        // Fetch all data from MongoDB
+        const users = await User.find({}).lean();
+        const customers = await Customer.find({}).lean();
+        const services = await Service.find({}).lean();
+        const appointments = await Appointment.find({}).lean();
 
-      // Update local storage with MongoDB data
-      const localData = readLocalData();
+        // Update local storage with MongoDB data
+        const localData = readLocalData();
 
-      // Convert MongoDB ObjectIDs to strings
-      const prepareForStorage = (items) => {
-         return items.map((item) => {
-            const prepared = { ...item };
-            if (prepared._id) {
-               prepared._id = prepared._id.toString();
-            }
-            // Convert other ObjectIDs to strings
-            Object.keys(prepared).forEach((key) => {
-               if (prepared[key] && prepared[key]._id) {
-                  prepared[key] = prepared[key]._id.toString();
-               }
+        // Convert MongoDB ObjectIDs to strings
+        const prepareForStorage = (items) => {
+            return items.map((item) => {
+                const prepared = {...item };
+                if (prepared._id) {
+                    prepared._id = prepared._id.toString();
+                }
+                // Convert other ObjectIDs to strings
+                Object.keys(prepared).forEach((key) => {
+                    if (prepared[key] && prepared[key]._id) {
+                        prepared[key] = prepared[key]._id.toString();
+                    }
+                });
+                return prepared;
             });
-            return prepared;
-         });
-      };
+        };
 
-      // Update local storage with prepared data
-      localData.users = prepareForStorage(users);
-      localData.customers = prepareForStorage(customers);
-      localData.services = prepareForStorage(services);
-      localData.appointments = prepareForStorage(appointments);
-      localData.lastSyncedWithMongoDB = new Date().toISOString();
+        // Update local storage with prepared data
+        localData.users = prepareForStorage(users);
+        localData.customers = prepareForStorage(customers);
+        localData.services = prepareForStorage(services);
+        localData.appointments = prepareForStorage(appointments);
+        localData.lastSyncedWithMongoDB = new Date().toISOString();
 
-      // Save updated data
-      writeLocalData(localData);
+        // Save updated data
+        writeLocalData(localData);
 
-      console.log("Synchronization complete");
-      return true;
-   } catch (error) {
-      console.error("Synchronization error:", error);
-      return false;
-   }
+        console.log("Synchronization complete");
+        return true;
+    } catch (error) {
+        console.error("Synchronization error:", error);
+        return false;
+    }
 };
 
 /**
@@ -566,25 +566,25 @@ const syncWithMongoDB = async () => {
  * @returns {string} A unique ID
  */
 const generateId = (collection = null) => {
-   // For customers collection, use sequential IDs starting from 1
-   if (collection === 'customers') {
-      const data = readLocalData();
-      if (!data[collection] || !Array.isArray(data[collection])) {
-         return '1'; // Start with ID 1 if collection is empty
-      }
-      
-      // Find the highest current ID
-      const highestId = data[collection]
-         .map(item => parseInt(item._id))
-         .filter(id => !isNaN(id))
-         .reduce((max, id) => Math.max(max, id), 0);
-      
-      // Return the next sequential ID
-      return String(highestId + 1);
-   }
-   
-   // For other collections, continue to use UUID format
-   return crypto.randomUUID().toString();
+    // For customers collection, use sequential IDs starting from 1
+    if (collection === 'customers') {
+        const data = readLocalData();
+        if (!data[collection] || !Array.isArray(data[collection])) {
+            return '1'; // Start with ID 1 if collection is empty
+        }
+
+        // Find the highest current ID
+        const highestId = data[collection]
+            .map(item => parseInt(item._id))
+            .filter(id => !isNaN(id))
+            .reduce((max, id) => Math.max(max, id), 0);
+
+        // Return the next sequential ID
+        return String(highestId + 1);
+    }
+
+    // For other collections, continue to use UUID format
+    return crypto.randomUUID().toString();
 };
 
 /**
@@ -595,44 +595,44 @@ const generateId = (collection = null) => {
  * @returns {Array} The matching records
  */
 const find = (collection, query = {}, userId = null) => {
-   const data = readLocalData();
+    const data = readLocalData();
 
-   if (!data[collection]) {
-      return [];
-   }
+    if (!data[collection]) {
+        return [];
+    }
 
-   // Filter by user ID first if provided and not the users collection itself
-   let filteredData = data[collection];
-   if (userId && collection !== 'users') {
-      filteredData = filteredData.filter(item => !item.userId || item.userId === userId);
-   }
+    // Filter by user ID first if provided and not the users collection itself
+    let filteredData = data[collection];
+    if (userId && collection !== 'users') {
+        filteredData = filteredData.filter(item => !item.userId || item.userId === userId);
+    }
 
-   // If no query params, return filtered items
-   if (Object.keys(query).length === 0) {
-      return filteredData;
-   }
+    // If no query params, return filtered items
+    if (Object.keys(query).length === 0) {
+        return filteredData;
+    }
 
-   // Filter by query parameters
-   return filteredData.filter((item) => {
-      for (const key in query) {
-         // Special handling for phone numbers in customers collection
-         if (collection === 'customers' && key === 'phone' && item[key] && query[key]) {
-            // Normalize phone numbers by removing spaces and special characters
-            const normalizedQueryPhone = query[key].replace(/\s+|-|\(|\)|\+/g, '');
-            const normalizedItemPhone = decrypt(item[key]).replace(/\s+|-|\(|\)|\+/g, '');
-            
-            // Compare normalized phone numbers
-            if (normalizedQueryPhone !== normalizedItemPhone) {
-               return false;
+    // Filter by query parameters
+    return filteredData.filter((item) => {
+        for (const key in query) {
+            // Special handling for phone numbers in customers collection
+            if (collection === 'customers' && key === 'phone' && item[key] && query[key]) {
+                // Normalize phone numbers by removing spaces and special characters
+                const normalizedQueryPhone = query[key].replace(/\s+|-|\(|\)|\+/g, '');
+                const normalizedItemPhone = decrypt(item[key]).replace(/\s+|-|\(|\)|\+/g, '');
+
+                // Compare normalized phone numbers
+                if (normalizedQueryPhone !== normalizedItemPhone) {
+                    return false;
+                }
             }
-         }
-         // Regular comparison for other fields
-         else if (query[key] !== item[key]) {
-            return false;
-         }
-      }
-      return true;
-   });
+            // Regular comparison for other fields
+            else if (query[key] !== item[key]) {
+                return false;
+            }
+        }
+        return true;
+    });
 };
 
 /**
@@ -643,21 +643,21 @@ const find = (collection, query = {}, userId = null) => {
  * @returns {Object|null} The matching record or null
  */
 const findById = (collection, id, userId = null) => {
-   const data = readLocalData();
+    const data = readLocalData();
 
-   if (!data[collection]) {
-      return null;
-   }
+    if (!data[collection]) {
+        return null;
+    }
 
-   // Find the item
-   const item = data[collection].find((item) => item._id === id);
-   
-   // Check if item exists and belongs to the user (if userId provided)
-   if (!item || (userId && collection !== 'users' && item.userId && item.userId !== userId)) {
-      return null;
-   }
+    // Find the item
+    const item = data[collection].find((item) => item._id === id);
 
-   return item;
+    // Check if item exists and belongs to the user (if userId provided)
+    if (!item || (userId && collection !== 'users' && item.userId && item.userId !== userId)) {
+        return null;
+    }
+
+    return item;
 };
 
 /**
@@ -668,42 +668,42 @@ const findById = (collection, id, userId = null) => {
  * @returns {Object} The created record with ID
  */
 const create = (collection, record, userId = null) => {
-   const data = readLocalData();
+    const data = readLocalData();
 
-   // Ensure collection exists and is an array
-   if (!data[collection]) {
-      console.log(`Creating missing ${collection} collection as an empty array`);
-      data[collection] = [];
-   } else if (!Array.isArray(data[collection])) {
-      console.log(`Converting ${collection} to an array as it was type: ${typeof data[collection]}`);
-      data[collection] = [];
-   }
+    // Ensure collection exists and is an array
+    if (!data[collection]) {
+        console.log(`Creating missing ${collection} collection as an empty array`);
+        data[collection] = [];
+    } else if (!Array.isArray(data[collection])) {
+        console.log(`Converting ${collection} to an array as it was type: ${typeof data[collection]}`);
+        data[collection] = [];
+    }
 
-   // Validate record against schema
-   const { isValid, errors } = validateAgainstSchema(collection, record);
+    // Validate record against schema
+    const { isValid, errors } = validateAgainstSchema(collection, record);
 
-   if (!isValid) {
-      console.warn(`Validation errors for ${collection}:`, errors);
-      // Continue anyway for local storage
-   }
+    if (!isValid) {
+        console.warn(`Validation errors for ${collection}:`, errors);
+        // Continue anyway for local storage
+    }
 
-   // Add userId to the record if provided (except for users collection)
-   const newRecord = {
-      ...record,
-      _id: record._id || generateId(collection),
-      createdAt: record.createdAt || new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-   };
+    // Add userId to the record if provided (except for users collection)
+    const newRecord = {
+        ...record,
+        _id: record._id || generateId(collection),
+        createdAt: record.createdAt || new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+    };
 
-   // Add userId to associate with the specific user (except for users collection)
-   if (userId && collection !== 'users') {
-      newRecord.userId = userId;
-   }
+    // Add userId to associate with the specific user (except for users collection)
+    if (userId && collection !== 'users') {
+        newRecord.userId = userId;
+    }
 
-   data[collection].push(newRecord);
-   writeLocalData(data);
+    data[collection].push(newRecord);
+    writeLocalData(data);
 
-   return newRecord;
+    return newRecord;
 };
 
 /**
@@ -715,48 +715,48 @@ const create = (collection, record, userId = null) => {
  * @returns {Object|null} The updated record or null
  */
 const update = (collection, id, update, userId = null) => {
-   const data = readLocalData();
+    const data = readLocalData();
 
-   if (!data[collection]) {
-      return null;
-   }
+    if (!data[collection]) {
+        return null;
+    }
 
-   const index = data[collection].findIndex((item) => item._id === id);
+    const index = data[collection].findIndex((item) => item._id === id);
 
-   if (index === -1) {
-      return null;
-   }
+    if (index === -1) {
+        return null;
+    }
 
-   // Check if item belongs to the user (if userId provided)
-   if (userId && collection !== 'users' && 
-       data[collection][index].userId && 
-       data[collection][index].userId !== userId) {
-      return null;
-   }
+    // Check if item belongs to the user (if userId provided)
+    if (userId && collection !== 'users' &&
+        data[collection][index].userId &&
+        data[collection][index].userId !== userId) {
+        return null;
+    }
 
-   // Validate updated record
-   const updatedRecord = {
-      ...data[collection][index],
-      ...update,
-      updatedAt: new Date().toISOString(),
-   };
+    // Validate updated record
+    const updatedRecord = {
+        ...data[collection][index],
+        ...update,
+        updatedAt: new Date().toISOString(),
+    };
 
-   // Preserve userId if it already exists
-   if (data[collection][index].userId) {
-      updatedRecord.userId = data[collection][index].userId;
-   }
+    // Preserve userId if it already exists
+    if (data[collection][index].userId) {
+        updatedRecord.userId = data[collection][index].userId;
+    }
 
-   const { isValid, errors } = validateAgainstSchema(collection, updatedRecord);
+    const { isValid, errors } = validateAgainstSchema(collection, updatedRecord);
 
-   if (!isValid) {
-      console.warn(`Validation errors for ${collection} update:`, errors);
-      // Continue anyway for local storage
-   }
+    if (!isValid) {
+        console.warn(`Validation errors for ${collection} update:`, errors);
+        // Continue anyway for local storage
+    }
 
-   data[collection][index] = updatedRecord;
-   writeLocalData(data);
+    data[collection][index] = updatedRecord;
+    writeLocalData(data);
 
-   return data[collection][index];
+    return data[collection][index];
 };
 
 /**
@@ -767,29 +767,29 @@ const update = (collection, id, update, userId = null) => {
  * @returns {boolean} Success status
  */
 const remove = (collection, id, userId = null) => {
-   const data = readLocalData();
+    const data = readLocalData();
 
-   if (!data[collection]) {
-      return false;
-   }
+    if (!data[collection]) {
+        return false;
+    }
 
-   const index = data[collection].findIndex((item) => item._id === id);
+    const index = data[collection].findIndex((item) => item._id === id);
 
-   if (index === -1) {
-      return false;
-   }
+    if (index === -1) {
+        return false;
+    }
 
-   // Check if item belongs to the user (if userId provided)
-   if (userId && collection !== 'users' && 
-       data[collection][index].userId && 
-       data[collection][index].userId !== userId) {
-      return false;
-   }
+    // Check if item belongs to the user (if userId provided)
+    if (userId && collection !== 'users' &&
+        data[collection][index].userId &&
+        data[collection][index].userId !== userId) {
+        return false;
+    }
 
-   data[collection].splice(index, 1);
-   writeLocalData(data);
+    data[collection].splice(index, 1);
+    writeLocalData(data);
 
-   return true;
+    return true;
 };
 
 /**
@@ -797,88 +797,68 @@ const remove = (collection, id, userId = null) => {
  * @returns {boolean} Connection status
  */
 const isMongoConnected = () => {
-  try {
-    // Check MongoDB connection state
-    const mongooseState = require('mongoose').connection.readyState;
-    return mongooseState === 1;
-  } catch (error) {
-    console.error("Error checking MongoDB connection:", error);
-    return false;
-  }
+    try {
+        // Check MongoDB connection state
+        const mongooseState = require('mongoose').connection.readyState;
+        return mongooseState === 1;
+    } catch (error) {
+        console.error("Error checking MongoDB connection:", error);
+        return false;
+    }
 };
 
 /**
- * Initialize the local storage system
- * @returns {Promise<void>}
+ * Initialize storage with default data structure
+ * @returns {Object} The initialized data structure
  */
-const initializeStorage = async () => {
-  try {
-    console.log("Initializing local storage system");
-    const data = readLocalData();
-    console.log(`Loaded data with ${data.customers ? data.customers.length : 0} customers`);
-    return Promise.resolve();
-} catch (error) {
-    console.error("Error initializing local storage:", error);
-    return Promise.reject(error);
-   }
+const initializeStorage = () => {
+    const defaultData = {
+        users: [],
+        appointments: [],
+        customers: [],
+        services: [],
+        settings: []
+    };
+    writeLocalData(defaultData);
+    return defaultData;
 };
 
 /**
- * Initialize empty data for a new user
- * @param {string} userId - The ID of the newly created user
- * @returns {boolean} Success status
+ * Initialize user-specific data
+ * @param {string} userId - The user ID
+ * @returns {Object} The initialized user data
  */
 const initializeUserData = (userId) => {
-   try {
-      if (!userId) {
-         console.error("Cannot initialize user data without userId");
-         return false;
-      }
-      
-      console.log(`Initializing fresh data for new user: ${userId}`);
-      
-      // Get existing data
-      const data = readLocalData();
-      
-      // Filter out any existing data that might have this userId 
-      // (should not happen, but just to be safe)
-      Object.keys(data).forEach(collection => {
-         if (Array.isArray(data[collection]) && collection !== 'users') {
-            data[collection] = data[collection].filter(item => !item.userId || item.userId !== userId);
-         }
-      });
-      
-      // Ensure all collections are properly initialized as arrays
-      const requiredCollections = ['users', 'customers', 'appointments', 'services'];
-      requiredCollections.forEach(collection => {
-         if (!data[collection] || !Array.isArray(data[collection])) {
-            console.log(`Initializing ${collection} as empty array for user ${userId}`);
+    const data = readLocalData();
+    const userData = {
+        appointments: [],
+        customers: [],
+        services: [],
+        settings: []
+    };
+    
+    // Add userId to each collection
+    Object.keys(userData).forEach(collection => {
+        if (!data[collection]) {
             data[collection] = [];
-         }
-      });
-      
-      // Save the data back
-      writeLocalData(data);
-      
-      console.log(`Successfully initialized fresh data for user ${userId}`);
-      return true;
-   } catch (error) {
-      console.error(`Error initializing data for user ${userId}:`, error);
-      return false;
-   }
+        }
+    });
+    
+    writeLocalData(data);
+    return userData;
 };
 
 module.exports = {
-   find,
-   findById,
-   create,
-   update,
-   remove,
-   isMongoConnected,
-   readLocalData,
-   writeLocalData,
-   syncWithMongoDB,
-   clearCache,
-   initializeStorage,
-   initializeUserData
+    find,
+    findById,
+    create,
+    update,
+    remove,
+    isMongoConnected,
+    readLocalData,
+    writeLocalData,
+    syncWithMongoDB,
+    clearCache,
+    initializeStorage,
+    initializeUserData
 };

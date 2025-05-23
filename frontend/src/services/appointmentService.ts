@@ -196,10 +196,11 @@ export const createAppointment = async (
          _id: tempId,
          pendingSync: true,
          pendingDelete: false,
-         userId: currentUser?._id, // Add the user ID to track who created this appointment
+         userId: currentUser?._id,
+         status: appointmentData.status || 'Pending'
       };
 
-      // Store in IndexedDB for offline functionality
+      // Save to IndexedDB
       await indexedDBService.saveAppointment(appointment);
 
       // If online, sync with server immediately

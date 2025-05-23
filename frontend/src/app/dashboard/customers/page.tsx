@@ -22,6 +22,7 @@ import LoadingSpinner from "@/components/LoadingSpinner";
 import { toast } from "react-hot-toast";
 import { indexedDBService } from "@/services/indexedDB";
 import DeleteCustomerDialog from "@/components/DeleteCustomerDialog";
+import { useLanguage } from "@/context/LanguageContext";
 
 // Create a new AppointmentHistoryDialog component directly in this file
 // Later we can extract it to its own component file if needed
@@ -38,6 +39,7 @@ function AppointmentHistoryDialog({
    customerName: string;
    darkMode: boolean;
 }) {
+   const { t } = useLanguage(); // Add the useLanguage hook to access translations
    const [appointments, setAppointments] = useState<any[]>([]);
    const [loading, setLoading] = useState(true);
 
@@ -144,17 +146,17 @@ function AppointmentHistoryDialog({
                   <div className="sm:flex sm:items-start">
                      <div className="mt-3 text-center sm:mt-0 sm:ml-4 sm:text-left w-full">
                         <h3 className="text-lg leading-6 font-medium">
-                           Appointment History for {customerName}
+                           {t('appointment_history')} {customerName}
                         </h3>
                         <div className="mt-4 max-h-96 overflow-y-auto">
                            {loading ? (
                               <div className="py-4 text-center">
                                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-500 mx-auto"></div>
-                                 <p className="mt-2 text-sm">Loading appointments...</p>
+                                 <p className="mt-2 text-sm">{t('loading_appointments')}</p>
                               </div>
                            ) : appointments.length === 0 ? (
                               <div className={`py-8 text-center ${darkMode ? "text-gray-400" : "text-gray-500"}`}>
-                                 No appointment history found for this customer.
+                                 {t('no_appointment_history')}
                               </div>
                            ) : (
                               <div className="space-y-6">
@@ -210,7 +212,7 @@ function AppointmentHistoryDialog({
                                             
                                             {appointment.notes && (
                                                 <div className={`mt-3 text-sm ${darkMode ? "text-gray-400" : "text-gray-600"} bg-opacity-50 ${darkMode ? "bg-gray-800" : "bg-gray-100"} p-2 rounded`}>
-                                                    <p className="font-medium mb-1">Notes:</p>
+                                                    <p className="font-medium mb-1">{t('notes')}</p>
                                                     <p>{appointment.notes}</p>
                                                 </div>
                                             )}
@@ -233,7 +235,7 @@ function AppointmentHistoryDialog({
                      }`}
                      onClick={onClose}
                   >
-                     Close
+                     {t('close')}
                   </button>
                </div>
             </div>
@@ -244,6 +246,7 @@ function AppointmentHistoryDialog({
 
 export default function Customers() {
    const router = useRouter();
+   const { t } = useLanguage(); // Add the useLanguage hook for translations
    const [customers, setCustomers] = useState<Customer[]>([]);
    const [filteredCustomers, setFilteredCustomers] = useState<Customer[]>([]);
    const [searchTerm, setSearchTerm] = useState("");
@@ -336,12 +339,16 @@ export default function Customers() {
             break;
          case "date-asc":
             sortedCustomers.sort((a, b) => {
-               return new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
+               const dateA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+               const dateB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+               return dateA - dateB;
             });
             break;
          case "date-desc":
             sortedCustomers.sort((a, b) => {
-               return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+               const dateA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+               const dateB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+               return dateB - dateA;
             });
             break;
          default:
@@ -641,12 +648,12 @@ export default function Customers() {
          }));
          
          // Show success message
-         toast.success("Refreshed appointment count");
+         toast.success(t('refreshed_appointment_count'));
          
          return appointments.length;
       } catch (error) {
          console.error("Error refreshing visit count:", error);
-         toast.error("Failed to refresh appointment count");
+         toast.error(t('error_refreshing_count'));
          return null;
       }
    };
@@ -665,15 +672,21 @@ export default function Customers() {
          const allAppointments = await indexedDBService.getAllAppointments();
          console.log(`Found ${allAppointments.length} total appointments in database`);
          
-         // Check each appointment for customerId field
-         const appointmentsWithoutCustomer = allAppointments.filter(app => !app.customerId);
+         // Check each appointment for customer field
+         const appointmentsWithoutCustomer = allAppointments.filter(app => !app.customer);
          if (appointmentsWithoutCustomer.length > 0) {
-            console.error(`Found ${appointmentsWithoutCustomer.length} appointments without customerId:`, appointmentsWithoutCustomer);
+            console.error(`Found ${appointmentsWithoutCustomer.length} appointments without customer:`, appointmentsWithoutCustomer);
          }
          
          // Check customer links
          for (const customer of customers) {
-            const linkedAppointments = allAppointments.filter(app => app.customerId === customer._id);
+            const linkedAppointments = allAppointments.filter(app => {
+               if (typeof app.customer === 'string') {
+                  return app.customer === customer._id;
+               } else {
+                  return app.customer._id === customer._id;
+               }
+            });
             console.log(`Customer ${customer._id} (${customer.firstName} ${customer.lastName}) has ${linkedAppointments.length} linked appointments`);
          }
          
@@ -703,10 +716,10 @@ export default function Customers() {
             <div className="flex flex-col mb-6">
                <div>
                   <h1 className={`text-3xl font-bold ${darkMode ? "text-white" : "text-gray-800"}`}>
-                     Customers
+                     {t('customers')}
                   </h1>
                   <p className={`mt-1 ${darkMode ? "text-gray-300" : "text-gray-600"}`}>
-                     A list of all customers in your database including their contact information and appointment history.
+                     {t('customers_list_description')}
                   </p>
                </div>
             </div>
@@ -718,7 +731,7 @@ export default function Customers() {
                   {/* Search field selector */}
                   <div className="relative w-40">
                      <label className={`block text-sm font-medium mb-1 ${darkMode ? "text-gray-300" : "text-gray-700"}`}>
-                        Search in
+                        {t('search_in')}
                      </label>
                      <select
                         value={searchField}
@@ -734,18 +747,18 @@ export default function Customers() {
                            backgroundPosition: "right 0.5rem center"
                         }}
                      >
-                        <option value="all">All Fields</option>
-                        <option value="name">Name Only</option>
-                        <option value="id">ID Only</option>
-                        <option value="phone">Phone Only</option>
-                        <option value="email">Email Only</option>
+                        <option value="all">{t('all_fields')}</option>
+                        <option value="name">{t('name_only')}</option>
+                        <option value="id">{t('id_only')}</option>
+                        <option value="phone">{t('phone_only')}</option>
+                        <option value="email">{t('email_only')}</option>
                      </select>
                   </div>
                   
                   {/* Search bar */}
                   <div className="relative flex-1 min-w-[200px]">
                      <label className={`block text-sm font-medium mb-1 ${darkMode ? "text-gray-300" : "text-gray-700"}`}>
-                        Search
+                        {t('search')}
                      </label>
                      <div className="relative">
                         <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
@@ -755,7 +768,13 @@ export default function Customers() {
                            type="text"
                            value={searchTerm}
                            onChange={(e) => handleSearch(e.target.value)}
-                           placeholder={`Search by ${searchField === 'all' ? 'name, ID, email or phone' : searchField}...`}
+                           placeholder={
+                              searchField === 'all' ? t('search_by_all') :
+                              searchField === 'name' ? t('search_by_name') :
+                              searchField === 'id' ? t('search_by_id') :
+                              searchField === 'phone' ? t('search_by_phone') :
+                              t('search_by_email')
+                           }
                            className={`w-full pl-10 pr-3 py-2 rounded-lg border ${
                               darkMode 
                                  ? "bg-gray-800/50 border-gray-700 text-white placeholder-gray-400"
@@ -768,7 +787,7 @@ export default function Customers() {
                   {/* Filters button */}
                   <div>
                      <label className={`block text-sm font-medium mb-1 ${darkMode ? "text-gray-300" : "text-gray-700"}`}>
-                        Filters
+                        {t('filters')}
                      </label>
                      <button
                         onClick={() => setShowAdvancedFilters(!showAdvancedFilters)}
@@ -779,7 +798,7 @@ export default function Customers() {
                         } ${showAdvancedFilters ? (darkMode ? "bg-gray-700" : "bg-gray-100") : ""}`}
                      >
                         <FunnelIcon className="h-5 w-5 mr-2" />
-                        Filter
+                        {t('filter')}
                         {activeFilter && <span className="ml-1 w-2 h-2 bg-purple-500 rounded-full"></span>}
                      </button>
                   </div>
@@ -790,7 +809,7 @@ export default function Customers() {
                   {/* Sort dropdown */}
                   <div className="relative w-48">
                      <label className={`block text-sm font-medium mb-1 ${darkMode ? "text-gray-300" : "text-gray-700"}`}>
-                        Sort by
+                        {t('sort_by')}
                      </label>
                      <div className="relative">
                         <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
@@ -810,12 +829,12 @@ export default function Customers() {
                               backgroundPosition: "right 0.5rem center"
                            }}
                         >
-                           <option value="name-asc">Name (A-Z)</option>
-                           <option value="name-desc">Name (Z-A)</option>
-                           <option value="id-asc">ID (Low-High)</option>
-                           <option value="id-desc">ID (High-Low)</option>
-                           <option value="date-asc">Oldest First</option>
-                           <option value="date-desc">Newest First</option>
+                           <option value="name-asc">{t('name_asc')}</option>
+                           <option value="name-desc">{t('name_desc')}</option>
+                           <option value="id-asc">{t('id_asc')}</option>
+                           <option value="id-desc">{t('id_desc')}</option>
+                           <option value="date-asc">{t('oldest_first')}</option>
+                           <option value="date-desc">{t('newest_first')}</option>
                         </select>
                      </div>
                   </div>
@@ -836,7 +855,7 @@ export default function Customers() {
                         <ArrowPathIcon
                            className={`h-5 w-5 mr-2 ${loading ? "animate-spin" : ""}`} 
                         />
-                        {loading ? "Loading..." : "Refresh"}
+                        {loading ? t('loading_data') : t('refresh')}
                      </button>
                      <Link
                         href="/dashboard/customers/add"
@@ -847,7 +866,7 @@ export default function Customers() {
                         }`}
                      >
                         <UserPlusIcon className="h-5 w-5 mr-2" />
-                        Add Customer
+                        {t('add_customer')}
                      </Link>
                   </div>
                </div>
@@ -869,7 +888,7 @@ export default function Customers() {
                               : (darkMode ? "bg-gray-800 text-gray-300 hover:bg-gray-700" : "bg-gray-100 text-gray-700 hover:bg-gray-200")
                         }`}
                      >
-                        Has Previous Visit
+                        {t('has_previous_visit')}
                      </button>
                      <button 
                         onClick={() => applyFilter("never-visited")}
@@ -879,7 +898,7 @@ export default function Customers() {
                               : (darkMode ? "bg-gray-800 text-gray-300 hover:bg-gray-700" : "bg-gray-100 text-gray-700 hover:bg-gray-200")
                         }`}
                      >
-                        Never Visited
+                        {t('never_visited')}
                      </button>
                      
                      {(activeFilter || searchTerm) && (
@@ -891,7 +910,7 @@ export default function Customers() {
                                  : "bg-red-100 text-red-600 hover:bg-red-200"
                            }`}
                         >
-                           Clear All Filters
+                           {t('clear_all_filters')}
                         </button>
                      )}
                   </div>
@@ -914,7 +933,7 @@ export default function Customers() {
                   {searchTerm || activeFilter ? (
                         <div className="text-center py-8">
                      <p className={`text-lg ${darkMode ? "text-gray-400" : "text-gray-600"}`}>
-                        No customers match your search criteria.
+                        {t('no_customers_match')}
                      </p>
                      <button 
                         onClick={clearAllFilters}
@@ -925,13 +944,13 @@ export default function Customers() {
                         }`}
                      >
                         <XCircleIcon className="h-5 w-5 mr-2" />
-                        Clear Filters
+                        {t('clear_filters')}
                      </button>
                         </div>
                   ) : (
                         <div className="text-center py-12">
                            <p className={`text-lg mb-4 ${darkMode ? "text-gray-400" : "text-gray-600"}`}>
-                           No customers found. Add your first customer to get started.
+                           {t('no_customers_found')}
                         </p>
                         <Link
                            href="/dashboard/customers/add"
@@ -942,7 +961,7 @@ export default function Customers() {
                            }`}
                         >
                            <UserPlusIcon className="h-5 w-5 mr-2" />
-                           Add Your First Customer
+                           {t('add_your_first_customer')}
                         </Link>
                      </div>
                   )}
@@ -962,7 +981,7 @@ export default function Customers() {
                            }`}
                         >
                            <XCircleIcon className="h-4 w-4 mr-1" />
-                           Clear all
+                           {t('clear_all')}
                         </button>
                      )}
                   </div>
@@ -989,111 +1008,93 @@ export default function Customers() {
                                     <h3 className={`text-lg font-medium ${darkMode ? "text-white" : "text-gray-800"}`}>
                                        {customer.firstName} {customer.lastName}
                                     </h3>
-                                    <span className={`text-xs px-2 py-0.5 rounded-full ${darkMode ? "bg-purple-900/50 text-purple-300 border border-purple-700/50" : "bg-purple-100 text-purple-700 border border-purple-200"}`}>
-                                       ID: {customer._id}
-                                    </span>
-                                 </div>
-                                 {customer.phone && (
-                                    <div className="flex items-center">
-                                       <PhoneIcon 
-                                          className={`h-4 w-4 mr-1 ${darkMode ? "text-gray-400" : "text-gray-600"}`}
-                                       />
-                                       <span className={`text-sm ${darkMode ? "text-gray-400" : "text-gray-600"}`}>
-                                          {customer.phone}
-                                       </span>
+                                    <div className={`text-xs px-1.5 py-0.5 rounded-full ${darkMode ? "bg-gray-800" : "bg-gray-200"}`}>
+                                          ID: {customer._id}
                                     </div>
-                                 )}
+                                 </div>
+                                 
+                                 <div className={`text-sm ${darkMode ? "text-gray-400" : "text-gray-500"}`}>
+                                    <div className="flex items-center mt-1 gap-1">
+                                       <PhoneIcon className="h-3.5 w-3.5" />
+                                       <span>{customer.phone}</span>
+                                    </div>
+                                 </div>
+                                 <div className={`text-sm ${darkMode ? "text-gray-400" : "text-gray-500"}`}>
+                                    <div className="flex items-center mt-1 gap-1">
+                                       <span>@</span>
+                                       <span>{customer.email || 'N/A'}</span>
+                                    </div>
+                                 </div>
                               </div>
                            </div>
                            
-                           <div className={`py-3 border-t ${darkMode ? "border-gray-700" : "border-gray-200"}`}>
-                              <div className="grid grid-cols-2 gap-4">
-                                 <div>
-                                    <p className={`text-xs font-medium ${darkMode ? "text-gray-400" : "text-gray-600"}`}>
-                                       Email
-                                    </p>
-                                    <p className={`text-sm ${darkMode ? "text-white" : "text-gray-800"} truncate`}>
-                                       {customer.email || "N/A"}
-                                    </p>
-                                 </div>
-                                 <div>
-                                    <div className="flex items-center justify-between">
-                                       <p className={`text-xs font-medium ${darkMode ? "text-gray-400" : "text-gray-600"}`}>
-                                          Appointments
-                                       </p>
-                                       <div className="flex items-center gap-1">
-                                          <button
-                                             onClick={(e) => {
-                                                e.stopPropagation(); 
-                                                e.preventDefault();
-                                                refreshCustomerVisitCount(customer._id);
-                                             }}
-                                             className={`p-1 rounded-full ${
-                                                darkMode 
-                                                   ? "bg-gray-800 text-gray-300 hover:bg-gray-700" 
-                                                   : "bg-gray-100 text-gray-600 hover:bg-gray-200"
-                                             }`}
-                                             title="Refresh appointment count"
-                                          >
-                                             <ArrowPathIcon className="h-3.5 w-3.5" />
-                                          </button>
-                                          <button
-                                             onClick={(e) => {
-                                                e.stopPropagation(); 
-                                                e.preventDefault();
-                                                verifyAppointmentLinks(); // Add verification on click
-                                                openAppointmentHistory(
-                                                   customer._id, 
-                                                   `${customer.firstName} ${customer.lastName}`
-                                                );
-                                             }}
-                                             className={`p-1 rounded-full ${
-                                                darkMode 
-                                                   ? "bg-gray-800 text-gray-300 hover:bg-gray-700" 
-                                                   : "bg-gray-100 text-gray-600 hover:bg-gray-200"
-                                             }`}
-                                             title="View appointment history"
-                                          >
-                                             <CalendarIcon className="h-3.5 w-3.5" />
-                                          </button>
-                                       </div>
-                                    </div>
-                                    <p className={`text-sm flex items-center ${darkMode ? "text-white" : "text-gray-800"}`}>
-                                       <span className={`mr-1 ${customerVisitCounts[customer._id] ? 'text-green-500' : ''}`}>
-                                          {customerVisitCounts[customer._id] || 0}
-                                       </span> 
-                                       <span className={customerVisitCounts[customer._id] ? '' : (darkMode ? 'text-gray-500' : 'text-gray-500')}>
-                                          {customerVisitCounts[customer._id] === 1 ? 'appointment' : 'appointments'}
-                                       </span>
-                                    </p>
-                                 </div>
+                           <div className="mt-2 pt-2 border-t flex items-start justify-between">
+                              <div>
+                                 <p className={`text-xs flex items-center gap-1 ${darkMode ? "text-gray-500" : "text-gray-400"}`}>
+                                    <CalendarIcon className="h-3.5 w-3.5" /> 
+                                     <span className={customerVisitCounts[customer._id] === 0 ? (darkMode ? 'text-gray-400' : 'text-gray-500') : (darkMode ? 'text-white' : 'text-gray-800')}>
+                                       {customerVisitCounts[customer._id] || '0'}
+                                    </span> 
+                                    <span className={customerVisitCounts[customer._id] ? '' : (darkMode ? 'text-gray-500' : 'text-gray-500')}>
+                                      {customerVisitCounts[customer._id] === 1 ? t('appointment') : t('appointments')}
+                                    </span>
+                                 </p>
+                              </div>
+                              
+                              <div className="flex gap-1">
+                                 <button
+                                    onClick={() => refreshCustomerVisitCount(customer._id)}
+                                    className={`p-1.5 rounded transition ${
+                                          darkMode 
+                                             ? "text-gray-400 hover:bg-gray-800" 
+                                             : "text-gray-500 hover:bg-gray-100"
+                                       }`}
+                                    title={t('refreshed_appointment_count')}
+                                 >
+                                    <ArrowPathIcon className="h-3.5 w-3.5" />
+                                 </button>
+                                 
+                                 <button
+                                    onClick={() => openAppointmentHistory(customer._id, `${customer.firstName} ${customer.lastName}`)}
+                                    className={`p-1.5 rounded transition ${
+                                          darkMode 
+                                             ? "text-gray-400 hover:bg-gray-800" 
+                                             : "text-gray-500 hover:bg-gray-100"
+                                       }`}
+                                    title={t('appointment_history')}
+                                 >
+                                    <CalendarIcon className="h-3.5 w-3.5" />
+                                 </button>
                               </div>
                            </div>
-
-                           <div className="flex justify-end space-x-2 mt-4">
-                              <button
-                                 onClick={() => handleEditCustomer(customer._id)}
-                                 className={`inline-flex items-center p-2 rounded-lg transition ${
-                                    darkMode
-                                       ? "bg-gray-800 text-gray-200 hover:bg-gray-700"
-                                       : "bg-gray-100 text-gray-700 hover:bg-gray-200"
-                                 }`}
-                              >
-                                 <PencilIcon className="h-5 w-5" />
-                              </button>
+                              
+                           <div className="flex items-center justify-between mt-3 pt-3 border-t flex-wrap gap-2">
+                              {/* Delete button */}
                               <button
                                  onClick={() => handleDeleteCustomer(customer._id)}
-                                 className={`inline-flex items-center p-2 rounded-lg transition ${
-                                    darkMode
-                                       ? "bg-red-900/30 text-red-300 hover:bg-red-900/50"
-                                       : "bg-red-100 text-red-600 hover:bg-red-200"
-                                 }`}
+                                 className={`p-2 rounded-lg ${
+                                    darkMode 
+                                       ? "text-red-400 hover:bg-red-900/30" 
+                                       : "text-red-500 hover:bg-red-50"
+                                 } transition-colors`}
                               >
                                  <TrashIcon className="h-5 w-5" />
                               </button>
+                              
+                              {/* Edit button */}
+                              <button
+                                 onClick={() => handleEditCustomer(customer._id)}
+                                 className={`p-2 rounded-lg ${
+                                    darkMode 
+                                       ? "text-blue-400 hover:bg-blue-900/30" 
+                                       : "text-blue-500 hover:bg-blue-50"
+                                 } transition-colors`}
+                              >
+                                 <PencilIcon className="h-5 w-5" />
+                              </button>
                            </div>
-                        </div>
-                     ))}
+                     </div>
+                  ))}
                   </div>
                </>
             )}

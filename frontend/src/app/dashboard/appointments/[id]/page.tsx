@@ -17,7 +17,7 @@ import { fetchCustomers } from "@/services/customerService";
 import { fetchServices } from "@/services/serviceService";
 import type { Customer } from "@/types/customer";
 import type { Service } from "@/types/service";
-import type { Appointment, AppointmentStatus } from "@/types/appointment";
+import type { Appointment, AppointmentStatus, AppointmentData } from "@/types/appointment";
 
 // Define the response type that includes populated fields
 interface AppointmentResponse
@@ -45,10 +45,19 @@ export default function EditAppointment() {
    const {
       register,
       handleSubmit,
-      setValue,
       watch,
-      formState: { errors },
-   } = useForm<FormData>();
+      setValue,
+      formState: { errors }
+   } = useForm<FormData>({
+      defaultValues: {
+         customer: '',
+         service: '',
+         date: '',
+         time: '',
+         notes: '',
+         status: 'Pending'
+      }
+   });
 
    const [loading, setLoading] = useState(false);
    const [customers, setCustomers] = useState<Customer[]>([]);
@@ -120,15 +129,13 @@ export default function EditAppointment() {
       loadData();
    }, [appointmentId, setValue]);
 
-   const onSubmit = async (data: FormData) => {
-      try {
-         setLoading(true);
+   const onSubmit = handleSubmit(async (data: FormData) => {
+      setLoading(true);
 
+      try {
          // Find selected service and customer
-         const selectedService = services.find((s) => s._id === data.service);
-         const selectedCustomer = customers.find(
-            (c) => c._id === data.customer
-         );
+         const selectedService = services.find(s => s._id === data.service);
+         const selectedCustomer = customers.find(c => c._id === data.customer);
 
          if (!selectedService || !selectedCustomer) {
             toast.error("Invalid service or customer selection");
@@ -137,31 +144,39 @@ export default function EditAppointment() {
 
          const appointmentDate = new Date(`${data.date}T${data.time}`);
 
-         const appointmentData = {
-            ...data,
+         const appointmentData: AppointmentData = {
+            customer: data.customer,
+            service: data.service,
             date: appointmentDate.toISOString(),
+            time: data.time,
+            duration: selectedService.duration || "30",
+            notes: data.notes,
+            status: data.status as AppointmentStatus,
             customerInfo: {
                name: `${selectedCustomer.firstName} ${selectedCustomer.lastName}`,
                firstName: selectedCustomer.firstName,
-               lastName: selectedCustomer.lastName,
+               lastName: selectedCustomer.lastName
             },
             serviceInfo: {
-               name: selectedService.name,
-               price: selectedService.price,
-               duration: selectedService.duration,
-            },
+               name: selectedService.name || '',
+               price: selectedService.price || 0,
+               duration: selectedService.duration || ''
+            }
          };
 
-         await updateAppointment(appointmentId, appointmentData);
+         // Use the updateAppointment function from appointmentService
+         const updatedAppointment = await updateAppointment(appointmentId, appointmentData);
+         console.log("Appointment updated successfully:", updatedAppointment);
+
          toast.success("Appointment updated successfully");
          router.push("/dashboard/appointments");
       } catch (error) {
-         toast.error("Error updating appointment");
          console.error("Error updating appointment:", error);
+         toast.error("Failed to update appointment");
       } finally {
          setLoading(false);
       }
-   };
+   });
 
    if (loading) {
       return (
@@ -191,7 +206,7 @@ export default function EditAppointment() {
             </h1>
          </div>
 
-            <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
+            <form onSubmit={onSubmit} className="space-y-6">
                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div>
                   <label className={`block text-sm font-medium ${darkMode ? 'text-gray-300' : 'text-gray-700'} mb-1`}>

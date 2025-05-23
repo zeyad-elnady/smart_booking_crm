@@ -6,6 +6,10 @@
    --foreground-rgb: 0, 0, 0;
    --background-start-rgb: 214, 219, 220;
    --background-end-rgb: 255, 255, 255;
+   --primary-color: #2563eb;
+   --secondary-color: #1e40af;
+   --background-color: #f3f4f6;
+   --text-color: #1f2937;
 }
 
 @media (prefers-color-scheme: dark) {
@@ -27,7 +31,7 @@
 }
 
 body {
-   color: rgb(var(--foreground-rgb));
+   color: var(--text-color);
    background: linear-gradient(
          to bottom,
          transparent,
@@ -37,6 +41,7 @@ body {
    font-family: Arial, Helvetica, sans-serif;
    overflow-x: hidden;
    will-change: scroll-position;
+   background-color: var(--background-color);
 }
 
 /* BEGINNING OF ADDED CSS RULES */
@@ -960,4 +965,60 @@ select option {
 /* Add this at the end of your CSS file */
 .suppress-hydration-warning * {
   suppress-hydration-warning: 1;
+}
+
+html[lang="ar"] {
+  direction: rtl;
+}
+
+html[lang="en"] {
+  direction: ltr;
+}
+
+/* RTL specific styles */
+html[lang="ar"] .rtl-flip {
+  transform: scaleX(-1);
+}
+
+/* Common components */
+.btn {
+  @apply px-4 py-2 rounded-md font-medium transition-colors;
+}
+
+.btn-primary {
+  @apply bg-blue-600 text-white hover:bg-blue-700;
+}
+
+.btn-secondary {
+  @apply bg-gray-200 text-gray-800 hover:bg-gray-300;
+}
+
+/* Layout */
+.container {
+  @apply max-w-7xl mx-auto px-4 sm:px-6 lg:px-8;
+}
+
+/* Header */
+.header {
+  @apply bg-white shadow-sm;
+}
+
+/* Navigation */
+.nav-link {
+  @apply px-3 py-2 rounded-md text-sm font-medium hover:bg-gray-100;
+}
+
+/* Card */
+.card {
+  @apply bg-white rounded-lg shadow-md p-6;
+}
+
+/* Form elements */
+.input {
+  @apply w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500;
+}
+
+/* Language switcher */
+.lang-switch {
+  @apply flex items-center gap-2 px-3 py-2 rounded-md hover:bg-gray-100 cursor-pointer;
 }

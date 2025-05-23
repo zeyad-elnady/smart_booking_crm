@@ -5,6 +5,7 @@ import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { authAPI } from '@/services/api'
 import { useTheme } from '@/components/ThemeProvider'
+import { LanguageProvider } from '@/context/LanguageContext'
 
 // Background shapes component
 const BackgroundShapes = () => {
@@ -79,13 +80,15 @@ export default function DashboardLayout({
 
   return (
     <div className={`min-h-screen ${darkMode ? 'bg-gradient-to-b from-[#111827] to-[#0f172a] text-white' : 'bg-gradient-to-b from-[#f1f5f9] to-[#e2e8f0] text-gray-800'}`} suppressHydrationWarning={true}>
-      {mounted && <BackgroundShapes />}
-      {mounted && <Navigation />}
-      <main className="pt-24 pb-10 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto" suppressHydrationWarning={true}>
-        <div className={`w-full p-6 sm:p-8 rounded-2xl shadow-xl ${darkMode ? 'glass-dark border border-white/5' : 'glass-light border border-black/5'}`} suppressHydrationWarning={true}>
-          {children}
-        </div>
-      </main>
+      <LanguageProvider>
+        {mounted && <BackgroundShapes />}
+        {mounted && <Navigation />}
+        <main className="pt-24 pb-10 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto" suppressHydrationWarning={true}>
+          <div className={`w-full p-6 sm:p-8 rounded-2xl shadow-xl ${darkMode ? 'glass-dark border border-white/5' : 'glass-light border border-black/5'}`} suppressHydrationWarning={true}>
+            {children}
+          </div>
+        </main>
+      </LanguageProvider>
     </div>
   )
 } 

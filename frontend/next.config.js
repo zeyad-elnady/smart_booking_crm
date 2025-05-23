@@ -7,7 +7,7 @@ const nextConfig = {
       },
    },
    // Disable React strict mode during development
-   reactStrictMode: false,
+   reactStrictMode: true,
    // Compiler options
    compiler: {
       // Add any compiler options here if needed
@@ -25,7 +25,36 @@ const nextConfig = {
    images: {
       minimumCacheTTL: 60,
       formats: ['image/webp'],
-   }
+      domains: ['localhost'],
+      unoptimized: process.env.NODE_ENV === 'development'
+   },
+   swcMinify: true,
+   output: 'standalone',
+   poweredByHeader: false,
+   compress: true,
+   env: {
+      NEXT_PUBLIC_API_URL: process.env.NEXT_PUBLIC_API_URL || 'http://localhost:9876',
+   },
+   webpack: (config, { isServer }) => {
+      if (!isServer) {
+         config.resolve.fallback = {
+            ...config.resolve.fallback,
+            fs: false,
+            net: false,
+            tls: false,
+            crypto: require.resolve('crypto-browserify'),
+            stream: require.resolve('stream-browserify'),
+            url: require.resolve('url'),
+            zlib: require.resolve('browserify-zlib'),
+            http: require.resolve('stream-http'),
+            https: require.resolve('https-browserify'),
+            assert: require.resolve('assert'),
+            os: require.resolve('os-browserify'),
+            path: require.resolve('path-browserify'),
+         };
+      }
+      return config;
+   },
 };
 
 module.exports = nextConfig;

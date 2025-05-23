@@ -15,22 +15,22 @@ const getApiHost = () => {
       return process.env.NEXT_PUBLIC_API_HOST;
    }
 
-   // Use the same hostname as the browser, but with port 5000
+   // Use the same hostname as the browser, but with port 12345
    if (typeof window !== "undefined") {
       // For development on localhost, use explicit localhost
       if (
          window.location.hostname === "localhost" ||
          window.location.hostname === "127.0.0.1"
       ) {
-         return "localhost:5000";
+         return "localhost:12345";
       }
 
-      // For any other hostname, use that with port 5000
-      return `${window.location.hostname}:5000`;
+      // For any other hostname, use that with port 12345
+      return `${window.location.hostname}:12345`;
    }
 
    // Fallback for server-side rendering
-   return "localhost:5000";
+   return "localhost:12345";
 };
 
 // Initialize local demo data
@@ -125,7 +125,7 @@ const pingAPI = async () => {
 
       // If dynamic host fails, try explicit localhost
       try {
-         const localhostUrl = "http://localhost:5000";
+         const localhostUrl = "http://localhost:12345";
          console.log("Trying localhost fallback:", localhostUrl);
 
          const localhostResponse = await fetch(localhostUrl, {
@@ -146,7 +146,7 @@ const pingAPI = async () => {
 
       // If everything fails, try IP address 127.0.0.1
       try {
-         const loopbackUrl = "http://127.0.0.1:5000";
+         const loopbackUrl = "http://127.0.0.1:12345";
          console.log("Trying IP fallback:", loopbackUrl);
 
          const ipResponse = await fetch(loopbackUrl, {
@@ -167,12 +167,12 @@ const pingAPI = async () => {
 
       // If we get here, all attempts failed
       console.error("All API connection attempts failed");
-      console.log("Please ensure the backend server is running on port 5000");
+      console.log("Please ensure the backend server is running on port 12345");
    } catch (error: unknown) {
       if (error instanceof Error) {
          console.error("API server connection FAILED:", error.message);
       }
-      console.log("Please ensure the backend server is running on port 5000");
+      console.log("Please ensure the backend server is running on port 12345");
    }
 };
 
