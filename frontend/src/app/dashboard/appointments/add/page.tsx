@@ -6,15 +6,17 @@ import { ArrowLeft, Calendar, Clock, Users, Bookmark, ClipboardList, UserPlus, X
 import { toast } from "react-hot-toast";
 import { fetchCustomers } from "@/services/customerService";
 import { fetchServices } from "@/services/serviceService";
-import { createAppointment } from "@/services/appointmentService";
+import { createAppointment, fetchAppointments } from "@/services/appointmentService";
 import { createCustomer } from "@/services/customerService";
 import { useTheme } from "@/components/ThemeProvider";
 import { appointmentAPI } from "@/services/api";
-import { AppointmentData, AppointmentStatus } from "@/types/appointment";
+import { AppointmentData, AppointmentStatus, Appointment } from "@/types/appointment";
 import DateTimeSelector from "@/components/DateTimeSelector";
-import { businessSettings, serviceAvailability } from "@/config/settings";
+import { getBusinessSettings, BusinessSettings } from "@/services/businessSettingsService";
 import type { Customer } from "@/types/customer";
 import type { Service } from "@/types/service";
+import { useLanguage } from "@/context/LanguageContext";
+import { format24To12 } from "@/utils/timeUtils";
 
 // Add custom CSS for scrollbar visibility
 const globalStyles = `
@@ -75,6 +77,7 @@ export default function AddAppointment() {
    const [customers, setCustomers] = useState<Customer[]>([]);
    const [services, setServices] = useState<Service[]>([]);
    const [loading, setLoading] = useState(false);
+   const [error, setError] = useState<string | null>(null);
    const [formData, setFormData] = useState({
       customerId: "",
       serviceId: "",
@@ -92,7 +95,10 @@ export default function AddAppointment() {
       notes?: string;
    }>({});
    const { darkMode } = useTheme();
+   const { t } = useLanguage();
    const [mounted, setMounted] = useState(false);
+   const [existingAppointments, setExistingAppointments] = useState<Appointment[]>([]);
+   const [businessSettings, setBusinessSettings] = useState<BusinessSettings | null>(null);
    
    // Add state for customer search
    const [customerSearch, setCustomerSearch] = useState("");
@@ -154,15 +160,20 @@ export default function AddAppointment() {
       setMounted(true);
    }, []);
 
-   // Fetch customers and services on component mount
+   // Fetch customers, services, appointments, and business settings on component mount
    useEffect(() => {
       if (!mounted) return;
       
       const loadData = async () => {
          try {
-            const [customersData, servicesData] = await Promise.all([
+            setLoading(true);
+            setError(null);
+            
+            const [customersData, servicesData, appointmentsData, settingsData] = await Promise.all([
                fetchCustomers(),
                fetchServices(),
+               fetchAppointments(), // Fetch all appointments to check availability
+               getBusinessSettings(), // Fetch business settings
             ]);
 
             setCustomers(customersData);
@@ -173,14 +184,20 @@ export default function AddAppointment() {
                   price: Number(service.price),
                }))
             );
+            setExistingAppointments(appointmentsData);
+            setBusinessSettings(settingsData);
+            
          } catch (error) {
             console.error("Error loading data:", error);
-            toast.error("Failed to load data");
+            toast.error(t("error_loading_data") || "Failed to load data");
+            setError("Failed to load necessary data. Please try again.");
+         } finally {
+            setLoading(false);
          }
       };
 
       loadData();
-   }, [mounted]);
+   }, [mounted, t]);
 
    if (!mounted) return null;
 
@@ -291,7 +308,7 @@ export default function AddAppointment() {
          );
 
          if (!selectedService || !selectedCustomer) {
-            toast.error("Please select both a customer and a service");
+            toast.error(t("customer_required") + " " + t("service_required"));
             setLoading(false);
             return;
          }
@@ -318,13 +335,15 @@ export default function AddAppointment() {
             },
          };
 
+         console.log("Submitting appointment data:", appointmentData);
+         
          await createAppointment(appointmentData);
          
-         toast.success("Appointment created successfully");
+         toast.success(t("success"));
          router.push("/dashboard/appointments");
       } catch (error) {
          console.error("Error creating appointment:", error);
-         toast.error("Failed to create appointment");
+         toast.error(t("error") || "Failed to create appointment");
       } finally {
          setLoading(false);
       }
@@ -334,21 +353,21 @@ export default function AddAppointment() {
       const errors: any = {};
       
       if (!formData.customerId) {
-         errors.customerId = "Customer is required";
+         errors.customerId = t("customer_required") || "Customer is required";
       }
       
       if (!formData.serviceId) {
-         errors.serviceId = "Service is required";
+         errors.serviceId = t("service_required") || "Service is required";
       }
       
       if (!formData.date) {
-         errors.date = "Date is required";
+         errors.date = t("date_required") || "Date is required";
       } else if (!isValidDate) {
-         errors.date = "Cannot create appointments in the past";
+         errors.date = t("cannot_book_past") || "Cannot create appointments in the past";
       }
       
       if (!formData.time) {
-         errors.time = "Time is required";
+         errors.time = t("time_required") || "Time is required";
       } else {
          // If the date is today, check if the time is in the past
          const today = new Date();
@@ -368,9 +387,35 @@ export default function AddAppointment() {
             const selectedTimeInMinutes = (hours * 60) + minutes;
             const currentTimeInMinutes = (currentHours * 60) + currentMinutes;
             
-            // Add a 15-minute buffer
-            if (selectedTimeInMinutes <= currentTimeInMinutes + 15) {
-               errors.time = "Cannot book appointments in the past or within the next 15 minutes";
+            // Add buffer time from business settings (default to 15 minutes if not available)
+            const bufferMinutes = businessSettings?.appointmentBuffer || 15;
+            if (selectedTimeInMinutes <= currentTimeInMinutes + bufferMinutes) {
+               errors.time = t("cannot_book_too_soon") || `Cannot book appointments in the past or within the next ${bufferMinutes} minutes`;
+            }
+         }
+         
+         // Check if this time slot is already booked
+         const conflictingAppointment = existingAppointments.find(appointment => 
+            appointment.date === formData.date && 
+            appointment.time === formData.time
+         );
+         
+         if (conflictingAppointment) {
+            errors.time = t("time_slot_already_booked") || "This time slot is already booked";
+         }
+         
+         // Check if the selected day is a day off
+         if (businessSettings && formData.date) {
+            const selectedDate = new Date(formData.date);
+            const dayOfWeek = selectedDate.getDay(); // 0 = Sunday, 1 = Monday, etc.
+            
+            // Map day number to day name
+            const dayNames = ["sunday", "monday", "tuesday", "wednesday", "thursday", "friday", "saturday"];
+            const dayName = dayNames[dayOfWeek];
+            
+            const dayConfig = businessSettings.daysOpen[dayName as keyof typeof businessSettings.daysOpen];
+            if (!dayConfig?.open) {
+               errors.date = t("day_off_selection") || "This day is not available for appointments";
             }
          }
       }
@@ -412,7 +457,7 @@ export default function AddAppointment() {
    // Add function to get selected customer name
    const getSelectedCustomerName = () => {
       const selected = customers.find(c => c._id === formData.customerId);
-      return selected ? `${selected.firstName} ${selected.lastName}` : "Select a customer";
+      return selected ? `${selected.firstName} ${selected.lastName}` : t("select_a_customer") || "Select a customer";
    };
 
    return (
@@ -432,13 +477,13 @@ export default function AddAppointment() {
                   className="flex items-center text-gray-300 hover:text-white mb-4 transition-colors"
                >
                   <ArrowLeft className="h-4 w-4 mr-2" />
-                  <span>Back to appointments</span>
+                  <span>{t("back_to_appointments") || "Back to appointments"}</span>
                </button>
 
                {/* Form container taking full width */}
                <div className="form-container bg-gray-900/60 backdrop-blur-md rounded-2xl p-6 md:p-8 border border-white/10 shadow-2xl w-full">
                   <h1 className="text-3xl font-bold mb-8 bg-gradient-to-r from-indigo-400 via-purple-400 to-pink-400 bg-clip-text text-transparent">
-                     New Appointment
+                     {t("newAppointment") || "New Appointment"}
                   </h1>
 
                   <form onSubmit={handleSubmit} className="space-y-8 w-full">
@@ -448,7 +493,7 @@ export default function AddAppointment() {
                               htmlFor="customerId"
                               className={`block mb-2 text-sm font-medium ${darkMode ? "text-gray-300" : "text-gray-700"}`}
                            >
-                              Customer <span className="text-red-500">*</span>
+                              {t("customer")} <span className="text-red-500">*</span>
                            </label>
                            <div className="flex gap-2">
                               <div className="relative flex-grow">
@@ -491,7 +536,7 @@ export default function AddAppointment() {
                                                 </svg>
                                                 <input
                                                    type="text"
-                                                   placeholder="Search customers..."
+                                                   placeholder={t("search_customers") || "Search customers..."}
                                                    className={`w-full pl-10 pr-4 py-2 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all duration-200 ${
                                                       darkMode 
                                                          ? "bg-gray-800 border-gray-700 text-white placeholder-gray-400" 
@@ -505,25 +550,25 @@ export default function AddAppointment() {
                                              
                                              <div className="flex flex-wrap gap-2 mt-3">
                                                 <FilterButton 
-                                                   label="All" 
+                                                   label={t("all")} 
                                                    active={searchFilter === 'all'} 
                                                    onClick={() => setSearchFilter('all')} 
                                                    darkMode={darkMode} 
                                                 />
                                                 <FilterButton 
-                                                   label="ID" 
+                                                   label={t("id")} 
                                                    active={searchFilter === 'id'} 
                                                    onClick={() => setSearchFilter('id')} 
                                                    darkMode={darkMode} 
                                                 />
                                                 <FilterButton 
-                                                   label="Name" 
+                                                   label={t("name")} 
                                                    active={searchFilter === 'name'} 
                                                    onClick={() => setSearchFilter('name')} 
                                                    darkMode={darkMode} 
                                                 />
                                                 <FilterButton 
-                                                   label="Phone" 
+                                                   label={t("phone")} 
                                                    active={searchFilter === 'phone'} 
                                                    onClick={() => setSearchFilter('phone')} 
                                                    darkMode={darkMode} 
@@ -563,8 +608,8 @@ export default function AddAppointment() {
                                                    >
                                                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                                                    </svg>
-                                                   <p>No customers found.</p>
-                                                   <p className="text-xs">Try a different search term or filter.</p>
+                                                   <p>{t("no_customers_found") || "No customers found."}</p>
+                                                   <p className="text-xs">{t("try_different_search") || "Try a different search term or filter."}</p>
                                                 </div>
                                              )}
                                           </div>
@@ -601,7 +646,7 @@ export default function AddAppointment() {
                               htmlFor="serviceId"
                               className={`block mb-2 text-sm font-medium ${darkMode ? "text-gray-300" : "text-gray-700"}`}
                            >
-                              Service <span className="text-red-500">*</span>
+                              {t("service")} <span className="text-red-500">*</span>
                            </label>
                            <div className="relative">
                               <Bookmark className="absolute left-3 top-2.5 w-5 h-5 text-gray-400" />
@@ -617,10 +662,10 @@ export default function AddAppointment() {
                                        : "bg-white border-gray-300 text-gray-700"
                                  }`}
                               >
-                                 <option value="">Select a service</option>
+                                 <option value="">{t("select_service") || "Select a service"}</option>
                                  {services.map((service) => (
                                     <option key={service._id} value={service._id}>
-                                       {service.name} (${service.price}) - {service.duration} min
+                                       {service.name} (${service.price}) - {service.duration} {t("min")}
                                     </option>
                                  ))}
                               </select>
@@ -635,11 +680,23 @@ export default function AddAppointment() {
                               htmlFor="dateTime"
                               className={`block mb-2 text-sm font-medium ${darkMode ? "text-gray-300" : "text-gray-700"}`}
                            >
-                              Date & Time <span className="text-red-500">*</span>
+                              {t("date") + " & " + t("time")} <span className="text-red-500">*</span>
                            </label>
-                           {formData.serviceId ? (
+                           {loading ? (
+                              <div className={`p-8 flex flex-col items-center justify-center border border-dashed rounded-lg ${
+                                 darkMode ? "border-gray-700 bg-gray-800/30" : "border-gray-300 bg-gray-100/50"
+                              }`}>
+                                 <div className="w-12 h-12 border-4 border-t-transparent border-purple-500 rounded-full animate-spin mb-4"></div>
+                                 <p className={darkMode ? "text-gray-400" : "text-gray-500"}>
+                                    {t("loading_business_settings")}
+                                 </p>
+                              </div>
+                           ) : formData.serviceId ? (
                               <DateTimeSelector
                                  selectedService={services.find(s => s._id === formData.serviceId) || null}
+                                 existingAppointments={existingAppointments}
+                                 selectedDate={formData.date}
+                                 selectedTime={formData.time}
                                  onSelect={(date, time) => {
                                     // Update the form data without submitting
                                     setFormData(prev => ({
@@ -664,7 +721,15 @@ export default function AddAppointment() {
                                     }
                                     
                                     // Update toast message to guide user to the next step
-                                    toast.success(`Time selected for ${new Date(date).toLocaleDateString()} at ${time}. Click "Create Appointment" to finalize booking.`);
+                                    const dateObj = new Date(date);
+                                    const dateOptions: Intl.DateTimeFormatOptions = { 
+                                       weekday: 'long', 
+                                       year: 'numeric', 
+                                       month: 'long', 
+                                       day: 'numeric'
+                                    };
+                                    const formattedDate = dateObj.toLocaleDateString(undefined, dateOptions);
+                                    toast.success(`${t("time_selected") || "Time selected"}: ${formattedDate} ${t("at")} ${format24To12(time)}`);
                                  }}
                               />
                            ) : (
@@ -673,7 +738,7 @@ export default function AddAppointment() {
                               }`}>
                                  <Calendar size={48} className={`mb-4 ${darkMode ? "text-gray-600" : "text-gray-400"}`} />
                                  <p className={`text-center ${darkMode ? "text-gray-400" : "text-gray-500"}`}>
-                                    Please select a service first to view available dates and times
+                                    {t("choose_service_first")}
                                  </p>
                               </div>
                            )}
@@ -690,7 +755,7 @@ export default function AddAppointment() {
                               htmlFor="status"
                               className={`block mb-2 text-sm font-medium ${darkMode ? "text-gray-300" : "text-gray-700"}`}
                            >
-                              Status <span className="text-red-500">*</span>
+                              {t("status")} <span className="text-red-500">*</span>
                            </label>
                            <select
                               id="status"
@@ -704,10 +769,10 @@ export default function AddAppointment() {
                                     : "bg-white border-gray-300 text-gray-700"
                               }`}
                            >
-                              <option value="Pending">Pending</option>
-                              <option value="Confirmed">Confirmed</option>
-                              <option value="Completed">Completed</option>
-                              <option value="Canceled">Canceled</option>
+                              <option value="Pending">{t("pending")}</option>
+                              <option value="Confirmed">{t("confirmed")}</option>
+                              <option value="Completed">{t("completed")}</option>
+                              <option value="Canceled">{t("canceled")}</option>
                            </select>
                         </div>
                      </div>
@@ -717,7 +782,7 @@ export default function AddAppointment() {
                            htmlFor="notes"
                            className={`block mb-2 text-sm font-medium ${darkMode ? "text-gray-300" : "text-gray-700"}`}
                         >
-                           Notes
+                           {t("notes")}
                         </label>
                         <div className="relative">
                            <ClipboardList className="absolute left-3 top-2.5 w-5 h-5 text-gray-400" />
@@ -743,14 +808,14 @@ export default function AddAppointment() {
                            onClick={() => router.push("/dashboard/appointments")}
                            className="px-6 py-2.5 bg-gray-800 text-gray-300 rounded-lg hover:bg-gray-700 transition"
                         >
-                           Cancel
+                           {t("cancel")}
                         </button>
                         <button
                            type="submit"
-                           disabled={loading || !formData.date || !formData.time || !formData.customerId || !formData.serviceId}
+                           disabled={loading}
                            className="px-6 py-2.5 bg-gradient-to-r from-purple-600 to-indigo-600 text-white rounded-lg hover:from-purple-700 hover:to-indigo-700 focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 focus:ring-offset-gray-900 transition disabled:opacity-70 disabled:cursor-not-allowed"
                         >
-                           {loading ? "Creating..." : "Create Appointment"}
+                           {loading ? t("creating") : t("create_appointment")}
                         </button>
                      </div>
                   </form>
@@ -763,7 +828,7 @@ export default function AddAppointment() {
                   <div className={`rounded-xl p-6 max-w-md w-full shadow-xl ${darkMode ? "bg-gray-900" : "bg-white"} max-h-[90vh] overflow-y-auto custom-scrollbar`}>
                      <div className="flex items-center justify-between mb-4">
                         <h2 className={`text-xl font-bold ${darkMode ? "text-white" : "text-gray-800"}`}>
-                           Add New Customer
+                           {t("add_new_customer")}
                         </h2>
                         <button
                            onClick={() => setShowNewCustomerModal(false)}
@@ -779,7 +844,7 @@ export default function AddAppointment() {
                               htmlFor="firstName"
                               className={`block mb-1 text-sm font-medium ${darkMode ? "text-gray-300" : "text-gray-700"}`}
                            >
-                              First Name <span className="text-red-500">*</span>
+                              {t("first_name")} <span className="text-red-500">*</span>
                            </label>
                            <input
                               type="text"
@@ -801,7 +866,7 @@ export default function AddAppointment() {
                               htmlFor="lastName"
                               className={`block mb-1 text-sm font-medium ${darkMode ? "text-gray-300" : "text-gray-700"}`}
                            >
-                              Last Name <span className="text-red-500">*</span>
+                              {t("last_name")} <span className="text-red-500">*</span>
                            </label>
                            <input
                               type="text"
@@ -823,7 +888,7 @@ export default function AddAppointment() {
                               htmlFor="email"
                               className={`block mb-1 text-sm font-medium ${darkMode ? "text-gray-300" : "text-gray-700"}`}
                            >
-                              Email
+                              {t("email")}
                            </label>
                            <input
                               type="email"
@@ -844,7 +909,7 @@ export default function AddAppointment() {
                               htmlFor="phone"
                               className={`block mb-1 text-sm font-medium ${darkMode ? "text-gray-300" : "text-gray-700"}`}
                            >
-                              Phone
+                              {t("phone")}
                            </label>
                            <div className="flex space-x-3">
                               <div className="w-1/3">
@@ -881,7 +946,7 @@ export default function AddAppointment() {
                                           ? "bg-gray-800/50 border-gray-700 text-white" 
                                           : "bg-white border-gray-300 text-gray-700"
                                     }`}
-                                    placeholder="Enter phone number"
+                                    placeholder={t("enter_phone_number")}
                                  />
                               </div>
                            </div>
@@ -892,7 +957,7 @@ export default function AddAppointment() {
                               htmlFor="address"
                               className={`block mb-1 text-sm font-medium ${darkMode ? "text-gray-300" : "text-gray-700"}`}
                            >
-                              Address (optional)
+                              {t("address_optional")}
                            </label>
                            <textarea
                               id="address"
@@ -914,7 +979,7 @@ export default function AddAppointment() {
                               htmlFor="customerNotes"
                               className={`block mb-1 text-sm font-medium ${darkMode ? "text-gray-300" : "text-gray-700"}`}
                            >
-                              Notes (optional)
+                              {t("notes_optional")}
                            </label>
                            <textarea
                               id="customerNotes"
@@ -927,7 +992,7 @@ export default function AddAppointment() {
                                     ? "bg-gray-800/50 border-gray-700 text-white" 
                                     : "bg-white border-gray-300 text-gray-700"
                               }`}
-                              placeholder="Any additional information about the customer..."
+                              placeholder={t("customer_additional_info")}
                            />
                         </div>
 
@@ -939,14 +1004,14 @@ export default function AddAppointment() {
                                  darkMode ? "bg-gray-800 text-gray-300" : "bg-gray-200 text-gray-700"
                               } hover:opacity-90`}
                            >
-                              Cancel
+                              {t("cancel")}
                            </button>
                            <button
                               type="submit"
                               disabled={customerLoading}
                               className="px-4 py-2 bg-gradient-to-r from-purple-600 to-indigo-600 text-white rounded-lg hover:from-purple-700 hover:to-indigo-700 focus:ring-2 focus:ring-purple-500 transition"
                            >
-                              {customerLoading ? "Creating..." : "Create Customer"}
+                              {customerLoading ? t("creating_customer") : t("create_customer")}
                            </button>
                         </div>
                      </form>

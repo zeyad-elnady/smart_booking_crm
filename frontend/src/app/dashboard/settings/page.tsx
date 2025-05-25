@@ -319,20 +319,86 @@ export default function Settings() {
   
   // Handle working hours change
   const handleWorkingHoursChange = async (field: string, value: string | boolean[]) => {
-    const updatedWorkingHours = {
-      ...workingHours,
-      [field]: value
-    };
-    
-    setWorkingHours(updatedWorkingHours);
-    
     try {
+      console.log(`Updating working hours: ${field} = ${value}`);
+      const updatedWorkingHours = {
+        ...workingHours,
+        [field]: value
+      };
+      
+      setWorkingHours(updatedWorkingHours);
+      
+      // Create a complete business hours settings object
+      const businessHoursSettings = JSON.parse(localStorage.getItem('businessHoursSettings') || '{}');
+      
+      // Ensure we have a properly structured object
+      const updatedBusinessHours = {
+        workingHours: {
+          ...businessHoursSettings.workingHours || {},
+          start: field === 'start' ? value : updatedWorkingHours.start,
+          end: field === 'end' ? value : updatedWorkingHours.end,
+          daysOff: field === 'daysOpen' 
+            ? (value as boolean[]).map((isOpen, index) => isOpen ? -1 : index).filter(i => i !== -1)
+            : businessHoursSettings.workingHours?.daysOff || []
+        },
+        daysOpen: {
+          monday: { 
+            open: field === 'daysOpen' ? (value as boolean[])[0] : updatedWorkingHours.daysOpen[0],
+            start: field === 'start' ? value : updatedWorkingHours.start, 
+            end: field === 'end' ? value : updatedWorkingHours.end 
+          },
+          tuesday: { 
+            open: field === 'daysOpen' ? (value as boolean[])[1] : updatedWorkingHours.daysOpen[1], 
+            start: field === 'start' ? value : updatedWorkingHours.start, 
+            end: field === 'end' ? value : updatedWorkingHours.end 
+          },
+          wednesday: { 
+            open: field === 'daysOpen' ? (value as boolean[])[2] : updatedWorkingHours.daysOpen[2], 
+            start: field === 'start' ? value : updatedWorkingHours.start, 
+            end: field === 'end' ? value : updatedWorkingHours.end 
+          },
+          thursday: { 
+            open: field === 'daysOpen' ? (value as boolean[])[3] : updatedWorkingHours.daysOpen[3], 
+            start: field === 'start' ? value : updatedWorkingHours.start, 
+            end: field === 'end' ? value : updatedWorkingHours.end 
+          },
+          friday: { 
+            open: field === 'daysOpen' ? (value as boolean[])[4] : updatedWorkingHours.daysOpen[4], 
+            start: field === 'start' ? value : updatedWorkingHours.start, 
+            end: field === 'end' ? value : updatedWorkingHours.end 
+          },
+          saturday: { 
+            open: field === 'daysOpen' ? (value as boolean[])[5] : updatedWorkingHours.daysOpen[5], 
+            start: field === 'start' ? value : updatedWorkingHours.start, 
+            end: field === 'end' ? value : updatedWorkingHours.end 
+          },
+          sunday: { 
+            open: field === 'daysOpen' ? (value as boolean[])[6] : updatedWorkingHours.daysOpen[6], 
+            start: field === 'start' ? value : updatedWorkingHours.start, 
+            end: field === 'end' ? value : updatedWorkingHours.end 
+          }
+        },
+        appointmentBuffer: businessHoursSettings.appointmentBuffer || 15
+      };
+      
+      // Save to localStorage
+      localStorage.setItem('businessHoursSettings', JSON.stringify(updatedBusinessHours));
+      console.log('Updated business hours saved to localStorage:', updatedBusinessHours);
+      
       // Save to IndexedDB
       const settings = await getSettings();
       await saveSettings({
         ...settings,
         workingHours: updatedWorkingHours
       });
+      
+      // Set flag to refresh appointments
+      localStorage.setItem('appointmentListShouldRefresh', 'true');
+      
+      // Dispatch event to notify other components
+      const event = new CustomEvent('businessHoursChanged', { detail: updatedBusinessHours });
+      window.dispatchEvent(event);
+      
       toast.success("Working hours updated");
     } catch (error) {
       console.error("Error saving working hours:", error);
@@ -349,6 +415,7 @@ export default function Settings() {
   
   // Handle service availability change
   const handleServiceAvailabilityChange = async (serviceId: string, field: string, value: any) => {
+    console.log(`Updating service availability: ${serviceId} - ${field} = ${value}`);
     const updatedAvailabilities = {
       ...serviceAvailabilities,
       [serviceId]: {
@@ -366,6 +433,42 @@ export default function Settings() {
         ...settings,
         serviceAvailabilities: updatedAvailabilities
       });
+      
+      // Update the service availabilities in businessHoursSettings for compatibility
+      const businessHoursSettings = JSON.parse(localStorage.getItem('businessHoursSettings') || '{}');
+      
+      // Create a complete businessHoursSettings object if needed
+      if (!businessHoursSettings.serviceAvailabilities) {
+        businessHoursSettings.serviceAvailabilities = {};
+      }
+      
+      // Update the specific service
+      businessHoursSettings.serviceAvailabilities[serviceId] = {
+        ...businessHoursSettings.serviceAvailabilities[serviceId],
+        [field]: value,
+        // Make sure we have all needed fields
+        allDay: field === 'allDay' ? value : 
+          businessHoursSettings.serviceAvailabilities[serviceId]?.allDay ?? 
+          updatedAvailabilities[serviceId].allDay,
+        start: field === 'start' ? value : 
+          businessHoursSettings.serviceAvailabilities[serviceId]?.start ?? 
+          updatedAvailabilities[serviceId].start,
+        end: field === 'end' ? value : 
+          businessHoursSettings.serviceAvailabilities[serviceId]?.end ?? 
+          updatedAvailabilities[serviceId].end
+      };
+      
+      // Save updated settings to localStorage
+      localStorage.setItem('businessHoursSettings', JSON.stringify(businessHoursSettings));
+      console.log('Updated service availability saved to localStorage:', businessHoursSettings.serviceAvailabilities);
+      
+      // Set flag to refresh appointments
+      localStorage.setItem('appointmentListShouldRefresh', 'true');
+      
+      // Dispatch event to notify other components
+      const event = new CustomEvent('businessHoursChanged', { detail: businessHoursSettings });
+      window.dispatchEvent(event);
+      
       toast.success("Service availability updated");
     } catch (error) {
       console.error("Error saving service availability:", error);

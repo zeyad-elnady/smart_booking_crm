@@ -16,6 +16,7 @@ import {
    SunIcon,
    MoonIcon,
    BanknotesIcon,
+   LanguageIcon,
 } from "@heroicons/react/24/outline";
 
 export default function Navigation() {
@@ -23,7 +24,8 @@ export default function Navigation() {
    const [mounted, setMounted] = useState(false);
    const pathname = usePathname();
    const { darkMode, toggleTheme } = useTheme();
-   const { t } = useLanguage();
+   const { t, language, toggleLanguage } = useLanguage();
+   const isRTL = language === 'ar';
 
    // Navigation links with icons for reusability - moved inside component to use t()
    const navigationLinks = [
@@ -137,19 +139,32 @@ export default function Navigation() {
                   </div>
                </div>
 
-               {/* Theme Toggle Button */}
-               <div className="hidden md:block">
+               {/* Desktop Theme and Language Toggle Buttons */}
+               <div className={`hidden md:flex md:items-center ${isRTL ? 'md:space-x-6 rtl:space-x-reverse' : 'md:space-x-3'}`}>
+                  {/* Language Toggle Button */}
+                  <button
+                     onClick={toggleLanguage}
+                     className="flex items-center justify-center px-3 py-1.5 rounded-lg bg-purple-600/20 border border-purple-500/30 transition-all duration-300 ease-in-out focus:outline-none"
+                     aria-label={t("toggle_language")}
+                  >
+                     <LanguageIcon className="h-5 w-5 mr-1.5 text-purple-400" />
+                     <span className="text-sm font-medium text-purple-300">
+                        {language === 'en' ? 'English' : 'العربية'}
+                     </span>
+                  </button>
+
+                  {/* Theme Toggle Button */}
                   <button
                      onClick={toggleTheme}
-                     className="relative w-14 h-7 rounded-full bg-purple-600/20 border border-purple-500/30 transition-all duration-300 ease-in-out focus:outline-none flex items-center justify-start overflow-hidden"
+                     className={`relative w-14 h-7 rounded-full bg-purple-600/20 border border-purple-500/30 transition-all duration-300 ease-in-out focus:outline-none flex items-center ${isRTL ? 'justify-end' : 'justify-start'} overflow-hidden`}
                      aria-label={t("toggle_theme")}
                   >
                      <div
                         className={`absolute h-6 w-6 rounded-full transition-all duration-500 ease-in-out transform ${
                            darkMode
-                              ? "translate-x-7 bg-purple-300 rotate-[360deg]"
-                              : "translate-x-1 bg-yellow-400 rotate-0"
-                        } flex items-center justify-center shadow-sm`}
+                              ? isRTL ? "translate-x-1 bg-purple-300" : "translate-x-7 bg-purple-300"
+                              : isRTL ? "translate-x-7 bg-yellow-400" : "translate-x-1 bg-yellow-400"
+                        } ${darkMode ? "rotate-[360deg]" : "rotate-0"} flex items-center justify-center shadow-sm`}
                      >
                         <div className="absolute inset-0 flex items-center justify-center transition-opacity duration-200">
                            {darkMode ? (
@@ -231,18 +246,31 @@ export default function Navigation() {
                      );
                   })}
 
+                  {/* Mobile Language Toggle Button */}
+                  <button
+                     onClick={toggleLanguage}
+                     className="relative w-full flex items-center px-3 py-2 rounded-md text-base font-medium"
+                  >
+                     <div className="flex items-center justify-center px-3 py-1.5 rounded-lg bg-purple-600/20 border border-purple-500/30 transition-all mr-3">
+                        <LanguageIcon className="h-5 w-5 mr-1.5 text-purple-400" />
+                     </div>
+                     <span className={darkMode ? "text-gray-300" : "text-gray-600"}>
+                        {language === 'en' ? 'Switch to Arabic' : 'تبديل إلى الإنجليزية'}
+                     </span>
+                  </button>
+
                   {/* Update Mobile Theme Toggle Button */}
                   <button
                      onClick={toggleTheme}
                      className="relative w-full flex items-center px-3 py-2 rounded-md text-base font-medium"
                   >
-                     <div className="relative w-14 h-7 rounded-full bg-purple-600/20 border border-purple-500/30 transition-all duration-300 ease-in-out focus:outline-none mr-3 flex items-center justify-start overflow-hidden">
+                     <div className={`relative w-14 h-7 rounded-full bg-purple-600/20 border border-purple-500/30 transition-all duration-300 ease-in-out focus:outline-none mr-3 flex items-center ${isRTL ? 'justify-end' : 'justify-start'} overflow-hidden`}>
                         <div
                            className={`absolute h-6 w-6 rounded-full transition-all duration-500 ease-in-out transform ${
                               darkMode
-                                 ? "translate-x-7 bg-purple-300 rotate-[360deg]"
-                                 : "translate-x-1 bg-yellow-400 rotate-0"
-                           } flex items-center justify-center shadow-sm`}
+                                 ? isRTL ? "translate-x-1 bg-purple-300" : "translate-x-7 bg-purple-300"
+                                 : isRTL ? "translate-x-7 bg-yellow-400" : "translate-x-1 bg-yellow-400"
+                           } ${darkMode ? "rotate-[360deg]" : "rotate-0"} flex items-center justify-center shadow-sm`}
                         >
                            <div className="absolute inset-0 flex items-center justify-center transition-opacity duration-200">
                               {darkMode ? (

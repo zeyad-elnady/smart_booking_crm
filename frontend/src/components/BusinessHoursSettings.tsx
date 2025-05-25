@@ -3,6 +3,7 @@ import { businessSettings, dayNumberToName } from '@/config/settings';
 import { useTheme } from '@/components/ThemeProvider';
 import { useLocalStorage } from '@/hooks/useLocalStorage';
 import { format24To12, format12To24 } from '@/utils/timeUtils';
+import { toast } from 'react-hot-toast';
 
 type DayName = 'monday' | 'tuesday' | 'wednesday' | 'thursday' | 'friday' | 'saturday' | 'sunday';
 
@@ -36,9 +37,15 @@ export default function BusinessHoursSettings() {
   // State for opening and closing times in 12-hour format
   const [openingTime12h, setOpeningTime12h] = useState(format24To12(settings.workingHours.start));
   const [closingTime12h, setClosingTime12h] = useState(format24To12(settings.workingHours.end));
+  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   
   // Update settings whenever form values change
   useEffect(() => {
+    // Mark that we have unsaved changes
+    setHasUnsavedChanges(true);
+  }, [daysOpen, openingTime12h, closingTime12h]);
+  
+  const saveSettings = () => {
     const updatedSettings = {...settings};
     
     // Update days open
@@ -62,7 +69,16 @@ export default function BusinessHoursSettings() {
     // Dispatch custom event to notify other components
     const event = new CustomEvent('businessHoursChanged', { detail: updatedSettings });
     window.dispatchEvent(event);
-  }, [daysOpen, openingTime12h, closingTime12h, setSettings]);
+    
+    // Set local storage flag to refresh calendars
+    localStorage.setItem('appointmentListShouldRefresh', 'true');
+
+    // Clear unsaved changes flag
+    setHasUnsavedChanges(false);
+    
+    // Show toast notification
+    toast.success('Business hours settings saved successfully');
+  };
   
   const handleDayToggle = (day: DayName) => {
     setDaysOpen(prev => ({
@@ -80,7 +96,11 @@ export default function BusinessHoursSettings() {
       <h2 className="text-2xl font-bold mb-6">Business Hours</h2>
       
       <div className="mb-8">
-        <h3 className="text-lg font-medium mb-4">Days Open</h3>
+        <h3 className="text-lg font-medium mb-2">Days Open</h3>
+        <p className={`text-sm ${darkMode ? 'text-gray-400' : 'text-gray-500'} mb-4`}>
+          Click on a day to toggle between open (colored) and closed (gray).
+          Closed days will be unavailable for bookings.
+        </p>
         <div className="flex flex-wrap gap-2">
           {(Object.keys(daysOpen) as DayName[]).map(day => (
             <button
@@ -93,6 +113,7 @@ export default function BusinessHoursSettings() {
                   : darkMode ? 'bg-gray-700 text-gray-400' : 'bg-gray-200 text-gray-500'
                 }
               `}
+              title={`${day.charAt(0).toUpperCase() + day.slice(1)} - ${daysOpen[day] ? 'Open' : 'Closed'}`}
             >
               {day.charAt(0).toUpperCase() + day.slice(1, 3)}
             </button>
@@ -162,6 +183,28 @@ export default function BusinessHoursSettings() {
             </span>
           </div>
         </div>
+      </div>
+      
+      {/* Save button */}
+      <div className="mt-6">
+        <button
+          onClick={saveSettings}
+          disabled={!hasUnsavedChanges}
+          className={`
+            py-2 px-6 rounded-lg text-white
+            ${hasUnsavedChanges 
+              ? 'bg-green-600 hover:bg-green-700' 
+              : 'bg-gray-400 cursor-not-allowed'}
+            transition-colors
+          `}
+        >
+          Save Changes
+        </button>
+        <p className={`mt-2 text-sm ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>
+          {hasUnsavedChanges 
+            ? 'Click save to apply your changes to the scheduling system' 
+            : 'All changes are saved'}
+        </p>
       </div>
       
       <div className="mt-8">

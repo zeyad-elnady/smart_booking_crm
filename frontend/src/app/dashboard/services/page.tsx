@@ -18,6 +18,7 @@ import { deleteService, fetchServices, clearAllServices, enableServicesFetching,
 import { useRouter } from "next/navigation";
 import { indexedDBService } from "@/services/indexedDB";
 import DeleteServiceDialog from "@/components/DeleteServiceDialog";
+import { useTranslation } from "react-i18next";
 
 export default function Services() {
    const router = useRouter();
@@ -29,6 +30,7 @@ export default function Services() {
    const [serviceToDelete, setServiceToDelete] = useState<string | null>(null);
    const [isDeleting, setIsDeleting] = useState(false);
    const [isUpdatingStatus, setIsUpdatingStatus] = useState<string | null>(null);
+   const { t } = useTranslation();
    
    // Initial setup - migrate any existing data
    useEffect(() => {
@@ -160,79 +162,79 @@ export default function Services() {
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-6">
                <div>
                   <h1 className={`text-3xl font-bold ${darkMode ? "text-white" : "text-gray-800"}`}>
-                  Services
-               </h1>
+                     {t('services.services')}
+                  </h1>
                   <p className={`mt-1 ${darkMode ? "text-gray-300" : "text-gray-600"}`}>
-                  A list of all services available in your business.
-               </p>
-            </div>
+                     {t('services.service_list')}
+                  </p>
+               </div>
                <div className="mt-4 sm:mt-0 flex flex-wrap gap-3">
-               <button
-                  onClick={handleRefresh}
-                  disabled={isLoading}
+                  <button
+                     onClick={handleRefresh}
+                     disabled={isLoading}
                      className={`inline-flex items-center px-4 py-2 text-sm font-medium rounded-lg transition ${
-                     darkMode
+                        darkMode
                            ? "bg-gray-800 text-gray-300 hover:bg-gray-700"
                            : "bg-white text-gray-700 border border-gray-200 hover:bg-gray-50"
                      } ${isLoading ? "opacity-70 cursor-not-allowed" : ""}`}
-               >
-                  <ArrowPathIcon
+                  >
+                     <ArrowPathIcon
                         className={`h-5 w-5 mr-2 ${isLoading ? "animate-spin" : ""}`} 
-                  />
-                  {isLoading ? "Refreshing..." : "Refresh"}
-               </button>
-               <Link
-                  href="/dashboard/services/add"
+                     />
+                     {isLoading ? t('common.refreshing') : t('common.refresh')}
+                  </button>
+                  <Link
+                     href="/dashboard/services/add"
                      className={`inline-flex items-center px-4 py-2 text-sm font-medium rounded-lg transition ${
-                     darkMode
-                        ? "bg-purple-600 text-white hover:bg-purple-700"
+                        darkMode
+                           ? "bg-purple-600 text-white hover:bg-purple-700"
                            : "bg-purple-600 text-white hover:bg-purple-700"
-                  }`}
-               >
+                     }`}
+                  >
                      <PlusIcon className="h-5 w-5 mr-2" />
-                  Add Service
-               </Link>
+                     {t('services.add_service')}
+                  </Link>
+               </div>
             </div>
-         </div>
 
-         {isLoading ? (
+            {isLoading ? (
                <div className={`${darkMode ? "bg-gray-900/60 border-white/10" : "bg-white/80 border-gray-200"} backdrop-blur-md rounded-2xl p-6 border shadow-xl flex justify-center items-center py-12`}>
-               <LoadingSpinner />
-            </div>
-         ) : errorMessage ? (
+                  <LoadingSpinner />
+               </div>
+            ) : errorMessage ? (
                <div className={`${darkMode ? "bg-gray-900/60 border-white/10" : "bg-white/80 border-gray-200"} backdrop-blur-md rounded-2xl p-6 border shadow-xl`}>
                   <div className={`text-center py-8 ${darkMode ? "text-red-400" : "text-red-600"}`}>
                      {errorMessage}
                   </div>
                </div>
-         ) : services.length === 0 ? (
+            ) : services.length === 0 ? (
                <div className={`${darkMode ? "bg-gray-900/60 border-white/10" : "bg-white/80 border-gray-200"} backdrop-blur-md rounded-2xl p-6 border shadow-xl`}>
-            <div className="text-center py-8">
-               <p className={darkMode ? "text-gray-400" : "text-gray-500"}>
-                  No services found.
-               </p>
-               <div className="flex flex-col items-center space-y-4 mt-4">
-                  <Link
-                     href="/dashboard/services/add"
+                  <div className="text-center py-8">
+                     <p className={darkMode ? "text-gray-400" : "text-gray-500"}>
+                        {t('services.no_services')}
+                     </p>
+                     <div className="flex flex-col items-center space-y-4 mt-4">
+                        <Link
+                           href="/dashboard/services/add"
                            className={`inline-flex items-center px-4 py-2 rounded-lg ${
-                        darkMode
+                              darkMode
                                  ? "bg-purple-600 text-white hover:bg-purple-700"
                                  : "bg-purple-600 text-white hover:bg-purple-700"
-                     }`}
-                  >
-                     <PlusIcon className="h-5 w-5 mr-2" />
-                     Add Your First Service
-                  </Link>
+                           }`}
+                        >
+                           <PlusIcon className="h-5 w-5 mr-2" />
+                           {t('services.add_first_service')}
+                        </Link>
                      </div>
+                  </div>
                </div>
-            </div>
-         ) : (
+            ) : (
                <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
-               {services.map((service) => (
-                  <div
-                     key={service._id}
+                  {services.map((service) => (
+                     <div
+                        key={service._id}
                         className={`${darkMode ? "bg-gray-900/60 border-white/10" : "bg-white/80 border-gray-200"} backdrop-blur-md rounded-2xl p-6 border shadow-xl relative transition-all hover:shadow-lg ${!service.isActive ? "opacity-60" : ""}`}
-                  >
+                     >
                         <div className="flex items-center justify-between mb-4">
                            <div className="flex items-center space-x-3">
                               <div
@@ -248,78 +250,103 @@ export default function Services() {
                                  <h3 className={`font-medium ${darkMode ? "text-white" : "text-gray-800"}`}>
                                     {service.name}
                                  </h3>
-                                 <div className="flex items-center">
-                                    <span 
-                                       className={`text-sm ${darkMode ? "text-gray-400" : "text-gray-600"}`}
-                                    >
-                                       {service.duration} min
+                                 <div className="flex items-center mt-1">
+                                    <span className={`text-sm ${darkMode ? "text-gray-400" : "text-gray-500"}`}>
+                                       {service.duration} {t('services.duration')}
                                     </span>
-                                    <span className="mx-2">•</span>
-                                       <span
-                                       className={`text-sm ${darkMode ? "text-gray-400" : "text-gray-600"}`}
-                                       >
-                                       EGP {service.price}
+                                    {service.hasOwnProperty('isActive') && (
+                                       <span className={`ml-2 px-1.5 py-0.5 text-xs rounded-full ${
+                                          service.isActive 
+                                             ? darkMode ? "bg-green-900/30 text-green-300" : "bg-green-100 text-green-700"
+                                             : darkMode ? "bg-red-900/30 text-red-300" : "bg-red-100 text-red-700"
+                                       }`}>
+                                          {service.isActive ? t('services.active') : t('services.inactive')}
                                        </span>
+                                    )}
+                                 </div>
                               </div>
                            </div>
                         </div>
-
-                           {/* Status Indicator */}
-                           <div 
-                              className="cursor-pointer"
+                        
+                        <div className={`px-3 py-2 rounded-lg ${darkMode ? "bg-gray-800/50" : "bg-gray-50"}`}>
+                           <div className="flex justify-between items-center mb-2">
+                              <span className={`text-sm font-medium ${darkMode ? "text-gray-300" : "text-gray-700"}`}>
+                                 {t('services.price')}
+                              </span>
+                              <span className={`font-semibold ${darkMode ? "text-white" : "text-gray-900"}`}>
+                                 EGP {service.price}
+                              </span>
+                           </div>
+                           
+                           {service.description && (
+                              <div className="mt-3">
+                                 <span className={`text-sm font-medium ${darkMode ? "text-gray-300" : "text-gray-700"}`}>
+                                    {t('services.description')}
+                                 </span>
+                                 <p className={`mt-1 text-sm ${darkMode ? "text-gray-400" : "text-gray-600"}`}>
+                                    {service.description}
+                                 </p>
+                              </div>
+                           )}
+                        </div>
+                        
+                        <div className="mt-4 flex justify-between">
+                           <button
                               onClick={() => handleToggleStatus(service)}
-                              title={service.isActive ? "Click to deactivate" : "Click to activate"}
+                              disabled={isUpdatingStatus === service._id}
+                              className={`flex items-center px-3 py-1.5 rounded-lg text-sm font-medium transition ${
+                                 darkMode
+                                    ? "bg-gray-800 text-gray-300 hover:bg-gray-700"
+                                    : "bg-white border border-gray-200 text-gray-700 hover:bg-gray-50"
+                              } ${isUpdatingStatus === service._id ? "opacity-70 cursor-not-allowed" : ""}`}
                            >
                               {isUpdatingStatus === service._id ? (
-                                 <ArrowPathIcon className="h-6 w-6 text-gray-400 animate-spin" />
+                                 <ArrowPathIcon className="h-4 w-4 mr-1.5 animate-spin" />
                               ) : service.isActive ? (
-                                 <CheckCircleIcon className="h-6 w-6 text-green-500" />
+                                 <XCircleIcon className="h-4 w-4 mr-1.5" />
                               ) : (
-                                 <XCircleIcon className="h-6 w-6 text-red-500" />
+                                 <CheckCircleIcon className="h-4 w-4 mr-1.5" />
                               )}
+                              {service.isActive ? t('services.deactivate') : t('services.activate')}
+                           </button>
+                           
+                           <div className="flex space-x-1">
+                              <Link
+                                 href={`/dashboard/services/edit/${service._id}`}
+                                 className={`p-2 rounded-lg transition ${
+                                    darkMode
+                                       ? "text-gray-400 hover:text-white hover:bg-white/10"
+                                       : "text-gray-500 hover:text-gray-700 hover:bg-gray-100"
+                                 }`}
+                              >
+                                 <PencilIcon className="h-5 w-5" />
+                              </Link>
+                              
+                              <button
+                                 onClick={() => handleDeleteService(service._id)}
+                                 className={`p-2 rounded-lg transition ${
+                                    darkMode
+                                       ? "text-gray-400 hover:text-red-300 hover:bg-red-900/20"
+                                       : "text-gray-500 hover:text-red-700 hover:bg-red-50"
+                                 }`}
+                              >
+                                 <TrashIcon className="h-5 w-5" />
+                              </button>
                            </div>
                         </div>
-
-                        <p className={`text-sm mb-4 line-clamp-2 ${darkMode ? "text-gray-400" : "text-gray-600"}`}>
-                           {service.description || "No description provided."}
-                        </p>
-                        
-                        <div className="flex justify-end space-x-2 mt-4">
-                           <Link
-                              href={`/dashboard/services/edit/${service._id}`}
-                              className={`inline-flex items-center p-2 rounded-lg transition ${
-                                 darkMode
-                                    ? "bg-gray-800 text-gray-200 hover:bg-gray-700"
-                                    : "bg-gray-100 text-gray-700 hover:bg-gray-200"
-                              }`}
-                           >
-                              <PencilIcon className="h-5 w-5" />
-                           </Link>
-                           <button
-                              onClick={() => handleDeleteService(service._id)}
-                              className={`inline-flex items-center p-2 rounded-lg transition ${
-                                 darkMode
-                                    ? "bg-red-900/30 text-red-300 hover:bg-red-900/50"
-                                    : "bg-red-100 text-red-600 hover:bg-red-200"
-                              }`}
-                           >
-                              <TrashIcon className="h-5 w-5" />
-                           </button>
                      </div>
-                  </div>
-               ))}
-            </div>
-         )}
-
-         {/* Delete Service Confirmation Dialog */}
-         <DeleteServiceDialog
+                  ))}
+               </div>
+            )}
+         </div>
+         
+         {/* Delete confirmation dialog */}
+         <DeleteServiceDialog 
             isOpen={!!serviceToDelete}
             isDeleting={isDeleting}
             onClose={handleCancelDelete}
             onConfirm={handleConfirmDelete}
-            darkMode={darkMode}
          />
-         </div>
       </div>
    );
 }

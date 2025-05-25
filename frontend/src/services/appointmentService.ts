@@ -3,6 +3,7 @@ import { Appointment, AppointmentData, AppointmentStatus } from "@/types/appoint
 import { indexedDBService } from "./indexedDB";
 import { toast } from "react-hot-toast";
 import API from "./api";
+import { getBusinessSettings, isWithinWorkingHours } from "@/services/businessSettingsService";
 
 // Helper function to generate a unique ID
 const generateId = () =>
@@ -10,6 +11,19 @@ const generateId = () =>
 
 // Helper function to check internet connection
 const isOnline = (): boolean => navigator.onLine;
+
+// Check if we're in a development environment
+const isDevelopmentMode = () => {
+  if (typeof window !== 'undefined') {
+    // Check for localhost or other indicators of development
+    return window.location.hostname === 'localhost' || 
+      window.location.hostname === '127.0.0.1' || 
+      window.location.hostname.includes('192.168.') ||
+      window.location.hostname.includes('.local') ||
+      process.env.NODE_ENV === 'development';
+  }
+  return process.env.NODE_ENV === 'development';
+};
 
 /**
  * Automatically mark appointments as completed if they are in the past by at least one minute
@@ -161,6 +175,34 @@ export const createAppointment = async (
    appointmentData: AppointmentData
 ): Promise<Appointment> => {
    try {
+      // Validate appointment against business settings
+      const businessSettings = await getBusinessSettings();
+      const appointmentDate = new Date(appointmentData.date);
+      const dayOfWeek = appointmentDate.getDay(); // 0 = Sunday, 1 = Monday, etc.
+      
+      // Map day number to day name
+      const dayNames = ["sunday", "monday", "tuesday", "wednesday", "thursday", "friday", "saturday"];
+      const dayName = dayNames[dayOfWeek];
+      
+      // Check if this day is a day off
+      const dayConfig = businessSettings.daysOpen[dayName as keyof typeof businessSettings.daysOpen];
+      if (!dayConfig?.open) {
+         toast.error("Cannot book on days off");
+         throw new Error("Cannot book appointments on days off");
+      }
+      
+      // Check if the time is within working hours
+      const withinHours = isWithinWorkingHours(
+         appointmentDate,
+         appointmentData.time,
+         businessSettings
+      );
+      
+      if (!withinHours) {
+         toast.error("Cannot book outside of business hours");
+         throw new Error("Cannot book appointments outside of business hours");
+      }
+      
       // Get the current user from localStorage
       let currentUser = null;
       try {
@@ -170,6 +212,17 @@ export const createAppointment = async (
          }
       } catch (error) {
          console.error("Error getting user from localStorage:", error);
+      }
+      
+      // Check if the appointment is in the past
+      const now = new Date();
+      const appointmentTime = appointmentData.time.split(':').map(Number);
+      const appointmentDateTime = new Date(appointmentData.date);
+      appointmentDateTime.setHours(appointmentTime[0], appointmentTime[1], 0, 0);
+      
+      if (appointmentDateTime < now) {
+         toast.error("Cannot book appointments in the past");
+         throw new Error("Cannot book appointments in the past");
       }
       
       // Check if current user already has a booking at this time
@@ -197,6 +250,49 @@ export const createAppointment = async (
          }
       }
       
+      // Check for overlapping appointments considering service duration
+      // Fetch all appointments for this date
+      const existingAppointments = await indexedDBService.getAppointmentsByDateRange(
+         appointmentData.date,
+         appointmentData.date
+      );
+      
+      // Convert the selected time to minutes for easier comparison
+      const [selectedHours, selectedMinutes] = appointmentData.time.split(':').map(Number);
+      const selectedTimeInMinutes = selectedHours * 60 + selectedMinutes;
+      
+      // Get the service duration in minutes
+      const serviceDuration = parseInt(appointmentData.duration, 10) || 60; // Default to 60 minutes
+      
+      // Check if there's an overlap with any existing appointment
+      const hasOverlap = existingAppointments.some(existingApp => {
+         // Get the existing appointment time in minutes
+         const [existingHours, existingMinutes] = existingApp.time.split(':').map(Number);
+         const existingTimeInMinutes = existingHours * 60 + existingMinutes;
+         
+         // Get the existing service duration
+         const existingDuration = parseInt(existingApp.duration, 10) || 60; // Default to 60 minutes
+         
+         // Calculate end times
+         const existingEndTime = existingTimeInMinutes + existingDuration;
+         const selectedEndTime = selectedTimeInMinutes + serviceDuration;
+         
+         // Check for overlap:
+         // 1. New appointment starts during an existing one, or
+         // 2. New appointment ends during an existing one, or
+         // 3. New appointment completely contains an existing one
+         return (
+            (selectedTimeInMinutes >= existingTimeInMinutes && selectedTimeInMinutes < existingEndTime) ||
+            (selectedEndTime > existingTimeInMinutes && selectedEndTime <= existingEndTime) ||
+            (selectedTimeInMinutes <= existingTimeInMinutes && selectedEndTime >= existingEndTime)
+         );
+      });
+      
+      if (hasOverlap) {
+         toast.error("This time slot is already booked");
+         throw new Error("This time slot overlaps with an existing appointment");
+      }
+      
       // Generate a temporary ID for offline functionality
       const tempId = `temp_${Date.now()}`;
 
@@ -213,8 +309,9 @@ export const createAppointment = async (
       // Save to IndexedDB
       await indexedDBService.saveAppointment(appointment);
 
-      // If online, sync with server immediately
-      if (navigator.onLine) {
+      // If online and not in development mode, sync with server immediately
+      const isDevMode = isDevelopmentMode();
+      if (navigator.onLine && !isDevMode) {
          try {
             const serverResponse = await axios.post(
                "/appointments",
@@ -286,8 +383,9 @@ export const updateAppointment = async (
       await indexedDBService.saveAppointment(updatedAppointment);
       console.log("Successfully saved to IndexedDB");
 
-      // If online, sync with server immediately
-      if (isOnline()) {
+      // If online and not in development mode, sync with server immediately
+      const isDevMode = isDevelopmentMode();
+      if (isOnline() && !isDevMode) {
          try {
             // Extract ID and convert date for sending to server
             const { _id, pendingSync, pendingDelete, ...dataForServer } = updatedAppointment;
@@ -309,13 +407,12 @@ export const updateAppointment = async (
             return serverAppointment;
          } catch (serverError) {
             console.error("Error syncing with server:", serverError);
-            // Keep the local version if server sync fails
             // No error toast since we're only using local data
             toast.success("Appointment updated successfully");
             return updatedAppointment;
          }
       } else {
-         toast.success("Appointment updated locally (offline)");
+         toast.success("Appointment updated locally");
       }
 
       return updatedAppointment;
@@ -334,8 +431,9 @@ export const deleteAppointment = async (id: string, showNotification = false): P
       // Always delete from IndexedDB first
       await indexedDBService.deleteAppointment(id);
       
-      // If online, try to delete from server also
-      if (navigator.onLine) {
+      // If online and not in development mode, try to delete from server also
+      const isDevMode = isDevelopmentMode();
+      if (navigator.onLine && !isDevMode) {
          try {
             await axios.delete(`/appointments/${id}`);
             if (showNotification) {
@@ -343,7 +441,6 @@ export const deleteAppointment = async (id: string, showNotification = false): P
             }
          } catch (serverError) {
             console.error("Error deleting from server:", serverError);
-            // Don't need to handle this specially since we've already deleted from IndexedDB
             // Only show notification if explicitly requested
             if (showNotification) {
                toast.success("Appointment deleted successfully");

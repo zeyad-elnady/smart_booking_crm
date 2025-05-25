@@ -713,410 +713,394 @@ export default function Customers() {
          <div className={`absolute top-0 right-0 w-1/3 h-1/3 ${darkMode ? "bg-indigo-500/10" : "bg-indigo-500/5"} rounded-full blur-3xl`}></div>
          
          <div className="relative p-6 max-w-7xl mx-auto">
-            <div className="flex flex-col mb-6">
+            {/* Header section */}
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-6">
                <div>
                   <h1 className={`text-3xl font-bold ${darkMode ? "text-white" : "text-gray-800"}`}>
-                     {t('customers')}
+                     {t('customers.customers')}
                   </h1>
                   <p className={`mt-1 ${darkMode ? "text-gray-300" : "text-gray-600"}`}>
-                     {t('customers_list_description')}
+                     {t('customers.customer_list')}
                   </p>
+               </div>
+               
+               <div className="mt-4 sm:mt-0 flex flex-wrap gap-3">
+                  <button
+                     onClick={() => loadCustomers()}
+                     disabled={loading}
+                     className={`inline-flex items-center px-4 py-2 text-sm font-medium rounded-lg transition ${
+                        darkMode
+                           ? "bg-gray-800 text-gray-300 hover:bg-gray-700"
+                           : "bg-white text-gray-700 border border-gray-200 hover:bg-gray-50"
+                     } ${loading ? "opacity-70 cursor-not-allowed" : ""}`}
+                  >
+                     <ArrowPathIcon
+                        className={`h-5 w-5 mr-2 ${loading ? "animate-spin" : ""}`}
+                     />
+                     {loading ? t('common.refreshing') : t('common.refresh')}
+                  </button>
+                  
+                  <Link
+                     href="/dashboard/customers/add"
+                     className={`inline-flex items-center px-4 py-2 text-sm font-medium rounded-lg transition ${
+                        darkMode
+                           ? "bg-purple-600 text-white hover:bg-purple-700"
+                           : "bg-purple-600 text-white hover:bg-purple-700"
+                     }`}
+                  >
+                     <UserPlusIcon className="h-5 w-5 mr-2" />
+                     {t('customers.add_customer')}
+                  </Link>
                </div>
             </div>
             
-            {/* Search and filter section */}
-            <div className="mb-6">
-               {/* Search controls */}
-               <div className="flex flex-wrap gap-3 items-center mb-4">
-                  {/* Search field selector */}
-                  <div className="relative w-40">
-                     <label className={`block text-sm font-medium mb-1 ${darkMode ? "text-gray-300" : "text-gray-700"}`}>
-                        {t('search_in')}
-                     </label>
-                     <select
-                        value={searchField}
-                        onChange={(e) => handleSearchFieldChange(e.target.value)}
-                        className={`w-full px-3 py-2 rounded-lg border appearance-none bg-no-repeat pr-8 ${
-                           darkMode 
-                              ? "bg-gray-800/50 border-gray-700 text-white"
-                              : "bg-gray-50 border-gray-300 text-gray-900"
-                        } focus:ring-2 focus:ring-purple-500 focus:border-transparent`}
-                        style={{ 
-                           backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='${darkMode ? 'white' : 'black'}' stroke-width='1.5'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' d='M19.5 8.25l-7.5 7.5-7.5-7.5'%3E%3C/path%3E%3C/svg%3E")`,
-                           backgroundSize: "1.2rem",
-                           backgroundPosition: "right 0.5rem center"
-                        }}
-                     >
-                        <option value="all">{t('all_fields')}</option>
-                        <option value="name">{t('name_only')}</option>
-                        <option value="id">{t('id_only')}</option>
-                        <option value="phone">{t('phone_only')}</option>
-                        <option value="email">{t('email_only')}</option>
-                     </select>
-                  </div>
-                  
-                  {/* Search bar */}
-                  <div className="relative flex-1 min-w-[200px]">
-                     <label className={`block text-sm font-medium mb-1 ${darkMode ? "text-gray-300" : "text-gray-700"}`}>
-                        {t('search')}
-                     </label>
-                     <div className="relative">
-                        <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                           <MagnifyingGlassIcon className={`h-5 w-5 ${darkMode ? "text-gray-400" : "text-gray-500"}`} />
-                        </div>
-                        <input
-                           type="text"
-                           value={searchTerm}
-                           onChange={(e) => handleSearch(e.target.value)}
-                           placeholder={
-                              searchField === 'all' ? t('search_by_all') :
-                              searchField === 'name' ? t('search_by_name') :
-                              searchField === 'id' ? t('search_by_id') :
-                              searchField === 'phone' ? t('search_by_phone') :
-                              t('search_by_email')
-                           }
-                           className={`w-full pl-10 pr-3 py-2 rounded-lg border ${
-                              darkMode 
-                                 ? "bg-gray-800/50 border-gray-700 text-white placeholder-gray-400"
-                                 : "bg-gray-50 border-gray-300 text-gray-900 placeholder-gray-500"
-                           } focus:ring-2 focus:ring-purple-500 focus:border-transparent`}
-                        />
+            {/* Filters and search */}
+            <div className={`${darkMode ? "bg-gray-900/60 border-white/10" : "bg-white/80 border-gray-200"} backdrop-blur-md rounded-2xl p-4 mb-6 border shadow-lg transition-all`}>
+               <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                  <div className="relative flex-1">
+                     <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                        <MagnifyingGlassIcon className={`h-5 w-5 ${darkMode ? "text-gray-500" : "text-gray-400"}`} />
                      </div>
+                     <input
+                        type="text"
+                        value={searchTerm}
+                        onChange={(e) => setSearchTerm(e.target.value)}
+                        placeholder={t('customers.search_customers')}
+                        className={`block w-full pl-10 pr-4 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 transition ${
+                           darkMode 
+                              ? "bg-gray-800 border-gray-700 text-white placeholder-gray-500 focus:ring-purple-500/50" 
+                              : "bg-white border-gray-300 text-gray-900 placeholder-gray-500 focus:ring-purple-500/30"
+                        }`}
+                     />
                   </div>
                   
-                  {/* Filters button */}
-                  <div>
-                     <label className={`block text-sm font-medium mb-1 ${darkMode ? "text-gray-300" : "text-gray-700"}`}>
-                        {t('filters')}
-                     </label>
-                     <button
-                        onClick={() => setShowAdvancedFilters(!showAdvancedFilters)}
-                        className={`inline-flex w-full items-center px-4 py-2 text-sm font-medium rounded-lg transition ${
-                           darkMode
-                              ? "bg-gray-800 text-gray-300 hover:bg-gray-700"
-                              : "bg-white text-gray-700 border border-gray-200 hover:bg-gray-50"
-                        } ${showAdvancedFilters ? (darkMode ? "bg-gray-700" : "bg-gray-100") : ""}`}
-                     >
-                        <FunnelIcon className="h-5 w-5 mr-2" />
-                        {t('filter')}
-                        {activeFilter && <span className="ml-1 w-2 h-2 bg-purple-500 rounded-full"></span>}
-                     </button>
+                  <div className="flex space-x-2">
+                     <div className="relative">
+                        <div
+                           onClick={() => setShowAdvancedFilters(!showAdvancedFilters)}
+                           className={`cursor-pointer inline-flex items-center px-4 py-2 text-sm font-medium rounded-lg transition ${
+                              darkMode
+                                 ? "bg-gray-800 text-gray-300 hover:bg-gray-700"
+                                 : "bg-white text-gray-700 border border-gray-200 hover:bg-gray-50"
+                           } ${activeFilter ? "border border-purple-500/70" : ""}`}
+                        >
+                           <FunnelIcon className="h-5 w-5 mr-2" />
+                           {t('common.filter')} {activeFilter ? `• ${activeFilter}` : ""}
+                        </div>
+                        {showAdvancedFilters && (
+                           <div className={`absolute right-0 mt-2 w-48 rounded-md shadow-lg z-10 ${
+                              darkMode ? "bg-gray-800 border border-gray-700" : "bg-white border border-gray-200"
+                           }`}>
+                              <div className="py-1">
+                                 <button
+                                    onClick={() => {
+                                       applyFilter("name");
+                                       setShowAdvancedFilters(false);
+                                    }}
+                                    className={`block px-4 py-2 text-sm w-full text-left ${
+                                       darkMode
+                                          ? "text-gray-300 hover:bg-gray-700"
+                                          : "text-gray-700 hover:bg-gray-100"
+                                    } ${activeFilter === "name" ? "bg-purple-500/20" : ""}`}
+                                 >
+                                    {t('customers.filter_by_name')}
+                                 </button>
+                                 <button
+                                    onClick={() => {
+                                       applyFilter("email");
+                                       setShowAdvancedFilters(false);
+                                    }}
+                                    className={`block px-4 py-2 text-sm w-full text-left ${
+                                       darkMode
+                                          ? "text-gray-300 hover:bg-gray-700"
+                                          : "text-gray-700 hover:bg-gray-100"
+                                    } ${activeFilter === "email" ? "bg-purple-500/20" : ""}`}
+                                 >
+                                    {t('customers.filter_by_email')}
+                                 </button>
+                                 <button
+                                    onClick={() => {
+                                       applyFilter("phone");
+                                       setShowAdvancedFilters(false);
+                                    }}
+                                    className={`block px-4 py-2 text-sm w-full text-left ${
+                                       darkMode
+                                          ? "text-gray-300 hover:bg-gray-700"
+                                          : "text-gray-700 hover:bg-gray-100"
+                                    } ${activeFilter === "phone" ? "bg-purple-500/20" : ""}`}
+                                 >
+                                    {t('customers.filter_by_phone')}
+                                 </button>
+                                 <button
+                                    onClick={() => {
+                                       clearAllFilters();
+                                       setShowAdvancedFilters(false);
+                                    }}
+                                    className={`block px-4 py-2 text-sm w-full text-left border-t ${
+                                       darkMode
+                                          ? "text-gray-300 hover:bg-gray-700 border-gray-700"
+                                          : "text-gray-700 hover:bg-gray-100 border-gray-200"
+                                    }`}
+                                 >
+                                    {t('common.clear_filters')}
+                                 </button>
+                              </div>
+                           </div>
+                        )}
+                     </div>
+                     
+                     <div className="relative">
+                        <div
+                           onClick={() => setShowAdvancedFilters(!showAdvancedFilters)}
+                           className={`cursor-pointer inline-flex items-center px-4 py-2 text-sm font-medium rounded-lg transition ${
+                              darkMode
+                                 ? "bg-gray-800 text-gray-300 hover:bg-gray-700"
+                                 : "bg-white text-gray-700 border border-gray-200 hover:bg-gray-50"
+                           } ${sortOption !== "newest" ? "border border-purple-500/70" : ""}`}
+                        >
+                           <ArrowsUpDownIcon className="h-5 w-5 mr-2" />
+                           {t('common.sort')}
+                        </div>
+                        {showAdvancedFilters && (
+                           <div className={`absolute right-0 mt-2 w-48 rounded-md shadow-lg z-10 ${
+                              darkMode ? "bg-gray-800 border border-gray-700" : "bg-white border border-gray-200"
+                           }`}>
+                              <div className="py-1">
+                                 <button
+                                    onClick={() => {
+                                       handleSortChange("name");
+                                       setShowAdvancedFilters(false);
+                                    }}
+                                    className={`block px-4 py-2 text-sm w-full text-left ${
+                                       darkMode
+                                          ? "text-gray-300 hover:bg-gray-700"
+                                          : "text-gray-700 hover:bg-gray-100"
+                                    } ${sortOption === "name" ? "bg-purple-500/20" : ""}`}
+                                 >
+                                    {t('customers.sort_by_name')}
+                                 </button>
+                                 <button
+                                    onClick={() => {
+                                       handleSortChange("newest");
+                                       setShowAdvancedFilters(false);
+                                    }}
+                                    className={`block px-4 py-2 text-sm w-full text-left ${
+                                       darkMode
+                                          ? "text-gray-300 hover:bg-gray-700"
+                                          : "text-gray-700 hover:bg-gray-100"
+                                    } ${sortOption === "newest" ? "bg-purple-500/20" : ""}`}
+                                 >
+                                    {t('customers.sort_by_newest')}
+                                 </button>
+                                 <button
+                                    onClick={() => {
+                                       handleSortChange("oldest");
+                                       setShowAdvancedFilters(false);
+                                    }}
+                                    className={`block px-4 py-2 text-sm w-full text-left ${
+                                       darkMode
+                                          ? "text-gray-300 hover:bg-gray-700"
+                                          : "text-gray-700 hover:bg-gray-100"
+                                    } ${sortOption === "oldest" ? "bg-purple-500/20" : ""}`}
+                                 >
+                                    {t('customers.sort_by_oldest')}
+                                 </button>
+                                 <button
+                                    onClick={() => {
+                                       handleSortChange("visits");
+                                       setShowAdvancedFilters(false);
+                                    }}
+                                    className={`block px-4 py-2 text-sm w-full text-left ${
+                                       darkMode
+                                          ? "text-gray-300 hover:bg-gray-700"
+                                          : "text-gray-700 hover:bg-gray-100"
+                                    } ${sortOption === "visits" ? "bg-purple-500/20" : ""}`}
+                                 >
+                                    {t('customers.sort_by_visits')}
+                                 </button>
+                              </div>
+                           </div>
+                        )}
+                     </div>
                   </div>
                </div>
                
-               {/* Second row - Sort and action buttons */}
-               <div className="flex flex-wrap gap-3 items-end">
-                  {/* Sort dropdown */}
-                  <div className="relative w-48">
-                     <label className={`block text-sm font-medium mb-1 ${darkMode ? "text-gray-300" : "text-gray-700"}`}>
-                        {t('sort_by')}
-                     </label>
-                     <div className="relative">
-                        <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                           <ArrowsUpDownIcon className={`h-5 w-5 ${darkMode ? "text-gray-400" : "text-gray-500"}`} />
-                        </div>
-                        <select
-                           value={sortOption}
-                           onChange={(e) => handleSortChange(e.target.value)}
-                           className={`w-full pl-10 pr-3 py-2 rounded-lg border appearance-none bg-no-repeat ${
-                              darkMode 
-                                 ? "bg-gray-800/50 border-gray-700 text-white"
-                                 : "bg-gray-50 border-gray-300 text-gray-900"
-                           } focus:ring-2 focus:ring-purple-500 focus:border-transparent`}
-                           style={{ 
-                              backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='${darkMode ? 'white' : 'black'}' stroke-width='1.5'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' d='M19.5 8.25l-7.5 7.5-7.5-7.5'%3E%3C/path%3E%3C/svg%3E")`,
-                              backgroundSize: "1.2rem",
-                              backgroundPosition: "right 0.5rem center"
-                           }}
-                        >
-                           <option value="name-asc">{t('name_asc')}</option>
-                           <option value="name-desc">{t('name_desc')}</option>
-                           <option value="id-asc">{t('id_asc')}</option>
-                           <option value="id-desc">{t('id_desc')}</option>
-                           <option value="date-asc">{t('oldest_first')}</option>
-                           <option value="date-desc">{t('newest_first')}</option>
-                        </select>
-                     </div>
-                  </div>
-                  
-                  <div className="flex-1"></div> {/* Spacer */}
-                  
-                  {/* Action buttons */}
-                  <div className="flex gap-3">
+               {activeFilter && (
+                  <div className="mt-3 flex items-center">
+                     <span className={`text-sm ${darkMode ? "text-gray-400" : "text-gray-500"}`}>
+                        {t('customers.filter_by')}: 
+                     </span>
+                     <span className={`ml-2 inline-flex items-center px-2.5 py-0.5 rounded-md text-sm font-medium ${
+                        darkMode ? "bg-purple-900/30 text-purple-300" : "bg-purple-100 text-purple-800"
+                     }`}>
+                        {activeFilter === "name" 
+                           ? t('customers.filter_by_name')
+                           : activeFilter === "email" 
+                             ? t('customers.filter_by_email') 
+                             : t('customers.filter_by_phone')}
+                     </span>
                      <button
-                        onClick={loadCustomers}
-                        disabled={loading}
-                        className={`inline-flex items-center px-4 py-2 text-sm font-medium rounded-lg transition ${
-                           darkMode
-                              ? "bg-gray-800 text-gray-300 hover:bg-gray-700"
-                              : "bg-white text-gray-700 border border-gray-200 hover:bg-gray-50"
-                           } ${loading ? "opacity-70 cursor-not-allowed" : ""}`}
-                     >
-                        <ArrowPathIcon
-                           className={`h-5 w-5 mr-2 ${loading ? "animate-spin" : ""}`} 
-                        />
-                        {loading ? t('loading_data') : t('refresh')}
-                     </button>
-                     <Link
-                        href="/dashboard/customers/add"
-                        className={`inline-flex items-center px-4 py-2 text-sm font-medium rounded-lg transition ${
-                           darkMode
-                              ? "bg-purple-600 text-white hover:bg-purple-700"
-                              : "bg-purple-600 text-white hover:bg-purple-700"
+                        onClick={clearAllFilters}
+                        className={`ml-2 inline-flex items-center p-1 rounded-md ${
+                           darkMode ? "text-gray-400 hover:text-gray-300" : "text-gray-500 hover:text-gray-700"
                         }`}
                      >
-                        <UserPlusIcon className="h-5 w-5 mr-2" />
-                        {t('add_customer')}
-                     </Link>
+                        <XCircleIcon className="h-4 w-4" />
+                     </button>
                   </div>
-               </div>
+               )}
             </div>
 
-            {/* Advanced Filters Panel */}
-            {showAdvancedFilters && (
-               <div className={`mb-6 p-4 rounded-xl ${
-                  darkMode 
-                     ? "bg-gray-900/60 border border-white/10" 
-                     : "bg-white/80 border border-gray-200"
-               } backdrop-blur-md`}>
-                  <div className="flex flex-wrap gap-2">
-                     <button 
-                        onClick={() => applyFilter("has-visited")}
-                        className={`px-3 py-1.5 text-sm rounded-lg transition ${
-                           activeFilter === "has-visited"
-                              ? (darkMode ? "bg-purple-600 text-white" : "bg-purple-600 text-white")
-                              : (darkMode ? "bg-gray-800 text-gray-300 hover:bg-gray-700" : "bg-gray-100 text-gray-700 hover:bg-gray-200")
-                        }`}
-                     >
-                        {t('has_previous_visit')}
-                     </button>
-                     <button 
-                        onClick={() => applyFilter("never-visited")}
-                        className={`px-3 py-1.5 text-sm rounded-lg transition ${
-                           activeFilter === "never-visited"
-                              ? (darkMode ? "bg-purple-600 text-white" : "bg-purple-600 text-white")
-                              : (darkMode ? "bg-gray-800 text-gray-300 hover:bg-gray-700" : "bg-gray-100 text-gray-700 hover:bg-gray-200")
-                        }`}
-                     >
-                        {t('never_visited')}
-                     </button>
-                     
-                     {(activeFilter || searchTerm) && (
-                        <button 
-                           onClick={clearAllFilters}
-                           className={`ml-auto px-3 py-1.5 text-sm rounded-lg transition ${
-                              darkMode 
-                                 ? "bg-red-900/30 text-red-300 hover:bg-red-900/50" 
-                                 : "bg-red-100 text-red-600 hover:bg-red-200"
-                           }`}
-                        >
-                           {t('clear_all_filters')}
-                        </button>
-                     )}
-                  </div>
-               </div>
-            )}
-
-            {/* Customer List */}
+            {/* Customer list */}
             {loading ? (
-                  <div className={`${darkMode ? "bg-gray-900/60 border-white/10" : "bg-white/80 border-gray-200"} backdrop-blur-md rounded-2xl p-6 border shadow-xl flex justify-center items-center py-12`}>
+               <div className={`${darkMode ? "bg-gray-900/60 border-white/10" : "bg-white/80 border-gray-200"} backdrop-blur-md rounded-2xl p-6 border shadow-xl flex justify-center items-center py-12`}>
                   <LoadingSpinner />
                </div>
             ) : error ? (
-                  <div className={`${darkMode ? "bg-gray-900/60 border-white/10" : "bg-white/80 border-gray-200"} backdrop-blur-md rounded-2xl p-6 border shadow-xl`}>
-                     <div className={`text-center py-8 ${darkMode ? "text-red-400" : "text-red-600"}`}>
-                  {error}
-                     </div>
+               <div className={`${darkMode ? "bg-gray-900/60 border-white/10" : "bg-white/80 border-gray-200"} backdrop-blur-md rounded-2xl p-6 border shadow-xl`}>
+                  <div className={`text-center py-8 ${darkMode ? "text-red-400" : "text-red-600"}`}>
+                     {error}
+                  </div>
                </div>
             ) : filteredCustomers.length === 0 ? (
-                  <div className={`${darkMode ? "bg-gray-900/60 border-white/10" : "bg-white/80 border-gray-200"} backdrop-blur-md rounded-2xl p-6 border shadow-xl`}>
-                  {searchTerm || activeFilter ? (
-                        <div className="text-center py-8">
-                     <p className={`text-lg ${darkMode ? "text-gray-400" : "text-gray-600"}`}>
-                        {t('no_customers_match')}
-                     </p>
-                     <button 
-                        onClick={clearAllFilters}
-                        className={`mt-2 inline-flex items-center px-4 py-2 text-sm font-medium rounded-lg transition ${
-                           darkMode
-                              ? "bg-gray-800 text-gray-300 hover:bg-gray-700"
-                              : "bg-white text-gray-700 border border-gray-200 hover:bg-gray-50"
-                        }`}
-                     >
-                        <XCircleIcon className="h-5 w-5 mr-2" />
-                        {t('clear_filters')}
-                     </button>
-                        </div>
-                  ) : (
-                        <div className="text-center py-12">
-                           <p className={`text-lg mb-4 ${darkMode ? "text-gray-400" : "text-gray-600"}`}>
-                           {t('no_customers_found')}
+               <div className={`${darkMode ? "bg-gray-900/60 border-white/10" : "bg-white/80 border-gray-200"} backdrop-blur-md rounded-2xl p-6 border shadow-xl`}>
+                  <div className="text-center py-8">
+                     {searchTerm ? (
+                        <p className={darkMode ? "text-gray-400" : "text-gray-500"}>
+                           {t('common.no_results')}
                         </p>
-                        <Link
-                           href="/dashboard/customers/add"
-                              className={`inline-flex items-center px-4 py-2 rounded-lg transition ${
-                              darkMode
+                     ) : (
+                        <>
+                           <p className={darkMode ? "text-gray-400" : "text-gray-500"}>
+                              {t('customers.no_customers')}
+                           </p>
+                           <Link
+                              href="/dashboard/customers/add"
+                              className={`mt-4 inline-flex items-center px-4 py-2 rounded-lg ${
+                                 darkMode
                                     ? "bg-purple-600 text-white hover:bg-purple-700"
                                     : "bg-purple-600 text-white hover:bg-purple-700"
-                           }`}
-                        >
-                           <UserPlusIcon className="h-5 w-5 mr-2" />
-                           {t('add_your_first_customer')}
-                        </Link>
-                     </div>
-                  )}
-               </div>
-            ) : (
-               <>
-                  {/* Filter summary - REMOVE THIS SECTION */}
-                  <div className={`mb-4 flex justify-between items-center`}>
-                     {/* Remove the text showing customer count */}
-                     {(searchTerm || activeFilter) && (
-                        <button 
-                           onClick={clearAllFilters}
-                           className={`text-sm flex items-center px-2 py-1 rounded ${
-                              darkMode 
-                                 ? "bg-gray-800 text-gray-300 hover:bg-gray-700" 
-                                 : "bg-gray-100 text-gray-700 hover:bg-gray-200"
-                           }`}
-                        >
-                           <XCircleIcon className="h-4 w-4 mr-1" />
-                           {t('clear_all')}
-                        </button>
+                              }`}
+                           >
+                              <UserPlusIcon className="h-5 w-5 mr-2" />
+                              {t('customers.add_first_customer')}
+                           </Link>
+                        </>
                      )}
                   </div>
-                  
-                  <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
+               </div>
+            ) : (
+               <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
                   {filteredCustomers.map((customer) => (
                      <div
                         key={customer._id}
-                           className={`${darkMode ? "bg-gray-900/60 border-white/10" : "bg-white/80 border-gray-200"} backdrop-blur-md rounded-2xl p-6 border shadow-xl transition-all hover:shadow-lg`}
-                        >
-                           <div className="flex items-center space-x-3 mb-4">
-                                 <div
-                                 className={`h-14 w-14 rounded-full flex items-center justify-center text-xl font-semibold ${
-                                       darkMode
-                                          ? "bg-purple-600/20 text-purple-400"
-                                          : "bg-purple-100 text-purple-600"
-                                    }`}
-                                 >
-                                 {customer.firstName ? customer.firstName[0].toUpperCase() : ''}
-                                 {customer.lastName ? customer.lastName[0].toUpperCase() : ''}
-                              </div>
-                              <div>
-                                 <div className="flex items-center gap-2">
-                                    <h3 className={`text-lg font-medium ${darkMode ? "text-white" : "text-gray-800"}`}>
-                                       {customer.firstName} {customer.lastName}
-                                    </h3>
-                                    <div className={`text-xs px-1.5 py-0.5 rounded-full ${darkMode ? "bg-gray-800" : "bg-gray-200"}`}>
-                                          ID: {customer._id}
-                                    </div>
-                                 </div>
-                                 
-                                 <div className={`text-sm ${darkMode ? "text-gray-400" : "text-gray-500"}`}>
-                                    <div className="flex items-center mt-1 gap-1">
-                                       <PhoneIcon className="h-3.5 w-3.5" />
-                                       <span>{customer.phone}</span>
-                                    </div>
-                                 </div>
-                                 <div className={`text-sm ${darkMode ? "text-gray-400" : "text-gray-500"}`}>
-                                    <div className="flex items-center mt-1 gap-1">
-                                       <span>@</span>
-                                       <span>{customer.email || 'N/A'}</span>
-                                    </div>
-                                 </div>
-                              </div>
-                           </div>
-                           
-                           <div className="mt-2 pt-2 border-t flex items-start justify-between">
-                              <div>
-                                 <p className={`text-xs flex items-center gap-1 ${darkMode ? "text-gray-500" : "text-gray-400"}`}>
-                                    <CalendarIcon className="h-3.5 w-3.5" /> 
-                                     <span className={customerVisitCounts[customer._id] === 0 ? (darkMode ? 'text-gray-400' : 'text-gray-500') : (darkMode ? 'text-white' : 'text-gray-800')}>
-                                       {customerVisitCounts[customer._id] || '0'}
-                                    </span> 
-                                    <span className={customerVisitCounts[customer._id] ? '' : (darkMode ? 'text-gray-500' : 'text-gray-500')}>
-                                      {customerVisitCounts[customer._id] === 1 ? t('appointment') : t('appointments')}
-                                    </span>
-                                 </p>
-                              </div>
-                              
-                              <div className="flex gap-1">
-                                 <button
-                                    onClick={() => refreshCustomerVisitCount(customer._id)}
-                                    className={`p-1.5 rounded transition ${
-                                          darkMode 
-                                             ? "text-gray-400 hover:bg-gray-800" 
-                                             : "text-gray-500 hover:bg-gray-100"
-                                       }`}
-                                    title={t('refreshed_appointment_count')}
-                                 >
-                                    <ArrowPathIcon className="h-3.5 w-3.5" />
-                                 </button>
-                                 
-                                 <button
-                                    onClick={() => openAppointmentHistory(customer._id, `${customer.firstName} ${customer.lastName}`)}
-                                    className={`p-1.5 rounded transition ${
-                                          darkMode 
-                                             ? "text-gray-400 hover:bg-gray-800" 
-                                             : "text-gray-500 hover:bg-gray-100"
-                                       }`}
-                                    title={t('appointment_history')}
-                                 >
-                                    <CalendarIcon className="h-3.5 w-3.5" />
-                                 </button>
-                              </div>
-                           </div>
-                              
-                           <div className="flex items-center justify-between mt-3 pt-3 border-t flex-wrap gap-2">
-                              {/* Delete button */}
+                        className={`${darkMode ? "bg-gray-900/60 border-white/10" : "bg-white/80 border-gray-200"} backdrop-blur-md rounded-2xl p-6 border shadow-xl relative transition-all hover:shadow-lg`}
+                     >
+                        <div className="flex justify-between">
+                           <h3 className={`font-medium text-lg ${darkMode ? "text-white" : "text-gray-900"}`}>
+                              {customer.firstName} {customer.lastName}
+                           </h3>
+                           <div className="flex space-x-1">
                               <button
-                                 onClick={() => handleDeleteCustomer(customer._id)}
-                                 className={`p-2 rounded-lg ${
-                                    darkMode 
-                                       ? "text-red-400 hover:bg-red-900/30" 
-                                       : "text-red-500 hover:bg-red-50"
-                                 } transition-colors`}
+                                 onClick={() => openAppointmentHistory(customer._id, `${customer.firstName} ${customer.lastName}`)}
+                                 title={t('customers.view_appointments')}
+                                 className={`p-1 rounded-md transition ${
+                                    darkMode
+                                       ? "text-gray-400 hover:text-white hover:bg-white/10"
+                                       : "text-gray-500 hover:text-gray-700 hover:bg-gray-100"
+                                 }`}
                               >
-                                 <TrashIcon className="h-5 w-5" />
+                                 <CalendarIcon className="h-5 w-5" />
                               </button>
-                              
-                              {/* Edit button */}
                               <button
                                  onClick={() => handleEditCustomer(customer._id)}
-                                 className={`p-2 rounded-lg ${
-                                    darkMode 
-                                       ? "text-blue-400 hover:bg-blue-900/30" 
-                                       : "text-blue-500 hover:bg-blue-50"
-                                 } transition-colors`}
+                                 title={t('common.edit')}
+                                 className={`p-1 rounded-md transition ${
+                                    darkMode
+                                       ? "text-gray-400 hover:text-white hover:bg-white/10"
+                                       : "text-gray-500 hover:text-gray-700 hover:bg-gray-100"
+                                 }`}
                               >
                                  <PencilIcon className="h-5 w-5" />
                               </button>
+                              <button
+                                 onClick={() => handleDeleteCustomer(customer._id)}
+                                 title={t('common.delete')}
+                                 className={`p-1 rounded-md transition ${
+                                    darkMode
+                                       ? "text-gray-400 hover:text-red-300 hover:bg-red-900/20"
+                                       : "text-gray-500 hover:text-red-700 hover:bg-red-50"
+                                 }`}
+                              >
+                                 <TrashIcon className="h-5 w-5" />
+                              </button>
                            </div>
+                        </div>
+                        <div className="mt-2">
+                           {customer.phone && (
+                              <p className="flex items-center gap-2 mt-1">
+                                 <PhoneIcon className={`h-4 w-4 ${darkMode ? "text-gray-500" : "text-gray-400"}`} />
+                                 <span className={darkMode ? "text-gray-300" : "text-gray-600"}>
+                                    {customer.phone}
+                                 </span>
+                              </p>
+                           )}
+                           {customer.email && (
+                              <p className={`mt-1 ${darkMode ? "text-gray-400" : "text-gray-500"} truncate`}>
+                                 {customer.email}
+                              </p>
+                           )}
+                        </div>
+                        
+                        {/* Visit information */}
+                        {customerVisitCounts[customer._id] !== undefined && (
+                           <div className={`mt-3 pt-3 border-t ${darkMode ? "border-gray-800" : "border-gray-200"}`}>
+                              <div className="flex justify-between">
+                                 <div>
+                                    <span className={`text-sm ${darkMode ? "text-gray-500" : "text-gray-500"}`}>
+                                       {t('customers.visit_count')}:
+                                    </span>
+                                    <span className={`ml-1 font-medium ${darkMode ? "text-gray-300" : "text-gray-700"}`}>
+                                       {customerVisitCounts[customer._id]}
+                                    </span>
+                                 </div>
+                                 
+                                 {/* Last visit date if available */}
+                                 {customer.lastVisit && (
+                                    <div>
+                                       <span className={`text-sm ${darkMode ? "text-gray-500" : "text-gray-500"}`}>
+                                          {t('customers.last_visit')}:
+                                       </span>
+                                       <span className={`ml-1 text-sm ${darkMode ? "text-gray-400" : "text-gray-600"}`}>
+                                          {new Date(customer.lastVisit).toLocaleDateString()}
+                                       </span>
+                                    </div>
+                                 )}
+                              </div>
+                           </div>
+                        )}
                      </div>
                   ))}
-                  </div>
-               </>
+               </div>
             )}
-
-               {/* Delete Customer Confirmation Dialog */}
-               <DeleteCustomerDialog
-                  isOpen={!!customerToDelete}
-                  isDeleting={isDeleting}
-                  onClose={handleCancelDelete}
-                  onConfirm={handleConfirmDelete}
-                  darkMode={darkMode}
-               />
-               
-               {/* Appointment History Dialog */}
-               <AppointmentHistoryDialog
-                  isOpen={appointmentHistoryOpen}
-                  onClose={handleCloseAppointmentHistory}
-                  customerId={selectedCustomerId || ""}
-                  customerName={selectedCustomerName}
-                  darkMode={darkMode}
-               />
-            </div>
          </div>
-      );
-   }
+
+         {/* Delete confirmation dialog */}
+         <DeleteCustomerDialog 
+            isOpen={!!customerToDelete}
+            isDeleting={isDeleting}
+            onClose={handleCancelDelete}
+            onConfirm={handleConfirmDelete}
+         />
+
+         {/* Appointment history dialog */}
+         <AppointmentHistoryDialog
+            isOpen={appointmentHistoryOpen}
+            onClose={handleCloseAppointmentHistory}
+            customerId={selectedCustomerId || ''}
+            customerName={selectedCustomerName}
+            darkMode={darkMode}
+         />
+      </div>
+   );
+}

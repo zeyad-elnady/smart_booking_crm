@@ -14,7 +14,12 @@ import { useTheme } from "@/components/ThemeProvider";
 import * as React from "react";
 import type { Appointment, AppointmentStatus } from "@/types/appointment";
 import { indexedDBService } from "@/services/indexedDB";
-import { fetchAppointmentById, updateAppointment } from "@/services/appointmentService";
+import { fetchAppointmentById, updateAppointment, fetchAppointments } from "@/services/appointmentService";
+import { format24To12 } from '@/utils/timeUtils';
+import { format, parse } from "date-fns";
+import { useLanguage } from "@/context/LanguageContext";
+import DateTimeSelector from "@/components/DateTimeSelector";
+import { getBusinessSettings, BusinessSettings } from "@/services/businessSettingsService";
 
 interface AppointmentData {
    customer: string;
@@ -59,6 +64,42 @@ export default function EditAppointment({
    });
    const [formErrors, setFormErrors] = useState<any>({});
    const { darkMode } = useTheme();
+   const { t } = useLanguage();
+   const [existingAppointments, setExistingAppointments] = useState<Appointment[]>([]);
+   const [businessSettings, setBusinessSettings] = useState<BusinessSettings | null>(null);
+
+   // Function to format a date string to YYYY-MM-DD format for input[type="date"]
+   const formatDateForInput = (dateString: string) => {
+      if (!dateString) return "";
+      
+      try {
+         // Check if the date is already in ISO format (from API)
+         if (dateString.includes('T')) {
+            const date = new Date(dateString);
+            return format(date, "yyyy-MM-dd");
+         }
+         
+         // If it's just a date string in YYYY-MM-DD format
+         return dateString;
+      } catch (error) {
+         console.error("Error formatting date:", error);
+         return "";
+      }
+   };
+
+   // Function to format a date for display (MM/DD/YYYY)
+   const formatDateForDisplay = (dateString: string) => {
+      if (!dateString) return "";
+      
+      try {
+         // Parse the date from YYYY-MM-DD format
+         const date = parse(dateString, "yyyy-MM-dd", new Date());
+         return format(date, "MM/dd/yyyy");
+      } catch (error) {
+         console.error("Error formatting date for display:", error);
+         return "";
+      }
+   };
 
    // Fetch customers, services, and appointment data on component mount
    useEffect(() => {
@@ -140,7 +181,31 @@ export default function EditAppointment({
                }
             }
 
-            // 5. Set form data from appointment
+            // 5. Load all appointments for checking availability
+            try {
+               const allAppointments = await fetchAppointments();
+               // Filter out the current appointment we're editing to avoid conflicts
+               const filteredAppointments = allAppointments.filter(
+                  appt => appt._id !== appointmentId
+               );
+               setExistingAppointments(filteredAppointments);
+               console.log(`Loaded ${filteredAppointments.length} other appointments (excluding current)`);
+            } catch (error) {
+               console.error("Error fetching appointments:", error);
+               toast.error("Failed to load appointments for availability check");
+            }
+
+            // 6. Load business settings
+            try {
+               const settings = await getBusinessSettings();
+               setBusinessSettings(settings);
+               console.log("Business settings loaded successfully");
+            } catch (error) {
+               console.error("Error loading business settings:", error);
+               toast.error("Failed to load business settings");
+            }
+
+            // 7. Set form data from appointment
             if (appointmentData) {
                // Extract customer ID - could be string or object
                const customerId = 
@@ -156,10 +221,26 @@ export default function EditAppointment({
                
                console.log("Setting form data with customer ID:", customerId, "and service ID:", serviceId);
                
+               // Format the date properly for the form
+               let formattedDate = "";
+               if (appointmentData.date) {
+                  // Check if date is ISO format or just date part
+                  if (appointmentData.date.includes('T')) {
+                     // It's a full ISO date
+                     const date = new Date(appointmentData.date);
+                     formattedDate = format(date, "yyyy-MM-dd");
+                  } else {
+                     // It's already a date string
+                     formattedDate = appointmentData.date;
+                  }
+               }
+
+               console.log("Formatted date for form:", formattedDate);
+               
                setFormData({
                   customerId,
                   serviceId,
-                  date: appointmentData.date || "",
+                  date: formattedDate,
                   time: appointmentData.time || "",
                   duration: appointmentData.duration || "60",
                   status: appointmentData.status || "Pending",
@@ -203,9 +284,24 @@ export default function EditAppointment({
 
    const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
       e.preventDefault();
-      if (!validateForm()) return;
+      e.stopPropagation();
+      
+      console.log("Form submission initiated");
+      
+      // Double-check if we have date and time selected
+      if (!formData.date || !formData.time) {
+         console.error("Missing date or time during form submission");
+         toast.error(t("date_time_required") || "Please select both date and time");
+         return;
+      }
+      
+      if (!validateForm()) {
+         console.log("Form validation failed");
+         return;
+      }
 
       try {
+         setLoading(true);
          const selectedCustomer = customers.find(
             (c) => c._id === formData.customerId
          );
@@ -214,16 +310,19 @@ export default function EditAppointment({
          );
 
          if (!selectedCustomer || !selectedService) {
-            toast.error("Please select both a customer and a service");
+            toast.error(t("customer_required") + " " + t("service_required"));
+            setLoading(false);
             return;
          }
 
-         const appointmentDate = new Date(`${formData.date}T${formData.time}`);
+         // Ensure date is in the correct format YYYY-MM-DD
+         const formattedDate = formData.date; // Already in YYYY-MM-DD format from input type="date"
+         console.log("Formatted date for submission:", formattedDate);
 
          const appointmentData: Partial<Appointment> = {
             customer: formData.customerId,
             service: formData.serviceId,
-            date: appointmentDate.toISOString(),
+            date: formattedDate,  // Use properly formatted date
             time: formData.time,
             duration: formData.duration,
             status: formData.status as AppointmentStatus,
@@ -240,15 +339,32 @@ export default function EditAppointment({
             }
          };
 
+         console.log("Submitting appointment data:", appointmentData);
+
          // Use the updateAppointment function from appointmentService
-         const updatedAppointment = await updateAppointment(appointmentId, appointmentData);
+         const updatedAppointment = await updateAppointment(params.id, appointmentData);
          console.log("Appointment updated successfully:", updatedAppointment);
 
-         toast.success("Appointment updated successfully");
-         router.push("/dashboard/appointments");
+         // Format the date for display in the success message
+         const displayDate = formatDateForDisplay(formData.date);
+
+         toast.success(
+            `${t("success")}: ${format24To12(formData.time)} ${t("on")} ${displayDate}`,
+            {
+               id: "appointment-update-success", // Use unique ID to prevent duplicates
+               duration: 3000 // Longer duration
+            }
+         );
+         
+         // Add a longer delay before redirecting to ensure the user sees the success message
+         console.log("Setting timeout for redirection");
+         setTimeout(() => {
+            console.log("Redirecting to appointments page");
+            router.push("/dashboard/appointments");
+         }, 2500);
       } catch (error) {
          console.error("Error updating appointment:", error);
-         toast.error("Failed to update appointment");
+         toast.error(t("error") || "Failed to update appointment");
       } finally {
          setLoading(false);
       }
@@ -258,32 +374,16 @@ export default function EditAppointment({
       const errors: any = {};
 
       // Required field validation
-      if (!formData.customerId) errors.customerId = "Customer is required";
-      if (!formData.serviceId) errors.serviceId = "Service is required";
-      if (!formData.date) errors.date = "Date is required";
-      if (!formData.time) errors.time = "Time is required";
+      if (!formData.customerId) errors.customerId = t("customer_required") || "Customer is required";
+      if (!formData.serviceId) errors.serviceId = t("service_required") || "Service is required";
+      if (!formData.date) errors.date = t("date_required") || "Date is required";
+      if (!formData.time) errors.time = t("time_required") || "Time is required";
       
       // Duration validation
       if (!formData.duration) {
-         errors.duration = "Duration is required";
+         errors.duration = t("duration_required") || "Duration is required";
       } else if (isNaN(Number(formData.duration)) || Number(formData.duration) <= 0) {
-         errors.duration = "Duration must be a positive number";
-      }
-
-      // Date validation - make sure it's a valid date
-      if (formData.date) {
-         const datePattern = /^\d{4}-\d{2}-\d{2}$/;
-         if (!datePattern.test(formData.date)) {
-            errors.date = "Invalid date format (should be YYYY-MM-DD)";
-         }
-      }
-
-      // Time validation - make sure it's a valid time
-      if (formData.time) {
-         const timePattern = /^\d{2}:\d{2}$/;
-         if (!timePattern.test(formData.time)) {
-            errors.time = "Invalid time format (should be HH:MM)";
-         }
+         errors.duration = t("duration_positive") || "Duration must be a positive number";
       }
 
       console.log("Validation errors:", errors);
@@ -305,13 +405,6 @@ export default function EditAppointment({
          label: service.name || "Unknown Service",
       };
    });
-
-   const statusOptions = [
-      { value: "Pending", label: "Pending" },
-      { value: "Confirmed", label: "Confirmed" },
-      { value: "Canceled", label: "Canceled" },
-      { value: "Completed", label: "Completed" }
-   ];
 
    if (loading && !appointment) {
       return (
@@ -377,7 +470,7 @@ export default function EditAppointment({
                   darkMode ? "text-white" : "text-gray-800"
                }`}
             >
-               Edit Appointment
+               {t("edit_appointment") || "Edit Appointment"}
             </h1>
          </div>
 
@@ -389,7 +482,7 @@ export default function EditAppointment({
                   : "bg-white border-gray-200 shadow-sm"
             }`}
          >
-            <form onSubmit={handleSubmit} className="space-y-6">
+            <form onSubmit={handleSubmit} className="space-y-6" noValidate>
                {/* Customer and Service Selection */}
                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   {/* Customer Selection */}
@@ -399,7 +492,7 @@ export default function EditAppointment({
                            darkMode ? "text-gray-200" : "text-gray-700"
                         }`}
                      >
-                        Customer <span className="text-pink-500">*</span>
+                        {t("customer")} <span className="text-pink-500">*</span>
                      </label>
                      <select
                         name="customerId"
@@ -411,7 +504,7 @@ export default function EditAppointment({
                               : "bg-white border-gray-300 text-gray-900 hover:bg-gray-50"
                         }`}
                      >
-                        <option value="">Select a customer</option>
+                        <option value="">{t("select_customer") || "Select a customer"}</option>
                         {customerOptions.map((option) => (
                            <option key={option.id} value={option.id}>
                               {option.label}
@@ -436,7 +529,7 @@ export default function EditAppointment({
                            darkMode ? "text-gray-200" : "text-gray-700"
                         }`}
                      >
-                        Service <span className="text-pink-500">*</span>
+                        {t("service")} <span className="text-pink-500">*</span>
                      </label>
                      <select
                         name="serviceId"
@@ -448,7 +541,7 @@ export default function EditAppointment({
                               : "bg-white border-gray-300 text-gray-900 hover:bg-gray-50"
                         }`}
                      >
-                        <option value="">Select a service</option>
+                        <option value="">{t("select_service") || "Select a service"}</option>
                         {serviceOptions.map((option) => (
                            <option key={option.id} value={option.id}>
                               {option.label}
@@ -467,66 +560,80 @@ export default function EditAppointment({
                   </div>
                </div>
 
-               {/* Date and Time Selection */}
-               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div>
-                     <label
-                        className={`block mb-2 text-sm font-medium ${
-                           darkMode ? "text-gray-200" : "text-gray-700"
-                        }`}
-                     >
-                        Date <span className="text-pink-500">*</span>
-                     </label>
-                     <input
-                        type="date"
-                        name="date"
-                        value={formData.date}
-                        onChange={handleChange}
-                        className={`w-full px-4 py-2 rounded-lg border focus:ring-1 focus:ring-gray-200 transition-colors ${
-                           darkMode
-                              ? "bg-gray-800 border-gray-700 text-white hover:bg-gray-700"
-                              : "bg-white border-gray-300 text-gray-900 hover:bg-gray-50"
-                        }`}
-                     />
-                     {formErrors.date && (
-                        <p
-                           className={`mt-1 text-sm ${
-                              darkMode ? "text-red-400" : "text-red-500"
-                           }`}
-                        >
-                           {formErrors.date}
+               {/* Date and Time Selection using DateTimeSelector */}
+               <div>
+                  <label
+                     className={`block mb-2 text-sm font-medium ${
+                        darkMode ? "text-gray-200" : "text-gray-700"
+                     }`}
+                  >
+                     {t("date") + " & " + t("time")} <span className="text-pink-500">*</span>
+                  </label>
+                  
+                  {loading ? (
+                     <div className={`p-8 flex flex-col items-center justify-center border border-dashed rounded-lg ${
+                        darkMode ? "border-gray-700 bg-gray-800/30" : "border-gray-300 bg-gray-100/50"
+                     }`}>
+                        <div className="w-12 h-12 border-4 border-t-transparent border-purple-500 rounded-full animate-spin mb-4"></div>
+                        <p className={darkMode ? "text-gray-400" : "text-gray-500"}>
+                           {t("loading_business_settings")}
                         </p>
-                     )}
-                  </div>
-                  <div>
-                     <label
-                        className={`block mb-2 text-sm font-medium ${
-                           darkMode ? "text-gray-200" : "text-gray-700"
-                        }`}
-                     >
-                        Time <span className="text-pink-500">*</span>
-                     </label>
-                     <input
-                        type="time"
-                        name="time"
-                        value={formData.time}
-                        onChange={handleChange}
-                        className={`w-full px-4 py-2 rounded-lg border focus:ring-1 focus:ring-gray-200 transition-colors ${
-                           darkMode
-                              ? "bg-gray-800 border-gray-700 text-white hover:bg-gray-700"
-                              : "bg-white border-gray-300 text-gray-900 hover:bg-gray-50"
-                        }`}
-                     />
-                     {formErrors.time && (
-                        <p
-                           className={`mt-1 text-sm ${
-                              darkMode ? "text-red-400" : "text-red-500"
-                           }`}
-                        >
-                           {formErrors.time}
+                     </div>
+                  ) : formData.serviceId ? (
+                     <div onClick={(e) => e.stopPropagation()} className="calendar-container">
+                        <DateTimeSelector
+                           key={`${formData.serviceId}-datetime-selector`}
+                           selectedService={services.find(s => s._id === formData.serviceId) || null}
+                           existingAppointments={existingAppointments}
+                           selectedDate={formData.date}
+                           selectedTime={formData.time}
+                           onSelect={(date, time) => {
+                              console.log("Selected new date and time:", date, time);
+                              // Update the form data without submitting
+                              setFormData(prev => ({
+                                 ...prev,
+                                 date,
+                                 time
+                              }));
+                              
+                              // Clear errors when selection is made
+                              if (formErrors.date || formErrors.time) {
+                                 setFormErrors((prev: any) => ({
+                                    ...prev,
+                                    date: undefined,
+                                    time: undefined
+                                 }));
+                              }
+                              
+                              // Show toast notification confirming selection but don't redirect
+                              toast.success(`${t("time_selected") || "Time selected"}: ${format24To12(time)} ${t("on")} ${formatDateForDisplay(date)}`, 
+                              {
+                                 id: "date-time-selection",
+                                 duration: 2000
+                              });
+                           }}
+                        />
+                     </div>
+                  ) : (
+                     <div className={`p-8 flex flex-col items-center justify-center border border-dashed rounded-lg ${
+                        darkMode ? "border-gray-700 bg-gray-800/30" : "border-gray-300 bg-gray-100/50"
+                     }`}>
+                        <p className={`text-center ${darkMode ? "text-gray-400" : "text-gray-500"}`}>
+                           {t("choose_service_first") || "Please select a service first to view available dates and times"}
                         </p>
-                     )}
-                  </div>
+                     </div>
+                  )}
+                  
+                  {formErrors.date && (
+                     <p className={`mt-1 text-sm ${darkMode ? "text-red-400" : "text-red-500"}`}>
+                        {formErrors.date}
+                     </p>
+                  )}
+                  {formErrors.time && (
+                     <p className={`mt-1 text-sm ${darkMode ? "text-red-400" : "text-red-500"}`}>
+                        {formErrors.time}
+                     </p>
+                  )}
                </div>
 
                {/* Duration and Status */}
@@ -537,7 +644,7 @@ export default function EditAppointment({
                            darkMode ? "text-gray-200" : "text-gray-700"
                         }`}
                      >
-                        Duration (minutes){" "}
+                        {t("duration") || "Duration"} ({t("minutes") || "minutes"}){" "}
                         <span className="text-pink-500">*</span>
                      </label>
                      <input
@@ -568,7 +675,7 @@ export default function EditAppointment({
                            darkMode ? "text-gray-200" : "text-gray-700"
                         }`}
                      >
-                        Status
+                        {t("status")}
                      </label>
                      <select
                         name="status"
@@ -580,11 +687,10 @@ export default function EditAppointment({
                               : "bg-white border-gray-300 text-gray-900 hover:bg-gray-50"
                         }`}
                      >
-                        {statusOptions.map((option) => (
-                           <option key={option.value} value={option.value}>
-                              {option.label}
-                           </option>
-                        ))}
+                        <option value="Pending">{t("pending") || "Pending"}</option>
+                        <option value="Confirmed">{t("confirmed") || "Confirmed"}</option>
+                        <option value="Completed">{t("completed") || "Completed"}</option>
+                        <option value="Canceled">{t("canceled") || "Canceled"}</option>
                      </select>
                   </div>
                </div>
@@ -596,7 +702,7 @@ export default function EditAppointment({
                         darkMode ? "text-gray-200" : "text-gray-700"
                      }`}
                   >
-                     Notes
+                     {t("notes")}
                   </label>
                   <textarea
                      name="notes"
@@ -611,6 +717,10 @@ export default function EditAppointment({
                   />
                </div>
 
+               {/* Hidden inputs to store date and time values */}
+               <input type="hidden" name="date" value={formData.date} />
+               <input type="hidden" name="time" value={formData.time} />
+
                {/* Submit Button */}
                <div className="flex space-x-4">
                   <button
@@ -622,18 +732,25 @@ export default function EditAppointment({
                            : "bg-gray-200 text-gray-800 hover:bg-gray-300"
                      }`}
                   >
-                     Cancel
+                     {t("cancel")}
                   </button>
                   <button
                      type="submit"
                      disabled={loading}
+                     onClick={(e) => {
+                        // Explicit handling to ensure our custom handler runs
+                        e.preventDefault();
+                        e.stopPropagation();
+                        console.log("Submit button clicked");
+                        handleSubmit(e as React.FormEvent<HTMLFormElement>);
+                     }}
                      className={`flex-1 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
                         darkMode
                            ? "bg-gradient-to-r from-indigo-600 to-indigo-700 text-white hover:from-indigo-700 hover:to-indigo-800"
                            : "bg-white text-gray-900 border border-gray-300 hover:bg-gray-50"
                      }`}
                   >
-                     {loading ? "Updating..." : "Update Appointment"}
+                     {loading ? t("updating") || "Updating..." : t("update_appointment") || "Update Appointment"}
                   </button>
                </div>
             </form>

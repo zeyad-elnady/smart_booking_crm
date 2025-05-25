@@ -188,6 +188,29 @@ export class IndexedDBService {
       });
    }
 
+   // Business Settings methods
+   async saveBusinessSettings(settings: any): Promise<void> {
+      await this.ensureDBConnection();
+      return this.saveSetting('businessSettings', JSON.stringify(settings));
+   }
+
+   async getBusinessSettings(): Promise<any> {
+      await this.ensureDBConnection();
+      const settingsJson = await this.getSetting('businessSettings');
+      return settingsJson ? JSON.parse(settingsJson) : null;
+   }
+
+   async markSettingsForSync(): Promise<void> {
+      await this.ensureDBConnection();
+      return this.saveSetting('settingsSyncPending', 'true');
+   }
+
+   async isSettingsSyncPending(): Promise<boolean> {
+      await this.ensureDBConnection();
+      const pending = await this.getSetting('settingsSyncPending');
+      return pending === 'true';
+   }
+
    // === SERVICE METHODS ===
 
    // Get all services from IndexedDB

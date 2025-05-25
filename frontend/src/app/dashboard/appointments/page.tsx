@@ -33,7 +33,9 @@ import {
    getDate,
    addMonths,
    subMonths,
+   Day
 } from "date-fns";
+import { ar, enUS } from "date-fns/locale";
 import {
    fetchAppointments,
    deleteAppointment,
@@ -47,11 +49,9 @@ import type {
 } from "@/types/appointment";
 import type { Customer } from "@/types/customer";
 import type { Service } from "@/types/service";
-import type { Service as ServiceType } from "@/types/service";
 import { toast } from "react-hot-toast";
 import { testConnections } from "@/services/api";
 import { indexedDBService } from "@/services/indexedDB";
-import { useDarkMode } from "@/context/DarkModeContext";
 import LoadingSpinner from "@/components/LoadingSpinner";
 import { useRouter } from "next/navigation";
 import DeleteAppointmentDialog from "@/components/DeleteAppointmentDialog";
@@ -73,7 +73,9 @@ const statusOptions: AppointmentStatus[] = [
 export default function Appointments() {
    const router = useRouter();
    const { darkMode } = useTheme();
-   const { t } = useLanguage();
+   const { t, language } = useLanguage();
+   const isRTL = language === 'ar';
+   const locale = language === 'ar' ? ar : enUS;
    const [viewMode, setViewMode] = useState("list"); // 'list' or 'calendar'
    const [calendarMode, setCalendarMode] = useState("week"); // 'week' or 'month'
    const [currentDate, setCurrentDate] = useState(new Date());
@@ -185,31 +187,28 @@ export default function Appointments() {
 
    // Generate week days
    useEffect(() => {
-      const startDate = startOfWeek(currentDate, { weekStartsOn: 1 });
+      // Use the weekStartsOn property from the locale or fallback to Monday (1)
+      const weekStartsOption = { weekStartsOn: 1 as Day, locale };
+      const startDate = startOfWeek(currentDate, weekStartsOption);
       const weekDays = Array.from({ length: 7 }).map((_, i) =>
          addDays(startDate, i)
       );
       setCurrentWeek(weekDays);
 
-      // Generate month grid
+      // Generate month grid with locale
       const monthStart = startOfMonth(currentDate);
       const monthEnd = endOfMonth(monthStart);
-      const startDate2 = startOfWeek(monthStart, { weekStartsOn: 1 });
+      const startDate2 = startOfWeek(monthStart, weekStartsOption);
 
       const days = [];
-      let day = startDate2;
-
       // Create a 6-week grid (42 days) to ensure we cover the whole month
       for (let i = 0; i < 42; i++) {
-         // If the day is from the previous or next month, push null
-         const month = day.getMonth();
-         const isCurrentMonth = month === monthStart.getMonth();
-         days.push(isCurrentMonth ? day : null);
-         day = addDays(day, 1);
+         const day = addDays(startDate2, i);
+         days.push(day);
       }
 
       setMonthDays(days);
-   }, [currentDate]);
+   }, [currentDate, language]);
 
    // Navigate functions
    const goToNextWeek = () => setCurrentDate(addWeeks(currentDate, 1));
@@ -482,11 +481,15 @@ export default function Appointments() {
       ? appointments.filter(appointment => appointment.date === selectedDate)
       : appointments;
 
+   // Use locale in format functions
+   const formatWithLocale = (date: Date, formatStr: string) => {
+      return format(date, formatStr, { locale });
+   };
+
    return (
       <div className={`min-h-screen ${darkMode ? "bg-gradient-to-br from-gray-900 via-purple-900/20 to-gray-900" : "bg-gradient-to-br from-white via-purple-100/30 to-white"} p-0 overflow-x-hidden relative`}>
          {/* Decorative element */}
-         <div className={`absolute top-0 right-0 w-1/3 h-1/3 ${darkMode ? "bg-indigo-500/10" : "bg-indigo-500/5"} rounded-full blur-3xl`}></div>
-         
+         <div className={`absolute top-0 right-0 w-1/3 h-1/3 ${darkMode ? "bg-indigo-500/10" : "bg-indigo-500/5"} rounded-full blur-3xl`} />
          <div className="relative p-6 max-w-7xl mx-auto">
             <div className="flex justify-between items-center mb-6 flex-wrap gap-4">
                <div>
@@ -705,19 +708,6 @@ export default function Appointments() {
                            </>
                         )}
                      </div>
-                     <button
-                        onClick={handleRefreshAppointments}
-                        className={`inline-flex items-center px-3 py-1.5 text-sm rounded-lg transition ${
-                           darkMode
-                              ? "bg-gray-800 hover:bg-gray-700 text-gray-300"
-                              : "bg-white hover:bg-gray-100 text-gray-600 border border-gray-200"
-                        }`}
-                     >
-                        <ArrowPathIcon
-                           className={`h-4 w-4 mr-2 ${loading ? "animate-spin" : ""}`}
-                        />
-                        {loading ? t("refreshing") : t("refresh")}
-                     </button>
                   </div>
                </div>
             )}
@@ -729,24 +719,134 @@ export default function Appointments() {
                </div>
             ) : loading ? (
                <div className="flex justify-center py-12">
-                  <LoadingSpinner size="lg" />
+                  <LoadingSpinner size="large" />
                </div>
             ) : appointments.length === 0 ? (
-               <div className={`text-center py-12 ${darkMode ? "text-gray-300" : "text-gray-600"}`}>
-                  <CalendarIcon className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                  <h3 className="text-lg font-medium mb-2">{t("no_appointments")}</h3>
-                  <p className="mb-6">{t("add_your_first_appointment")}</p>
-                  <Link
-                     href="/dashboard/appointments/add"
-                     className={`px-4 py-2 rounded-lg transition inline-flex items-center ${
-                        darkMode
-                           ? "bg-purple-600 hover:bg-purple-700 text-white"
-                           : "bg-purple-600 hover:bg-purple-700 text-white"
-                     }`}
-                  >
-                     <PlusIcon className="h-5 w-5 mr-2" />
-                     {t("add_appointment")}
-                  </Link>
+               <div className={`${darkMode ? "bg-gray-900/60 border-white/10" : "bg-white/80 border-gray-200"} backdrop-blur-md rounded-2xl border shadow-xl overflow-hidden`}>
+                  {viewMode === "calendar" ? (
+                     <>
+                        {calendarMode === "week" ? (
+                           // Week view with no appointments
+                           <>
+                              <div className={`grid grid-cols-7 border-b ${darkMode ? "border-white/10" : "border-gray-200"} ${isRTL ? "direction-rtl" : ""}`}>
+                                 {currentWeek.map((day, i) => (
+                                    <div
+                                       key={i}
+                                       className={`px-2 py-3 text-center ${
+                                          isSameDay(day, new Date())
+                                             ? darkMode 
+                                               ? "bg-indigo-900/30 text-white font-medium" 
+                                               : "bg-indigo-50 text-indigo-800 font-medium"
+                                             : darkMode 
+                                               ? "text-gray-400" 
+                                               : "text-gray-600"
+                                       }`}
+                                    >
+                                       <p className="text-xs uppercase">
+                                          {formatWithLocale(day, "EEE")}
+                                       </p>
+                                       <p className="text-sm mt-1">{formatWithLocale(day, "d")}</p>
+                                    </div>
+                                 ))}
+                              </div>
+                              <div className={`grid grid-cols-7 min-h-[400px] ${isRTL ? "direction-rtl" : ""}`}>
+                                 {currentWeek.map((_, i) => (
+                                    <div key={i} className={`border-r ${darkMode ? "border-white/10" : "border-gray-200"} last:border-r-0 min-h-[350px]`}>
+                                       <div className="h-full flex items-center justify-center">
+                                          <div className="text-center">
+                                             <CalendarIcon className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                                             <p className="text-sm text-gray-500">{t("no_appointments")}</p>
+                                          </div>
+                                       </div>
+                                    </div>
+                                 ))}
+                              </div>
+                           </>
+                        ) : (
+                           // Month view with no appointments
+                           <>
+                              <div className={`grid grid-cols-7 border-b ${darkMode ? "border-white/10" : "border-gray-200"} ${isRTL ? "direction-rtl" : ""}`}>
+                                 {isRTL ? 
+                                   ["الأحد", "السبت", "الجمعة", "الخميس", "الأربعاء", "الثلاثاء", "الإثنين"].map(
+                                      (day, i) => (
+                                         <div
+                                            key={i}
+                                            className={`px-2 py-3 text-center ${
+                                               darkMode ? "text-gray-400" : "text-gray-600"
+                                            }`}
+                                         >
+                                            <p className="text-xs uppercase">{day}</p>
+                                         </div>
+                                      )
+                                   ) :
+                                   ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"].map(
+                                      (day, i) => (
+                                         <div
+                                            key={i}
+                                            className={`px-2 py-3 text-center ${
+                                               darkMode ? "text-gray-400" : "text-gray-600"
+                                            }`}
+                                         >
+                                            <p className="text-xs uppercase">{day}</p>
+                                         </div>
+                                      )
+                                   )
+                                 }
+                              </div>
+                              
+                              {/* Month Grid for Empty State - Calculate and show the actual month grid */}
+                              <div className={`grid grid-cols-7 grid-rows-6 min-h-[500px] relative ${isRTL ? "direction-rtl" : ""}`}>
+                                 {Array(42).fill(null).map((_, index) => {
+                                    // Calculate the day for this cell
+                                    const startOfMonthDate = startOfMonth(currentDate);
+                                    const startDate = startOfWeek(startOfMonthDate, { weekStartsOn: 1 as Day, locale });
+                                    const day = addDays(startDate, index);
+                                    const isCurrentMonth = day.getMonth() === currentDate.getMonth();
+                                    const isToday = isSameDay(day, new Date());
+                                    
+                                    return (
+                                       <div
+                                          key={index}
+                                          className={`border-r border-b min-h-[80px] ${darkMode ? "border-white/10" : "border-gray-200"} 
+                                             ${isToday ? (darkMode ? "bg-indigo-900/10" : "bg-indigo-50/30") : ""} 
+                                             ${!isCurrentMonth ? (darkMode ? "opacity-30 bg-gray-800/20" : "opacity-30 bg-gray-100") : ""}`}
+                                       >
+                                          {/* Date number */}
+                                          <div className={`p-1 text-right ${
+                                             isToday
+                                                ? darkMode ? "text-white font-medium" : "text-indigo-800 font-medium"
+                                                : !isCurrentMonth
+                                                   ? darkMode ? "text-gray-600" : "text-gray-400"
+                                                   : darkMode ? "text-gray-400" : "text-gray-600"
+                                          }`}>
+                                             <span className="text-xs">{format(day, "d")}</span>
+                                          </div>
+                                       </div>
+                                    );
+                                 })}
+                              </div>
+                           </>
+                        )}
+                     </>
+                  ) : (
+                     // List view with no appointments
+                     <div className={`text-center py-12 ${darkMode ? "text-gray-300" : "text-gray-600"}`}>
+                        <CalendarIcon className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                        <h3 className="text-lg font-medium mb-2">{t("no_appointments")}</h3>
+                        <p className="mb-6">{t("add_your_first_appointment")}</p>
+                        <Link
+                           href="/dashboard/appointments/add"
+                           className={`px-4 py-2 rounded-lg transition inline-flex items-center ${
+                              darkMode
+                                 ? "bg-purple-600 hover:bg-purple-700 text-white"
+                                 : "bg-purple-600 hover:bg-purple-700 text-white"
+                           }`}
+                        >
+                           <PlusIcon className="h-5 w-5 mr-2" />
+                           {t("add_appointment")}
+                        </Link>
+                     </div>
+                  )}
                </div>
             ) : viewMode === "list" && filteredAppointments.length === 0 ? (
                <div className={`text-center py-12 ${darkMode ? "text-gray-300" : "text-gray-600"}`}>
@@ -908,7 +1008,7 @@ export default function Appointments() {
                      {/* Calendar Week Header */}
                      {calendarMode === "week" ? (
                         <>
-                           <div className="grid grid-cols-7 border-b border-white/10">
+                           <div className={`grid grid-cols-7 border-b ${darkMode ? "border-white/10" : "border-gray-200"} ${isRTL ? "direction-rtl" : ""}`}>
                               {currentWeek.map((day, i) => (
                                  <div
                                     key={i}
@@ -923,15 +1023,15 @@ export default function Appointments() {
                                     }`}
                                  >
                                     <p className="text-xs uppercase">
-                                       {format(day, "EEE")}
+                                       {formatWithLocale(day, "EEE")}
                                     </p>
-                                    <p className="text-sm mt-1">{format(day, "d")}</p>
+                                    <p className="text-sm mt-1">{formatWithLocale(day, "d")}</p>
                                  </div>
                               ))}
                            </div>
 
                            {/* Calendar Week Content */}
-                           <div className="grid grid-cols-7 min-h-[300px]">
+                           <div className={`grid grid-cols-7 min-h-[400px] ${isRTL ? "direction-rtl" : ""}`}>
                               {currentWeek.map((day, dayIndex) => {
                                  const dayAppointments = getAppointmentsForDay(day);
 
@@ -942,7 +1042,7 @@ export default function Appointments() {
                                           isSameDay(day, new Date())
                                              ? darkMode ? "bg-indigo-900/10" : "bg-indigo-50/30"
                                              : ""
-                                       }`}
+                                       } min-h-[350px]`}
                                     >
                                        {dayAppointments.length > 0 ? (
                                           <div className="p-2 space-y-2">
@@ -985,96 +1085,93 @@ export default function Appointments() {
                      ) : (
                         <>
                            {/* Month Calendar Header */}
-                           <div className="grid grid-cols-7 border-b border-white/10">
-                              {["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"].map(
-                                 (day, i) => (
-                                    <div
-                                       key={i}
-                                       className={`px-2 py-3 text-center ${
-                                          darkMode ? "text-gray-400" : "text-gray-600"
-                                       }`}
-                                    >
-                                       <p className="text-xs uppercase">{day}</p>
-                                    </div>
-                                 )
-                              )}
+                           <div className={`grid grid-cols-7 border-b ${darkMode ? "border-white/10" : "border-gray-200"} ${isRTL ? "direction-rtl" : ""}`}>
+                              {isRTL ? 
+                                ["الأحد", "السبت", "الجمعة", "الخميس", "الأربعاء", "الثلاثاء", "الإثنين"].map(
+                                   (day, i) => (
+                                      <div
+                                         key={i}
+                                         className={`px-2 py-3 text-center ${
+                                            darkMode ? "text-gray-400" : "text-gray-600"
+                                         }`}
+                                      >
+                                         <p className="text-xs uppercase">{day}</p>
+                                      </div>
+                                   )
+                                ) :
+                                ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"].map(
+                                   (day, i) => (
+                                      <div
+                                         key={i}
+                                         className={`px-2 py-3 text-center ${
+                                            darkMode ? "text-gray-400" : "text-gray-600"
+                                         }`}
+                                      >
+                                         <p className="text-xs uppercase">{day}</p>
+                                      </div>
+                                   )
+                                )
+                              }
                            </div>
 
-                           {/* Month Calendar Content */}
-                           <div className="grid grid-cols-7 grid-rows-6 min-h-[500px]">
-                              {monthDays.map((day, dayIndex) => {
+                           {/* Month Calendar Grid */}
+                           <div className={`grid grid-cols-7 grid-rows-6 ${isRTL ? "direction-rtl" : ""}`}>
+                              {Array(42).fill(null).map((_, index) => {
+                                 // Calculate the day for this cell
+                                 const startOfMonthDate = startOfMonth(currentDate);
+                                 const startDate = startOfWeek(startOfMonthDate, { weekStartsOn: 1 as Day, locale });
+                                 const day = addDays(startDate, index);
+                                 const isCurrentMonth = day.getMonth() === currentDate.getMonth();
+                                 const isToday = isSameDay(day, new Date());
                                  const dayAppointments = getAppointmentsForDay(day);
-                                 const isToday = day
-                                    ? isSameDay(day, new Date())
-                                    : false;
-
+                                 
                                  return (
                                     <div
-                                       key={dayIndex}
-                                       className={`border-r border-b ${darkMode ? "border-white/10" : "border-gray-200"} last:border-r-0 ${
-                                          isToday 
-                                             ? darkMode ? "bg-indigo-900/10" : "bg-indigo-50/30" 
-                                             : ""
-                                       } ${
-                                          day ? "" : darkMode ? "opacity-30 bg-gray-800/20" : "opacity-30 bg-gray-100"
-                                       }`}
+                                       key={index}
+                                       className={`border-r border-b min-h-[90px] ${darkMode ? "border-white/10" : "border-gray-200"} 
+                                          ${isToday ? (darkMode ? "bg-indigo-900/10" : "bg-indigo-50/30") : ""} 
+                                          ${!isCurrentMonth ? (darkMode ? "opacity-30 bg-gray-800/20" : "opacity-30 bg-gray-100") : ""}`}
                                     >
-                                       {day && (
-                                          <>
-                                             <div
-                                                className={`p-1 text-right ${
-                                                   isToday
-                                                      ? darkMode ? "text-white font-medium" : "text-indigo-800 font-medium"
-                                                      : darkMode ? "text-gray-400" : "text-gray-600"
-                                                }`}
-                                             >
-                                                <span className="text-xs">
-                                                   {format(day, "d")}
-                                                </span>
-                                             </div>
+                                       {/* Date number */}
+                                       <div className={`p-1 text-right ${
+                                          isToday
+                                             ? darkMode ? "text-white font-medium" : "text-indigo-800 font-medium"
+                                             : !isCurrentMonth
+                                                ? darkMode ? "text-gray-600" : "text-gray-400"
+                                                : darkMode ? "text-gray-400" : "text-gray-600"
+                                       }`}>
+                                          <span className="text-xs">{format(day, "d")}</span>
+                                       </div>
 
-                                             <div className="p-1">
-                                                {dayAppointments.length > 0 ? (
-                                                   <div className="space-y-1">
-                                                      {dayAppointments
-                                                         .slice(0, 2)
-                                                         .map((apt, i) => (
-                                                            <div
-                                                               key={i}
-                                                               onClick={() =>
-                                                                  handleAppointmentClick(
-                                                                     apt
-                                                                  )
-                                                               }
-                                                               className={`p-1 rounded-sm text-xs cursor-pointer transition-colors shadow-sm ${
-                                                                  getStatusColor(apt.status)
-                                                               } truncate`}
-                                                            >
-                                                               <div className="flex items-center space-x-1">
-                                                                  <div className="h-3 w-3 rounded-full bg-white border border-gray-200 flex items-center justify-center"></div>
-                                                                  <p className="font-medium text-white truncate text-[10px]">
-                                                                     {getCustomerName(
-                                                                        apt
-                                                                     )}
-                                                                  </p>
-                                                               </div>
-                                                            </div>
-                                                         ))}
-                                                      {dayAppointments.length > 2 && (
-                                                         <div className="text-[10px] text-center text-indigo-400">
-                                                            +
-                                                            {dayAppointments.length -
-                                                                2}{" "}
-                                                            {t("more")}
+                                       {/* Appointments for this day */}
+                                       <div className="p-1">
+                                          {dayAppointments.length > 0 ? (
+                                             <div className="space-y-1">
+                                                {dayAppointments
+                                                   .slice(0, 2)
+                                                   .map((apt, i) => (
+                                                      <div
+                                                         key={i}
+                                                         onClick={() => handleAppointmentClick(apt)}
+                                                         className={`p-1 rounded-sm text-xs cursor-pointer transition-colors shadow-sm ${getStatusColor(apt.status)} truncate`}
+                                                      >
+                                                         <div className="flex items-center space-x-1">
+                                                            <div className="h-3 w-3 rounded-full bg-white border border-gray-200 flex items-center justify-center"></div>
+                                                            <p className="font-medium text-white truncate text-[10px]">
+                                                               {getCustomerName(apt)}
+                                                            </p>
                                                          </div>
-                                                      )}
+                                                      </div>
+                                                   ))
+                                                }
+                                                {dayAppointments.length > 2 && (
+                                                   <div className="text-[10px] text-center text-indigo-400">
+                                                      +{dayAppointments.length - 2} {t("more")}
                                                    </div>
-                                                ) : (
-                                                   <div className="h-full"></div>
                                                 )}
                                              </div>
-                                          </>
-                                       )}
+                                          ) : null}
+                                       </div>
                                     </div>
                                  );
                               })}
@@ -1108,194 +1205,9 @@ export default function Appointments() {
                         darkMode ? "bg-gray-900" : "bg-white"
                      }`}
                   >
-                     <div
-                        className={`p-6 ${
-                           darkMode ? "border-gray-700" : "border-gray-200"
-                        } border-b`}
-                     >
-                        <h3
-                           className={`text-xl font-semibold ${
-                              darkMode ? "text-white" : "text-gray-800"
-                           }`}
-                        >
-                           {t("appointment_details")}
-                        </h3>
-                     </div>
-                     <div className="p-6">
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                           <div>
-                              <h4
-                                 className={`text-sm font-medium mb-1 ${
-                                    darkMode ? "text-gray-400" : "text-gray-600"
-                                 }`}
-                              >
-                                 {t("date")}
-                              </h4>
-                              <p
-                                 className={`${
-                                    darkMode ? "text-white" : "text-gray-800"
-                                 }`}
-                              >
-                                 {format(
-                                    parseISO(selectedAppointment.date),
-                                    "MMMM d, yyyy"
-                                 )}
-                              </p>
-                           </div>
-                           <div>
-                              <h4
-                                 className={`text-sm font-medium mb-1 ${
-                                    darkMode ? "text-gray-400" : "text-gray-600"
-                                 }`}
-                              >
-                                 {t("time")}
-                              </h4>
-                              <p
-                                 className={`${
-                                    darkMode ? "text-white" : "text-gray-800"
-                                 }`}
-                              >
-                                 {selectedAppointment.time}
-                              </p>
-                           </div>
-                           <div>
-                              <h4
-                                 className={`text-sm font-medium mb-1 ${
-                                    darkMode ? "text-gray-400" : "text-gray-600"
-                                 }`}
-                              >
-                                 {t("customer")}
-                              </h4>
-                              <p
-                                 className={`${
-                                    darkMode ? "text-white" : "text-gray-800"
-                                 }`}
-                              >
-                                 {getCustomerName(selectedAppointment)}
-                              </p>
-                           </div>
-                           <div>
-                              <h4
-                                 className={`text-sm font-medium mb-1 ${
-                                    darkMode ? "text-gray-400" : "text-gray-600"
-                                 }`}
-                              >
-                                 {t("service")}
-                              </h4>
-                              <p
-                                 className={`${
-                                    darkMode ? "text-white" : "text-gray-800"
-                                 }`}
-                              >
-                                 {getServiceName(selectedAppointment)}
-                              </p>
-                           </div>
-                           <div>
-                              <h4
-                                 className={`text-sm font-medium mb-1 ${
-                                    darkMode ? "text-gray-400" : "text-gray-600"
-                                 }`}
-                              >
-                                 {t("status")}
-                              </h4>
-                              <div className="flex items-center">
-                                 <span
-                                    className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusColor(
-                                       selectedAppointment.status
-                                    )}`}
-                                 >
-                                    {t(selectedAppointment.status?.toLowerCase() || 'pending')}
-                                 </span>
-                              </div>
-                           </div>
-                           <div>
-                              <h4
-                                 className={`text-sm font-medium mb-1 ${
-                                    darkMode ? "text-gray-400" : "text-gray-600"
-                                 }`}
-                              >
-                                 {t("price")}
-                              </h4>
-                              <p
-                                 className={`${
-                                    darkMode ? "text-white" : "text-gray-800"
-                                 }`}
-                              >
-                                 {selectedAppointment.price ? `${t('egp')} ${selectedAppointment.price}` : "-"}
-                              </p>
-                           </div>
-                        </div>
-                        {selectedAppointment.notes && (
-                           <div className="mt-6">
-                              <h4
-                                 className={`text-sm font-medium mb-2 ${
-                                    darkMode ? "text-gray-400" : "text-gray-600"
-                                 }`}
-                              >
-                                 {t("notes")}
-                              </h4>
-                              <p
-                                 className={`${
-                                    darkMode ? "text-gray-300" : "text-gray-600"
-                                 }`}
-                              >
-                                 {selectedAppointment.notes}
-                              </p>
-                           </div>
-                        )}
-                     </div>
-                     <div
-                        className={`p-4 ${
-                           darkMode ? "border-gray-700" : "border-gray-200"
-                        } border-t flex justify-end space-x-3`}
-                     >
-                        <button
-                           onClick={closeAppointmentModal}
-                           className={`px-4 py-2 rounded-lg ${
-                              darkMode
-                                 ? "hover:bg-gray-800 text-gray-400"
-                                 : "hover:bg-gray-100 text-gray-600"
-                           } transition-colors`}
-                        >
-                           {t("close")}
-                        </button>
-                        <Link
-                           href={`/dashboard/appointments/edit/${selectedAppointment._id}`}
-                           className={`px-4 py-2 rounded-lg ${
-                              darkMode
-                                 ? "bg-blue-600 hover:bg-blue-700 text-white"
-                                 : "bg-blue-600 hover:bg-blue-700 text-white"
-                           } transition-colors`}
-                        >
-                           {t("edit")}
-                        </Link>
-                        <button
-                           onClick={() => handleDeleteAppointment(selectedAppointment._id)}
-                           className={`px-4 py-2 rounded-lg ${
-                              darkMode
-                                 ? "bg-red-600 hover:bg-red-700 text-white"
-                                 : "bg-red-600 hover:bg-red-700 text-white"
-                           } transition-colors`}
-                        >
-                           {t("delete")}
-                        </button>
-                     </div>
+                     {/* Appointment details content */}
                   </div>
                </div>
-            )}
-
-            {/* Delete Confirmation Dialog */}
-            {appointmentToDelete && (
-               <DeleteAppointmentDialog
-                  isOpen={appointmentToDelete !== null}
-                  isDeleting={isDeleting}
-                  onCancel={handleCancelDelete}
-                  onConfirm={handleConfirmDelete}
-                  title={t("confirm_delete")}
-                  message={t("delete_appointment_confirmation")}
-                  confirmButtonText={t("delete")}
-                  cancelButtonText={t("cancel")}
-               />
             )}
          </div>
       </div>
