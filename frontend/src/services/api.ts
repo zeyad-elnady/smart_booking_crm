@@ -358,7 +358,7 @@ export interface ServiceData {
    description?: string;
    duration: string;
    price: number | string;
-   staffCount?: number | string; // Number of staff members who can provide this service
+   assignedEmployeeIds?: string[]; // IDs of employees assigned to this service
    isActive?: boolean;
    category?: string;
 }

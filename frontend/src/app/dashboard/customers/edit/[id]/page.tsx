@@ -5,6 +5,9 @@ import { useRouter } from "next/navigation";
 import { ArrowLeftIcon } from "@heroicons/react/24/outline";
 import { fetchCustomerById, updateCustomer } from "@/services/customerService";
 import React from "react";
+import { useLanguage } from "@/context/LanguageContext";
+import MedicalInfoSection from "@/components/MedicalInfoSection";
+import { MedicalCondition, Allergy, CustomField } from "@/types/customer";
 
 type Props = {
    params: {
@@ -16,6 +19,7 @@ type Props = {
 export default function EditCustomer({ params, searchParams }: Props) {
    const router = useRouter();
    const { id } = params;
+   const { t } = useLanguage();
 
    const [formData, setFormData] = useState({
       firstName: "",
@@ -24,10 +28,19 @@ export default function EditCustomer({ params, searchParams }: Props) {
       countryCode: "+20", // Default Egypt country code
       phoneNumber: "",
       notes: "",
+      
+      // Medical information
+      age: "",
+      medicalConditions: [] as MedicalCondition[],
+      allergies: [] as Allergy[],
+      medicalNotes: "",
+      customFields: [] as CustomField[],
    });
    const [loading, setLoading] = useState(true);
    const [error, setError] = useState("");
    const [submitLoading, setSubmitLoading] = useState(false);
+   // Set to true if the user has admin role
+   const [isAdmin, setIsAdmin] = useState(true);
 
    // Fetch customer data on load
    useEffect(() => {
@@ -68,6 +81,13 @@ export default function EditCustomer({ params, searchParams }: Props) {
                   countryCode,
                   phoneNumber,
                   notes: customer.notes || "",
+                  
+                  // Medical information
+                  age: customer.age?.toString() || "",
+                  medicalConditions: customer.medicalConditions || [],
+                  allergies: customer.allergies || [],
+                  medicalNotes: customer.medicalNotes || "",
+                  customFields: customer.customFields || [],
                });
                
                console.log("Form data set:", {
@@ -77,6 +97,13 @@ export default function EditCustomer({ params, searchParams }: Props) {
                   countryCode,
                   phoneNumber,
                   notes: customer.notes || "",
+                  
+                  // Medical information
+                  age: customer.age?.toString() || "",
+                  medicalConditions: customer.medicalConditions || [],
+                  allergies: customer.allergies || [],
+                  medicalNotes: customer.medicalNotes || "",
+                  customFields: customer.customFields || [],
                });
             } else {
                setError("Customer not found. Please try again or go back to the customer list.");
@@ -112,6 +139,14 @@ export default function EditCustomer({ params, searchParams }: Props) {
          [name]: value,
       }));
    };
+   
+   // Handle medical info changes
+   const handleMedicalInfoChange = (field: string, value: any) => {
+      setFormData((prev) => ({
+         ...prev,
+         [field]: value,
+      }));
+   };
 
    const handleSubmit = async (e: React.FormEvent) => {
       e.preventDefault();
@@ -125,6 +160,13 @@ export default function EditCustomer({ params, searchParams }: Props) {
             email: formData.email,
             phone: `${formData.countryCode} ${formData.phoneNumber}`,
             notes: formData.notes,
+            
+            // Add medical information
+            age: formData.age ? parseInt(formData.age as string) : undefined,
+            medicalConditions: formData.medicalConditions.length > 0 ? formData.medicalConditions : undefined,
+            allergies: formData.allergies.length > 0 ? formData.allergies : undefined,
+            medicalNotes: formData.medicalNotes || undefined,
+            customFields: formData.customFields.length > 0 ? formData.customFields : undefined,
          };
 
          console.log(`Submitting update for customer ID ${id}:`, customerData);
@@ -177,14 +219,14 @@ export default function EditCustomer({ params, searchParams }: Props) {
                className="flex items-center text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white mb-4 transition-colors"
             >
                <ArrowLeftIcon className="h-4 w-4 mr-2" />
-               <span>Back to customers</span>
+               <span>{t('back')}</span>
             </button>
 
             {/* Form container taking full width */}
             <div className="form-container bg-white/90 dark:bg-gray-900/60 backdrop-blur-md rounded-2xl p-6 md:p-8 border border-gray-200 dark:border-white/10 shadow-2xl w-full">
                <div className="flex flex-col md:flex-row md:items-center gap-2 mb-8">
                   <h1 className="text-3xl font-bold bg-gradient-to-r from-indigo-400 via-purple-400 to-pink-400 bg-clip-text text-transparent">
-                     Edit Customer
+                     {t('edit')} {t('customer')}
                   </h1>
                   <span className="px-3 py-1 bg-purple-100 dark:bg-purple-900/50 text-purple-700 dark:text-purple-300 rounded-full text-sm border border-purple-200 dark:border-purple-700/50">
                      ID: {id}
@@ -205,7 +247,7 @@ export default function EditCustomer({ params, searchParams }: Props) {
                      >
                      </div>
                      <p className="ml-2 text-sm font-medium text-gray-700 dark:text-gray-300">
-                        Loading customer data...
+                        {t('loading')}...
                      </p>
                   </div>
                ) : (
@@ -308,40 +350,61 @@ export default function EditCustomer({ params, searchParams }: Props) {
                               />
                            </div>
                         </div>
+
+                        {/* Add Medical Information Section */}
+                        <div className="md:col-span-2">
+                           <MedicalInfoSection
+                              age={formData.age ? parseInt(formData.age as string) : undefined}
+                              medicalConditions={formData.medicalConditions}
+                              allergies={formData.allergies}
+                              medicalNotes={formData.medicalNotes}
+                              customFields={formData.customFields}
+                              isAdmin={isAdmin}
+                              onChange={handleMedicalInfoChange}
+                           />
+                        </div>
                      </div>
 
-                     <div>
-                        <label
-                           htmlFor="notes"
-                           className="block mb-2 text-sm font-medium text-gray-700 dark:text-gray-300"
-                        >
-                           Notes
-                        </label>
-                        <textarea
-                           id="notes"
-                           name="notes"
-                           rows={4}
-                           value={formData.notes}
-                           onChange={handleChange}
-                           className="w-full rounded-lg border border-gray-300 dark:border-white/10 bg-white dark:bg-gray-900 px-4 py-2.5 text-gray-900 dark:text-gray-100 shadow-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 resize-none"
-                           placeholder="Any additional information about the customer..."
-                        />
-                     </div>
-
-                     <div className="pt-6 flex space-x-4">
+                     <div className="flex flex-col md:flex-row gap-4 justify-end">
                         <button
                            type="button"
                            onClick={handleCancel}
-                           className="w-1/2 py-3 px-4 rounded-lg font-medium transition-all duration-300 bg-red-100 dark:bg-red-800/80 text-red-700 dark:text-white backdrop-blur-sm hover:bg-red-200 dark:hover:bg-red-900/90 focus:outline-none focus:ring-2 focus:ring-red-500/50 focus:ring-offset-2 shadow-lg border border-red-200 dark:border-red-600/20"
+                           className="px-6 py-2 bg-gray-200 dark:bg-gray-800 hover:bg-gray-300 dark:hover:bg-gray-700 text-gray-800 dark:text-white rounded-lg flex items-center justify-center transition-colors"
                         >
-                           Cancel
+                           {t('cancel')}
                         </button>
                         <button
                            type="submit"
                            disabled={submitLoading}
-                           className="w-1/2 py-3 px-4 rounded-lg font-medium transition-all duration-300 bg-purple-600 hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-purple-500/50 focus:ring-offset-2 shadow-lg border border-purple-500/20 text-white"
+                           className="px-6 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg flex items-center justify-center transition-colors disabled:opacity-70 disabled:cursor-not-allowed"
                         >
-                           {submitLoading ? "Saving..." : "Update Customer"}
+                           {submitLoading ? (
+                              <>
+                                 <svg
+                                    className="animate-spin -ml-1 mr-2 h-4 w-4 text-white"
+                                    xmlns="http://www.w3.org/2000/svg"
+                                    fill="none"
+                                    viewBox="0 0 24 24"
+                                 >
+                                    <circle
+                                       className="opacity-25"
+                                       cx="12"
+                                       cy="12"
+                                       r="10"
+                                       stroke="currentColor"
+                                       strokeWidth="4"
+                                    ></circle>
+                                    <path
+                                       className="opacity-75"
+                                       fill="currentColor"
+                                       d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                                    ></path>
+                                 </svg>
+                                 {t('saving')}...
+                              </>
+                           ) : (
+                              t('save')
+                           )}
                         </button>
                      </div>
                   </form>

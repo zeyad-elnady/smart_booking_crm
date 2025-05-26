@@ -31,10 +31,63 @@ const customerSchema = new mongoose.Schema(
       type: String,
       trim: true,
     },
+    age: {
+      type: Number,
+      min: 0,
+      max: 120,
+    },
+    medicalConditions: [
+      {
+        name: {
+          type: String,
+          trim: true,
+        },
+        details: {
+          type: String,
+          trim: true,
+        },
+      },
+    ],
+    allergies: [
+      {
+        name: {
+          type: String,
+          trim: true,
+        },
+        severity: {
+          type: String,
+          enum: ['Mild', 'Moderate', 'Severe'],
+          default: 'Moderate',
+        },
+      },
+    ],
+    medicalNotes: {
+      type: String,
+      trim: true,
+    },
+    customFields: [
+      {
+        name: {
+          type: String,
+          required: true,
+          trim: true,
+        },
+        value: {
+          type: String,
+          trim: true,
+        },
+        fieldType: {
+          type: String,
+          enum: ['text', 'number', 'date', 'boolean', 'select'],
+          default: 'text',
+        },
+        options: [String],
+      },
+    ],
     user: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'User',
-      required: false, // Make it optional for testing
+      required: false,
     },
   },
   {
@@ -42,7 +95,6 @@ const customerSchema = new mongoose.Schema(
   }
 );
 
-// Virtual for customer's full name
 customerSchema.virtual('fullName').get(function () {
   return `${this.firstName} ${this.lastName}`;
 });

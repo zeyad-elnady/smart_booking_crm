@@ -6,10 +6,14 @@ import { Mail, Phone, MapPin, ClipboardList, ArrowLeft } from "lucide-react";
 import { toast } from "react-hot-toast";
 import { createCustomer } from "@/services/customerService";
 import { useTheme } from "@/components/ThemeProvider";
+import { useLanguage } from "@/context/LanguageContext";
+import MedicalInfoSection from "@/components/MedicalInfoSection";
+import { MedicalCondition, Allergy, CustomField } from "@/types/customer";
 
 export default function AddCustomer() {
    const router = useRouter();
    const { darkMode } = useTheme();
+   const { t } = useLanguage();
 
    // Form state
    const [formData, setFormData] = useState({
@@ -20,12 +24,23 @@ export default function AddCustomer() {
       phoneNumber: "",
       address: "",
       notes: "",
+      
+      // Medical information
+      age: "",
+      medicalConditions: [] as MedicalCondition[],
+      allergies: [] as Allergy[],
+      medicalNotes: "",
+      customFields: [] as CustomField[],
    });
    const [isLoading, setIsLoading] = useState(false);
    const [mounted, setMounted] = useState(false);
+   // Set to true if the user has admin role
+   const [isAdmin, setIsAdmin] = useState(true);
 
    useEffect(() => {
       setMounted(true);
+      // Here you would check if the user has admin role
+      // Example: setIsAdmin(user.role === 'admin');
    }, []);
 
    if (!mounted) return null;
@@ -50,6 +65,14 @@ export default function AddCustomer() {
          [name]: value,
       }));
    };
+   
+   // Handle medical info changes
+   const handleMedicalInfoChange = (field: string, value: any) => {
+      setFormData((prev) => ({
+         ...prev,
+         [field]: value,
+      }));
+   };
 
    const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
       e.preventDefault();
@@ -64,6 +87,13 @@ export default function AddCustomer() {
             phone: `${formData.countryCode} ${formData.phoneNumber}`,
             address: formData.address,
             notes: formData.notes,
+            
+            // Add medical information
+            age: formData.age ? parseInt(formData.age as string) : undefined,
+            medicalConditions: formData.medicalConditions.length > 0 ? formData.medicalConditions : undefined,
+            allergies: formData.allergies.length > 0 ? formData.allergies : undefined,
+            medicalNotes: formData.medicalNotes || undefined,
+            customFields: formData.customFields.length > 0 ? formData.customFields : undefined,
          });
 
          toast.success("Customer added successfully");
@@ -94,13 +124,13 @@ export default function AddCustomer() {
                className="flex items-center text-gray-300 hover:text-white mb-4 transition-colors"
             >
                <ArrowLeft className="h-4 w-4 mr-2" />
-               <span>Back to customers</span>
+               <span>{t('back')}</span>
             </button>
 
             {/* Form container taking full width */}
             <div className="form-container bg-gray-900/60 backdrop-blur-md rounded-2xl p-6 md:p-8 border border-white/10 shadow-2xl w-full">
                <h1 className="text-3xl font-bold mb-8 bg-gradient-to-r from-indigo-400 via-purple-400 to-pink-400 bg-clip-text text-transparent">
-                  Add Customer
+                  {t('add_customer')}
                </h1>
 
                <form onSubmit={handleSubmit} className="space-y-8 w-full">
@@ -110,7 +140,7 @@ export default function AddCustomer() {
                            htmlFor="firstName"
                            className="block mb-2 text-sm font-medium text-gray-300"
                         >
-                           First Name <span className="text-red-500">*</span>
+                           {t('first_name')} <span className="text-red-500">*</span>
                         </label>
                         <input
                            type="text"
@@ -120,7 +150,7 @@ export default function AddCustomer() {
                            onChange={handleChange}
                            required
                            className="w-full px-4 py-2 bg-gray-800/50 border border-gray-700 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent text-white placeholder-gray-400"
-                           placeholder="Enter first name"
+                           placeholder={t('enter_first_name')}
                         />
                      </div>
 
@@ -255,20 +285,57 @@ export default function AddCustomer() {
                      </div>
                   </div>
 
-                  <div className="pt-6 flex space-x-4">
+                  {/* Add Medical Information Section */}
+                  <MedicalInfoSection
+                     age={formData.age ? parseInt(formData.age as string) : undefined}
+                     medicalConditions={formData.medicalConditions}
+                     allergies={formData.allergies}
+                     medicalNotes={formData.medicalNotes}
+                     customFields={formData.customFields}
+                     isAdmin={isAdmin}
+                     onChange={handleMedicalInfoChange}
+                  />
+
+                  <div className="flex justify-end space-x-3">
                      <button
                         type="button"
                         onClick={() => router.push("/dashboard/customers")}
-                        className="w-1/2 py-3 px-4 rounded-lg font-medium transition-all duration-300 bg-red-800/80 backdrop-blur-sm hover:bg-red-900/90 focus:outline-none focus:ring-2 focus:ring-red-500/50 focus:ring-offset-2 shadow-lg border border-red-600/20 text-white"
+                        className="px-4 py-2 bg-gray-800 hover:bg-gray-700 text-white rounded-lg transition-colors"
                      >
-                        Cancel
+                        {t('cancel')}
                      </button>
                      <button
                         type="submit"
                         disabled={isLoading}
-                        className="w-1/2 py-3 px-4 rounded-lg font-medium transition-all duration-300 bg-purple-600 hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-purple-500/50 focus:ring-offset-2 shadow-lg border border-purple-500/20 text-white dark:bg-purple-600 dark:hover:bg-purple-700"
+                        className="px-6 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg flex items-center justify-center transition-colors disabled:opacity-70 disabled:cursor-not-allowed"
                      >
-                        {isLoading ? "Adding..." : "Add Customer"}
+                        {isLoading ? (
+                           <>
+                              <svg
+                                 className="animate-spin -ml-1 mr-2 h-4 w-4 text-white"
+                                 xmlns="http://www.w3.org/2000/svg"
+                                 fill="none"
+                                 viewBox="0 0 24 24"
+                              >
+                                 <circle
+                                    className="opacity-25"
+                                    cx="12"
+                                    cy="12"
+                                    r="10"
+                                    stroke="currentColor"
+                                    strokeWidth="4"
+                                 ></circle>
+                                 <path
+                                    className="opacity-75"
+                                    fill="currentColor"
+                                    d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                                 ></path>
+                              </svg>
+                              {t('saving')}...
+                           </>
+                        ) : (
+                           t('save')
+                        )}
                      </button>
                   </div>
                </form>

@@ -1,96 +1,187 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useSearchParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { useTheme } from "@/components/ThemeProvider";
-
-// Mock data for doctor appointments
-const mockAppointments = [
-  {
-    id: 1,
-    patientName: "John Smith",
-    time: "09:00 AM",
-    duration: "30 min",
-    type: "Check-up",
-    status: "confirmed"
-  },
-  {
-    id: 2,
-    patientName: "Emma Johnson",
-    time: "10:15 AM",
-    duration: "45 min",
-    type: "Consultation",
-    status: "confirmed"
-  },
-  {
-    id: 3,
-    patientName: "Michael Brown",
-    time: "11:30 AM",
-    duration: "30 min",
-    type: "Follow-up",
-    status: "confirmed"
-  },
-  {
-    id: 4,
-    patientName: "Sarah Wilson",
-    time: "01:00 PM",
-    duration: "60 min",
-    type: "Initial Assessment",
-    status: "confirmed"
-  },
-  {
-    id: 5,
-    patientName: "David Lee",
-    time: "02:30 PM",
-    duration: "45 min",
-    type: "Treatment",
-    status: "confirmed"
-  }
-];
-
-// Mock data for recent patients
-const mockRecentPatients = [
-  {
-    id: 101,
-    name: "John Smith",
-    lastVisit: "2023-11-15",
-    condition: "Hypertension",
-    nextAppointment: "2023-12-01"
-  },
-  {
-    id: 102,
-    name: "Emma Johnson",
-    lastVisit: "2023-11-10",
-    condition: "Diabetes Type 2",
-    nextAppointment: "2023-11-30"
-  },
-  {
-    id: 103,
-    name: "Michael Brown",
-    lastVisit: "2023-11-08",
-    condition: "Asthma",
-    nextAppointment: "2023-12-05"
-  },
-  {
-    id: 104,
-    name: "Sarah Wilson",
-    lastVisit: "2023-11-01",
-    condition: "Arthritis",
-    nextAppointment: "2023-11-29"
-  }
-];
+import { getEmployeeById } from "@/services/employeeService";
+import { appointmentAPI } from "@/services/api";
+import { Employee } from "@/types/employee";
+import { Appointment } from "@/types/appointment";
+import LoadingSpinner from "@/components/LoadingSpinner";
 
 export default function DoctorDashboard() {
   const { darkMode } = useTheme();
+  const router = useRouter();
+  const searchParams = useSearchParams();
   const [mounted, setMounted] = useState(false);
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [currentTab, setCurrentTab] = useState("schedule");
+  const [loading, setLoading] = useState(true);
+  const [doctor, setDoctor] = useState<Employee | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [appointments, setAppointments] = useState<Appointment[]>([]);
+  const [patients, setPatients] = useState<any[]>([]);
+  const [fetchingAppointments, setFetchingAppointments] = useState(false);
 
   useEffect(() => {
     setMounted(true);
-  }, []);
+    
+    // Get doctor ID from URL
+    const doctorId = searchParams.get('id');
+    
+    if (!doctorId) {
+      // Redirect to doctor selection if no ID provided
+      router.push('/doctor-selection');
+      return;
+    }
+    
+    // Fetch doctor information
+    fetchDoctorData(doctorId);
+  }, [searchParams, router]);
+  
+  useEffect(() => {
+    // Fetch appointments and patients when doctor is loaded
+    if (doctor?._id) {
+      fetchAppointmentData(doctor._id);
+    }
+  }, [doctor]);
+  
+  const fetchDoctorData = async (doctorId: string) => {
+    try {
+      setLoading(true);
+      const doctorData = await getEmployeeById(doctorId);
+      
+      if (!doctorData) {
+        setError("Doctor not found. Please select a different doctor.");
+        router.push('/doctor-selection');
+        return;
+      }
+      
+      setDoctor(doctorData);
+    } catch (err) {
+      console.error("Error fetching doctor data:", err);
+      setError("Failed to load doctor information. Please try again later.");
+    } finally {
+      setLoading(false);
+    }
+  };
+  
+  const fetchAppointmentData = async (doctorId: string) => {
+    try {
+      setFetchingAppointments(true);
+      // Fetch all appointments
+      const allAppointments = await appointmentAPI.getAppointments();
+      
+      // Filter appointments for this doctor
+      const doctorAppointments = allAppointments.filter(
+        appointment => appointment.doctor === doctorId || appointment.doctorId === doctorId
+      );
+      
+      setAppointments(doctorAppointments);
+      
+      // Extract unique patients from appointments
+      const uniquePatients = extractUniquePatients(doctorAppointments);
+      setPatients(uniquePatients);
+    } catch (err) {
+      console.error("Error fetching appointment data:", err);
+    } finally {
+      setFetchingAppointments(false);
+    }
+  };
+  
+  const extractUniquePatients = (appointments: Appointment[]) => {
+    // Create a map to store unique patients
+    const patientMap = new Map();
+    
+    appointments.forEach(appointment => {
+      if (appointment.customer && !patientMap.has(appointment.customer._id)) {
+        // Add patient with additional information from appointment
+        patientMap.set(appointment.customer._id, {
+          id: appointment.customer._id,
+          name: `${appointment.customer.firstName} ${appointment.customer.lastName}`,
+          lastVisit: new Date(appointment.date).toISOString().split('T')[0],
+          // If we have service info, use it for condition
+          condition: appointment.service?.name || "Consultation",
+          // Find next appointment for this patient
+          nextAppointment: findNextAppointment(appointment.customer._id, appointments)
+        });
+      }
+    });
+    
+    return Array.from(patientMap.values());
+  };
+  
+  const findNextAppointment = (patientId: string, appointments: Appointment[]) => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    
+    // Find future appointments for this patient
+    const futureAppointments = appointments
+      .filter(appt => 
+        (appt.customer?._id === patientId || appt.customerId === patientId) && 
+        new Date(appt.date) >= today
+      )
+      .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+    
+    return futureAppointments.length > 0 
+      ? new Date(futureAppointments[0].date).toISOString().split('T')[0]
+      : "None scheduled";
+  };
+  
+  // Filter appointments for today
+  const getTodayAppointments = () => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const tomorrow = new Date(today);
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    
+    return appointments.filter(appointment => {
+      const appointmentDate = new Date(appointment.date);
+      return appointmentDate >= today && appointmentDate < tomorrow;
+    }).sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+  };
+  
+  // Format appointment time from date string
+  const formatAppointmentTime = (dateString: string) => {
+    const date = new Date(dateString);
+    return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  };
+  
+  // Get appointment duration in minutes
+  const getAppointmentDuration = (appointment: Appointment) => {
+    return appointment.service?.duration || 30;
+  };
 
   if (!mounted) return null;
+  
+  if (loading) {
+    return (
+      <div className={`min-h-screen flex items-center justify-center ${darkMode ? 'bg-gray-900 text-gray-100' : 'bg-gray-50 text-gray-900'}`}>
+        <LoadingSpinner size="large" />
+      </div>
+    );
+  }
+  
+  if (error || !doctor) {
+    return (
+      <div className={`min-h-screen flex items-center justify-center ${darkMode ? 'bg-gray-900 text-gray-100' : 'bg-gray-50 text-gray-900'}`}>
+        <div className={`p-6 rounded-lg text-center max-w-md ${darkMode ? 'bg-gray-800' : 'bg-white'} shadow-md`}>
+          <p className="text-xl mb-4">{error || "Doctor not found"}</p>
+          <Link 
+            href="/doctor-selection"
+            className={`px-4 py-2 rounded-md text-sm font-medium ${
+              darkMode ? 'bg-blue-600 hover:bg-blue-700 text-white' : 'bg-blue-500 hover:bg-blue-600 text-white'
+            }`}
+          >
+            Back to Doctor Selection
+          </Link>
+        </div>
+      </div>
+    );
+  }
+  
+  const todayAppointments = getTodayAppointments();
 
   // Generate dates for the week view
   const generateWeekDates = () => {
@@ -111,6 +202,20 @@ export default function DoctorDashboard() {
   };
   
   const weekDates = generateWeekDates();
+  
+  // Get appointments for a specific date
+  const getAppointmentsForDate = (date: Date) => {
+    const startOfDay = new Date(date);
+    startOfDay.setHours(0, 0, 0, 0);
+    
+    const endOfDay = new Date(date);
+    endOfDay.setHours(23, 59, 59, 999);
+    
+    return appointments.filter(appointment => {
+      const appointmentDate = new Date(appointment.date);
+      return appointmentDate >= startOfDay && appointmentDate <= endOfDay;
+    }).sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+  };
 
   return (
     <div className={`min-h-screen ${darkMode ? 'bg-gray-900 text-gray-100' : 'bg-gray-50 text-gray-900'}`}>
@@ -132,9 +237,9 @@ export default function DoctorDashboard() {
           <div className="relative">
             <button className="flex items-center space-x-2">
               <div className={`w-8 h-8 rounded-full ${darkMode ? 'bg-blue-600' : 'bg-blue-500'} flex items-center justify-center text-white font-medium`}>
-                DR
+                {doctor.firstName[0]}{doctor.lastName[0]}
               </div>
-              <span>Dr. Richards</span>
+              <span>Dr. {doctor.firstName} {doctor.lastName}</span>
             </button>
           </div>
         </div>
@@ -220,93 +325,131 @@ export default function DoctorDashboard() {
                   </div>
                 </div>
                 
-                {/* Week view navigation */}
-                <div className={`flex justify-between items-center p-4 rounded-t-lg ${darkMode ? 'bg-gray-800' : 'bg-white'} border-b ${darkMode ? 'border-gray-700' : 'border-gray-200'}`}>
-                  <button className="p-2 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700">
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                      <path fillRule="evenodd" d="M12.707 5.293a1 1 0 010 1.414L9.414 10l3.293 3.293a1 1 0 01-1.414 1.414l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 0z" clipRule="evenodd" />
-                    </svg>
-                  </button>
-                  <h2 className="font-medium">November 20 - 26, 2023</h2>
-                  <button className="p-2 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700">
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                      <path fillRule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clipRule="evenodd" />
-                    </svg>
-                  </button>
-                </div>
-                
-                {/* Week view calendar */}
-                <div className={`border ${darkMode ? 'border-gray-700 bg-gray-800' : 'border-gray-200 bg-white'} rounded-b-lg shadow-md overflow-hidden`}>
-                  {/* Days header */}
-                  <div className="grid grid-cols-7 border-b border-gray-200 dark:border-gray-700">
-                    {['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map((day, index) => (
-                      <div key={index} className="py-2 text-center font-medium">
-                        <div>{day}</div>
-                        <div className={`text-lg mt-1 ${index === 0 ? 'text-blue-500' : ''}`}>
-                          {new Date(weekDates[index]).getDate()}
-                        </div>
-                      </div>
-                    ))}
+                {fetchingAppointments ? (
+                  <div className="flex justify-center items-center py-20">
+                    <LoadingSpinner size="large" />
                   </div>
-                  
-                  {/* Appointments grid */}
-                  <div className="grid grid-cols-7 gap-px bg-gray-200 dark:bg-gray-700">
-                    {Array(7).fill(null).map((_, dayIndex) => (
-                      <div 
-                        key={dayIndex} 
-                        className={`h-32 p-1 relative ${darkMode ? 'bg-gray-800' : 'bg-white'} ${
-                          dayIndex === 0 ? 'bg-blue-50 dark:bg-blue-900 dark:bg-opacity-20' : ''
-                        }`}
-                      >
-                        {dayIndex === 0 && mockAppointments.map(appointment => (
-                          <div 
-                            key={appointment.id}
-                            className={`text-xs p-1 mb-1 rounded ${
-                              darkMode ? 'bg-blue-900 bg-opacity-50 text-blue-100' : 'bg-blue-100 text-blue-800'
-                            }`}
-                          >
-                            {appointment.time} - {appointment.patientName}
+                ) : (
+                  <>
+                    {/* Week view navigation */}
+                    <div className={`flex justify-between items-center p-4 rounded-t-lg ${darkMode ? 'bg-gray-800' : 'bg-white'} border-b ${darkMode ? 'border-gray-700' : 'border-gray-200'}`}>
+                      <button className="p-2 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700">
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                          <path fillRule="evenodd" d="M12.707 5.293a1 1 0 010 1.414L9.414 10l3.293 3.293a1 1 0 01-1.414 1.414l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 0z" clipRule="evenodd" />
+                        </svg>
+                      </button>
+                      <h2 className="font-medium">
+                        {weekDates[0].toLocaleDateString('en-US', { month: 'long', day: 'numeric' })} - {weekDates[6].toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}
+                      </h2>
+                      <button className="p-2 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700">
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                          <path fillRule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clipRule="evenodd" />
+                        </svg>
+                      </button>
+                    </div>
+                    
+                    {/* Week view calendar */}
+                    <div className={`border ${darkMode ? 'border-gray-700 bg-gray-800' : 'border-gray-200 bg-white'} rounded-b-lg shadow-md overflow-hidden`}>
+                      {/* Days header */}
+                      <div className="grid grid-cols-7 border-b border-gray-200 dark:border-gray-700">
+                        {['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map((day, index) => (
+                          <div key={index} className="py-2 text-center font-medium">
+                            <div>{day}</div>
+                            <div className={`text-lg mt-1 ${new Date().toDateString() === weekDates[index].toDateString() ? 'text-blue-500' : ''}`}>
+                              {weekDates[index].getDate()}
+                            </div>
                           </div>
                         ))}
                       </div>
-                    ))}
-                  </div>
-                </div>
-                
-                {/* Today's appointments list */}
-                <div className={`rounded-lg shadow-md overflow-hidden ${darkMode ? 'bg-gray-800' : 'bg-white'}`}>
-                  <div className="p-4 border-b border-gray-200 dark:border-gray-700">
-                    <h3 className="font-medium">Today's Appointments (5)</h3>
-                  </div>
-                  <div className="divide-y divide-gray-200 dark:divide-gray-700">
-                    {mockAppointments.map(appointment => (
-                      <div key={appointment.id} className="p-4 flex justify-between items-center">
-                        <div className="flex items-center space-x-4">
-                          <div className="w-12 text-center">
-                            <div className="text-sm font-medium">{appointment.time}</div>
-                            <div className="text-xs text-gray-500 dark:text-gray-400">{appointment.duration}</div>
-                          </div>
-                          <div>
-                            <div className="font-medium">{appointment.patientName}</div>
-                            <div className={`text-sm ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>{appointment.type}</div>
-                          </div>
-                        </div>
-                        <div className="flex space-x-2">
-                          <button className={`px-3 py-1 rounded-md text-xs ${
-                            darkMode ? 'bg-green-900 bg-opacity-50 text-green-300' : 'bg-green-100 text-green-700'
-                          }`}>
-                            Start Session
-                          </button>
-                          <button className={`px-3 py-1 rounded-md text-xs ${
-                            darkMode ? 'bg-gray-700 text-gray-300' : 'bg-gray-100 text-gray-700'
-                          }`}>
-                            View Details
-                          </button>
-                        </div>
+                      
+                      {/* Appointments grid */}
+                      <div className="grid grid-cols-7 gap-px bg-gray-200 dark:bg-gray-700">
+                        {weekDates.map((date, dayIndex) => {
+                          const dateAppointments = getAppointmentsForDate(date);
+                          const isToday = new Date().toDateString() === date.toDateString();
+                          
+                          return (
+                            <div 
+                              key={dayIndex} 
+                              className={`h-32 p-1 overflow-y-auto ${darkMode ? 'bg-gray-800' : 'bg-white'} ${
+                                isToday ? 'bg-blue-50 dark:bg-blue-900 dark:bg-opacity-20' : ''
+                              }`}
+                            >
+                              {dateAppointments.map(appointment => {
+                                // Get patient name
+                                const patientName = appointment.customer 
+                                  ? `${appointment.customer.firstName} ${appointment.customer.lastName}`
+                                  : "Patient";
+                                
+                                return (
+                                  <div 
+                                    key={appointment._id}
+                                    className={`text-xs p-1 mb-1 rounded ${
+                                      darkMode ? 'bg-blue-900 bg-opacity-50 text-blue-100' : 'bg-blue-100 text-blue-800'
+                                    }`}
+                                  >
+                                    {formatAppointmentTime(appointment.date)} - {patientName}
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          );
+                        })}
                       </div>
-                    ))}
-                  </div>
-                </div>
+                    </div>
+                    
+                    {/* Today's appointments list */}
+                    <div className={`rounded-lg shadow-md overflow-hidden ${darkMode ? 'bg-gray-800' : 'bg-white'}`}>
+                      <div className="p-4 border-b border-gray-200 dark:border-gray-700">
+                        <h3 className="font-medium">Today's Appointments ({todayAppointments.length})</h3>
+                      </div>
+                      
+                      {todayAppointments.length === 0 ? (
+                        <div className="p-8 text-center">
+                          <p className={`${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>No appointments scheduled for today.</p>
+                        </div>
+                      ) : (
+                        <div className="divide-y divide-gray-200 dark:divide-gray-700">
+                          {todayAppointments.map(appointment => {
+                            // Get patient name
+                            const patientName = appointment.customer 
+                              ? `${appointment.customer.firstName} ${appointment.customer.lastName}`
+                              : "Patient";
+                            
+                            return (
+                              <div key={appointment._id} className="p-4 flex justify-between items-center">
+                                <div className="flex items-center space-x-4">
+                                  <div className="w-12 text-center">
+                                    <div className="text-sm font-medium">{formatAppointmentTime(appointment.date)}</div>
+                                    <div className="text-xs text-gray-500 dark:text-gray-400">{getAppointmentDuration(appointment)} min</div>
+                                  </div>
+                                  <div>
+                                    <div className="font-medium">{patientName}</div>
+                                    <div className={`text-sm ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>
+                                      {appointment.service?.name || appointment.type || "Consultation"}
+                                    </div>
+                                  </div>
+                                </div>
+                                <div className="flex space-x-2">
+                                  <button className={`px-3 py-1 rounded-md text-xs ${
+                                    darkMode ? 'bg-green-900 bg-opacity-50 text-green-300' : 'bg-green-100 text-green-700'
+                                  }`}>
+                                    Start Session
+                                  </button>
+                                  <button className={`px-3 py-1 rounded-md text-xs ${
+                                    darkMode ? 'bg-gray-700 text-gray-300' : 'bg-gray-100 text-gray-700'
+                                  }`}>
+                                    View Details
+                                  </button>
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      )}
+                    </div>
+                  </>
+                )}
               </div>
             )}
 
@@ -332,47 +475,59 @@ export default function DoctorDashboard() {
                   </div>
                 </div>
                 
-                {/* Recent patients */}
-                <div className={`rounded-lg shadow-md overflow-hidden ${darkMode ? 'bg-gray-800' : 'bg-white'}`}>
-                  <div className="p-4 border-b border-gray-200 dark:border-gray-700">
-                    <h3 className="font-medium">Recent Patients</h3>
+                {fetchingAppointments ? (
+                  <div className="flex justify-center items-center py-20">
+                    <LoadingSpinner size="large" />
                   </div>
-                  <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
-                    <thead className={`${darkMode ? 'bg-gray-700' : 'bg-gray-50'}`}>
-                      <tr>
-                        <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">Name</th>
-                        <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">Last Visit</th>
-                        <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">Condition</th>
-                        <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">Next Appointment</th>
-                        <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">Actions</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
-                      {mockRecentPatients.map((patient) => (
-                        <tr key={patient.id}>
-                          <td className="px-6 py-4 whitespace-nowrap">
-                            <div className="font-medium">{patient.name}</div>
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap">{patient.lastVisit}</td>
-                          <td className="px-6 py-4 whitespace-nowrap">{patient.condition}</td>
-                          <td className="px-6 py-4 whitespace-nowrap">{patient.nextAppointment}</td>
-                          <td className="px-6 py-4 whitespace-nowrap">
-                            <button className={`px-3 py-1 rounded-md text-xs mr-2 ${
-                              darkMode ? 'bg-blue-900 bg-opacity-50 text-blue-300' : 'bg-blue-100 text-blue-700'
-                            }`}>
-                              View Records
-                            </button>
-                            <button className={`px-3 py-1 rounded-md text-xs ${
-                              darkMode ? 'bg-gray-700 text-gray-300' : 'bg-gray-100 text-gray-700'
-                            }`}>
-                              Schedule
-                            </button>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
+                ) : (
+                  <div className={`rounded-lg shadow-md overflow-hidden ${darkMode ? 'bg-gray-800' : 'bg-white'}`}>
+                    <div className="p-4 border-b border-gray-200 dark:border-gray-700">
+                      <h3 className="font-medium">Recent Patients ({patients.length})</h3>
+                    </div>
+                    
+                    {patients.length === 0 ? (
+                      <div className="p-8 text-center">
+                        <p className={`${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>No patients found. Schedule appointments to see patients here.</p>
+                      </div>
+                    ) : (
+                      <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+                        <thead className={`${darkMode ? 'bg-gray-700' : 'bg-gray-50'}`}>
+                          <tr>
+                            <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">Name</th>
+                            <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">Last Visit</th>
+                            <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">Condition</th>
+                            <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">Next Appointment</th>
+                            <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">Actions</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
+                          {patients.map((patient) => (
+                            <tr key={patient.id}>
+                              <td className="px-6 py-4 whitespace-nowrap">
+                                <div className="font-medium">{patient.name}</div>
+                              </td>
+                              <td className="px-6 py-4 whitespace-nowrap">{patient.lastVisit}</td>
+                              <td className="px-6 py-4 whitespace-nowrap">{patient.condition}</td>
+                              <td className="px-6 py-4 whitespace-nowrap">{patient.nextAppointment}</td>
+                              <td className="px-6 py-4 whitespace-nowrap">
+                                <button className={`px-3 py-1 rounded-md text-xs mr-2 ${
+                                  darkMode ? 'bg-blue-900 bg-opacity-50 text-blue-300' : 'bg-blue-100 text-blue-700'
+                                }`}>
+                                  View Records
+                                </button>
+                                <button className={`px-3 py-1 rounded-md text-xs ${
+                                  darkMode ? 'bg-gray-700 text-gray-300' : 'bg-gray-100 text-gray-700'
+                                }`}>
+                                  Schedule
+                                </button>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    )}
+                  </div>
+                )}
               </div>
             )}
 

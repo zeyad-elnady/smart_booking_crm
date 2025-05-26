@@ -12,7 +12,8 @@ import {
    AdjustmentsHorizontalIcon,
    FunnelIcon,
    ArrowsUpDownIcon,
-   CalendarIcon
+   CalendarIcon,
+   HeartIcon
 } from "@heroicons/react/24/outline";
 import Link from "next/link";
 import { Customer } from "@/types/customer";
@@ -23,6 +24,8 @@ import { toast } from "react-hot-toast";
 import { indexedDBService } from "@/services/indexedDB";
 import DeleteCustomerDialog from "@/components/DeleteCustomerDialog";
 import { useLanguage } from "@/context/LanguageContext";
+import MedicalInfoCard from "@/components/MedicalInfoCard";
+import MedicalInfoSection from "@/components/MedicalInfoSection";
 
 // Create a new AppointmentHistoryDialog component directly in this file
 // Later we can extract it to its own component file if needed
@@ -41,10 +44,11 @@ function AppointmentHistoryDialog({
 }) {
    const { t } = useLanguage(); // Add the useLanguage hook to access translations
    const [appointments, setAppointments] = useState<any[]>([]);
+   const [customer, setCustomer] = useState<Customer | null>(null);
    const [loading, setLoading] = useState(true);
 
    useEffect(() => {
-      async function loadAppointments() {
+      async function loadData() {
          if (!isOpen || !customerId) return;
          
          setLoading(true);
@@ -54,21 +58,27 @@ function AppointmentHistoryDialog({
                await indexedDBService.initDB();
             }
             
-            // Use the correct function name
+            // Load customer details
+            const customerData = await indexedDBService.getCustomerById(customerId);
+            setCustomer(customerData);
+            
+            // Load appointments
             const customerAppointments = await indexedDBService.getAppointmentsByCustomer(customerId);
             console.log(`Loaded ${customerAppointments.length} appointments for customer ${customerId}`);
-            console.log("First appointment data:", customerAppointments[0]);
+            if (customerAppointments.length > 0) {
+               console.log("First appointment data:", customerAppointments[0]);
+            }
             setAppointments(customerAppointments);
             setLoading(false);
          } catch (error) {
-            console.error("Failed to load appointments:", error);
+            console.error("Failed to load customer data:", error);
             setLoading(false);
          }
       }
       
-      // Call loadAppointments immediately when dialog opens
+      // Call loadData immediately when dialog opens
       if (isOpen && customerId) {
-         loadAppointments();
+         loadData();
       }
    }, [isOpen, customerId]);
 
@@ -148,6 +158,10 @@ function AppointmentHistoryDialog({
                         <h3 className="text-lg leading-6 font-medium">
                            {t('appointment_history')} {customerName}
                         </h3>
+                        
+                        {/* Medical Information Card */}
+                        {customer && <MedicalInfoCard customer={customer} />}
+                        
                         <div className="mt-4 max-h-96 overflow-y-auto">
                            {loading ? (
                               <div className="py-4 text-center">
@@ -244,6 +258,210 @@ function AppointmentHistoryDialog({
    );
 }
 
+// Create a new MedicalInfoDialog component
+function MedicalInfoDialog({ 
+   isOpen, 
+   onClose, 
+   customerId, 
+   customerName,
+   darkMode 
+}: { 
+   isOpen: boolean; 
+   onClose: () => void; 
+   customerId: string;
+   customerName: string;
+   darkMode: boolean;
+}) {
+   const { t } = useLanguage();
+   const [customer, setCustomer] = useState<Customer | null>(null);
+   const [loading, setLoading] = useState(true);
+   const [saving, setSaving] = useState(false);
+   const [editMode, setEditMode] = useState(false);
+
+   useEffect(() => {
+      async function loadData() {
+         if (!isOpen || !customerId) return;
+         
+         setLoading(true);
+         try {
+            // Make sure the database is initialized
+            if (!indexedDBService.db) {
+               await indexedDBService.initDB();
+            }
+            
+            // Load customer details
+            const customerData = await indexedDBService.getCustomerById(customerId);
+            setCustomer(customerData);
+            setLoading(false);
+         } catch (error) {
+            console.error("Failed to load customer data:", error);
+            setLoading(false);
+         }
+      }
+      
+      if (isOpen && customerId) {
+         loadData();
+         setEditMode(false); // Reset to view mode whenever dialog opens
+      }
+   }, [isOpen, customerId]);
+
+   const handleSaveMedicalInfo = async (updatedCustomer: Customer) => {
+      if (!customer) return;
+      
+      setSaving(true);
+      try {
+         // Make sure the database is initialized
+         if (!indexedDBService.db) {
+            await indexedDBService.initDB();
+         }
+         
+         // Only update the medical-related fields
+         const customerToUpdate = {
+            ...customer,
+            age: updatedCustomer.age,
+            medicalConditions: updatedCustomer.medicalConditions,
+            allergies: updatedCustomer.allergies,
+            medicalNotes: updatedCustomer.medicalNotes,
+            customFields: updatedCustomer.customFields
+         };
+         
+         // Save to database
+         await indexedDBService.updateCustomer(customerToUpdate);
+         
+         // Update local state
+         setCustomer(customerToUpdate);
+         setEditMode(false);
+         
+         // Show success message
+         toast.success(t('medical_info_updated'));
+         
+         // Signal that the customer list should refresh
+         localStorage.setItem("customerListShouldRefresh", "true");
+      } catch (error) {
+         console.error("Failed to save medical information:", error);
+         toast.error(t('error_updating_medical_info'));
+      } finally {
+         setSaving(false);
+      }
+   };
+
+   if (!isOpen) return null;
+
+   return (
+      <div className="fixed inset-0 z-50 overflow-y-auto">
+         <div className="flex min-h-full items-center justify-center p-4 text-center">
+            {/* Background overlay */}
+            <div 
+               className="fixed inset-0 transition-opacity" 
+               aria-hidden="true"
+               onClick={editMode ? undefined : onClose} // Prevent closing when in edit mode
+            >
+               <div className={`absolute inset-0 ${darkMode ? "bg-black" : "bg-gray-500"} opacity-75`}></div>
+            </div>
+
+            {/* Modal panel */}
+            <div className="relative transform overflow-hidden rounded-lg text-left shadow-xl transition-all sm:w-full sm:max-w-lg">
+               <div className={`${darkMode ? "bg-gray-900 text-white" : "bg-white text-gray-900"} px-4 pt-5 pb-4 sm:p-6 sm:pb-4`}>
+                  <div className="sm:flex sm:items-start">
+                     <div className="mt-3 text-center sm:mt-0 sm:ml-4 sm:text-left w-full">
+                        <h3 className="text-lg leading-6 font-medium flex items-center justify-between">
+                           <div className="flex items-center">
+                              <HeartIcon className="h-5 w-5 mr-2 text-red-500" />
+                              {t('medical_info')} - {customerName}
+                           </div>
+                           {!loading && customer && !editMode && (
+                              <button
+                                 onClick={() => setEditMode(true)}
+                                 className={`p-1.5 rounded-md text-sm flex items-center ${
+                                    darkMode
+                                       ? "bg-blue-900/30 text-blue-300 hover:bg-blue-800/50"
+                                       : "bg-blue-100 text-blue-700 hover:bg-blue-200"
+                                 }`}
+                              >
+                                 <PencilIcon className="h-4 w-4 mr-1" />
+                                 {t('edit')}
+                              </button>
+                           )}
+                        </h3>
+                        
+                        <div className="mt-4">
+                           {loading ? (
+                              <div className="py-4 text-center">
+                                 <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-500 mx-auto"></div>
+                                 <p className="mt-2 text-sm">{t('loading')}...</p>
+                              </div>
+                           ) : saving ? (
+                              <div className="py-4 text-center">
+                                 <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-500 mx-auto"></div>
+                                 <p className="mt-2 text-sm">{t('saving')}...</p>
+                              </div>
+                           ) : customer ? (
+                              editMode ? (
+                                 <MedicalInfoSection 
+                                    customer={customer} 
+                                    onSave={handleSaveMedicalInfo}
+                                    onCancel={() => setEditMode(false)}
+                                 />
+                              ) : (
+                                 <MedicalInfoCard customer={customer} />
+                              )
+                           ) : (
+                              <div className={`py-8 text-center ${darkMode ? "text-gray-400" : "text-gray-500"}`}>
+                                 {t('no_medical_info')}
+                              </div>
+                           )}
+                        </div>
+                     </div>
+                  </div>
+               </div>
+               <div className={`${darkMode ? "bg-gray-800" : "bg-gray-50"} px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse`}>
+                  {!editMode ? (
+                     <button 
+                        type="button" 
+                        className={`w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 text-base font-medium sm:ml-3 sm:w-auto sm:text-sm ${
+                           darkMode 
+                           ? "bg-gray-700 text-white hover:bg-gray-600" 
+                           : "bg-gray-200 text-gray-900 hover:bg-gray-300"
+                        }`}
+                        onClick={onClose}
+                     >
+                        {t('close')}
+                     </button>
+                  ) : (
+                     <>
+                        <button 
+                           type="button" 
+                           className={`w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 text-base font-medium sm:ml-3 sm:w-auto sm:text-sm ${
+                              darkMode 
+                              ? "bg-green-700 text-white hover:bg-green-600" 
+                              : "bg-green-600 text-white hover:bg-green-700"
+                           }`}
+                           onClick={() => customer && handleSaveMedicalInfo(customer)}
+                           disabled={saving}
+                        >
+                           {saving ? t('saving') : t('save')}
+                        </button>
+                        <button 
+                           type="button" 
+                           className={`mt-3 w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 text-base font-medium sm:mt-0 sm:ml-3 sm:w-auto sm:text-sm ${
+                              darkMode 
+                              ? "bg-gray-700 text-white hover:bg-gray-600" 
+                              : "bg-gray-200 text-gray-900 hover:bg-gray-300"
+                           }`}
+                           onClick={() => setEditMode(false)}
+                           disabled={saving}
+                        >
+                           {t('cancel')}
+                        </button>
+                     </>
+                  )}
+               </div>
+            </div>
+         </div>
+      </div>
+   );
+}
+
 export default function Customers() {
    const router = useRouter();
    const { t } = useLanguage(); // Add the useLanguage hook for translations
@@ -265,6 +483,9 @@ export default function Customers() {
    const [selectedCustomerId, setSelectedCustomerId] = useState<string | null>(null);
    const [selectedCustomerName, setSelectedCustomerName] = useState<string>("");
    const [customerVisitCounts, setCustomerVisitCounts] = useState<Record<string, number>>({});
+
+   // Add new state for medical info dialog
+   const [medicalInfoOpen, setMedicalInfoOpen] = useState(false);
 
    // Load customers directly from IndexedDB
    async function loadCustomers() {
@@ -707,6 +928,18 @@ export default function Customers() {
       }
    }, [customers]);
 
+   // Function to open medical info dialog
+   const openMedicalInfo = (customerId: string, customerName: string) => {
+      setSelectedCustomerId(customerId);
+      setSelectedCustomerName(customerName);
+      setMedicalInfoOpen(true);
+   };
+
+   // Handle closing the medical info dialog
+   const handleCloseMedicalInfo = () => {
+      setMedicalInfoOpen(false);
+   };
+
    return (
       <div className={`min-h-screen ${darkMode ? "bg-gradient-to-br from-gray-900 via-purple-900/20 to-gray-900" : "bg-gradient-to-br from-white via-purple-100/30 to-white"} p-0 relative`}>
          {/* Decorative element */}
@@ -1002,6 +1235,17 @@ export default function Customers() {
                            </h3>
                            <div className="flex space-x-1">
                               <button
+                                 onClick={() => openMedicalInfo(customer._id, `${customer.firstName} ${customer.lastName}`)}
+                                 title={t('medical_info')}
+                                 className={`p-1 rounded-md transition ${
+                                    darkMode
+                                       ? "text-gray-400 hover:text-red-300 hover:bg-red-900/20"
+                                       : "text-gray-500 hover:text-red-500 hover:bg-red-50"
+                                 }`}
+                              >
+                                 <HeartIcon className="h-5 w-5" />
+                              </button>
+                              <button
                                  onClick={() => openAppointmentHistory(customer._id, `${customer.firstName} ${customer.lastName}`)}
                                  title={t('customers.view_appointments')}
                                  className={`p-1 rounded-md transition ${
@@ -1097,6 +1341,15 @@ export default function Customers() {
          <AppointmentHistoryDialog
             isOpen={appointmentHistoryOpen}
             onClose={handleCloseAppointmentHistory}
+            customerId={selectedCustomerId || ''}
+            customerName={selectedCustomerName}
+            darkMode={darkMode}
+         />
+
+         {/* Medical info dialog */}
+         <MedicalInfoDialog
+            isOpen={medicalInfoOpen}
+            onClose={handleCloseMedicalInfo}
             customerId={selectedCustomerId || ''}
             customerName={selectedCustomerName}
             darkMode={darkMode}

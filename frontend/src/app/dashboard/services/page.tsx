@@ -4,25 +4,32 @@ import { useState, useEffect, useRef } from "react";
 import { toast } from "react-hot-toast";
 import Link from "next/link";
 import {
-   ArrowPathIcon,
-   PlusIcon,
-   TrashIcon,
-   PencilIcon,
-   CheckCircleIcon,
-   XCircleIcon,
-} from "@heroicons/react/24/outline";
+   RefreshCcw,
+   Plus,
+   Trash,
+   Pencil,
+   CheckCircle,
+   XCircle,
+   User,
+   Power,
+   ToggleLeft,
+   ToggleRight
+} from "lucide-react";
 import { Service } from "@/types/service";
 import { useTheme } from "@/components/ThemeProvider";
 import LoadingSpinner from "@/components/LoadingSpinner";
 import { deleteService, fetchServices, clearAllServices, enableServicesFetching, getServices, updateService } from "@/services/serviceService";
+import { getAllEmployees } from "@/services/employeeService";
 import { useRouter } from "next/navigation";
 import { indexedDBService } from "@/services/indexedDB";
 import DeleteServiceDialog from "@/components/DeleteServiceDialog";
 import { useTranslation } from "react-i18next";
+import { Employee } from "@/types/employee";
 
 export default function Services() {
    const router = useRouter();
    const [services, setServices] = useState<Service[]>([]);
+   const [employees, setEmployees] = useState<Employee[]>([]);
    const [isLoading, setIsLoading] = useState(true);
    const [errorMessage, setErrorMessage] = useState<string | null>(null);
    const { darkMode } = useTheme();
@@ -54,28 +61,32 @@ export default function Services() {
    }, []);
 
    useEffect(() => {
-      const fetchServices = async () => {
+      const fetchServicesAndEmployees = async () => {
          try {
             setIsLoading(true);
             setErrorMessage(null);
+            
+            // Load employees
+            const allEmployees = await getAllEmployees();
+            setEmployees(allEmployees);
             
             // Use our updated getServices function
             const fetchedServices = await getServices();
             setServices(fetchedServices || []);
          } catch (error) {
-            console.error('Error fetching services:', error);
+            console.error('Error fetching data:', error);
             // Don't show error messages to the user anymore
          } finally {
             setIsLoading(false);
          }
       };
       
-      fetchServices();
+      fetchServicesAndEmployees();
       
       // Listen for service list refresh events
       const handleStorageChange = (e: StorageEvent) => {
          if (e.key === 'serviceListShouldRefresh') {
-            fetchServices();
+            fetchServicesAndEmployees();
          }
       };
       
@@ -152,6 +163,20 @@ export default function Services() {
          setIsUpdatingStatus(null);
       }
    };
+   
+   // Get employee names for a service
+   const getAssignedEmployeeNames = (service: Service): string[] => {
+      if (!service.assignedEmployeeIds || !service.assignedEmployeeIds.length) {
+         return [];
+      }
+      
+      return service.assignedEmployeeIds
+         .map(id => {
+            const employee = employees.find(e => e._id === id);
+            return employee ? `${employee.firstName} ${employee.lastName}` : '';
+         })
+         .filter(name => name !== '');
+   };
 
    return (
       <div className={`min-h-screen ${darkMode ? "bg-gradient-to-br from-gray-900 via-purple-900/20 to-gray-900" : "bg-gradient-to-br from-white via-purple-100/30 to-white"} p-0 relative`}>
@@ -178,7 +203,7 @@ export default function Services() {
                            : "bg-white text-gray-700 border border-gray-200 hover:bg-gray-50"
                      } ${isLoading ? "opacity-70 cursor-not-allowed" : ""}`}
                   >
-                     <ArrowPathIcon
+                     <RefreshCcw
                         className={`h-5 w-5 mr-2 ${isLoading ? "animate-spin" : ""}`} 
                      />
                      {isLoading ? t('common.refreshing') : t('common.refresh')}
@@ -191,7 +216,7 @@ export default function Services() {
                            : "bg-purple-600 text-white hover:bg-purple-700"
                      }`}
                   >
-                     <PlusIcon className="h-5 w-5 mr-2" />
+                     <Plus className="h-5 w-5 mr-2" />
                      {t('services.add_service')}
                   </Link>
                </div>
@@ -222,7 +247,7 @@ export default function Services() {
                                  : "bg-purple-600 text-white hover:bg-purple-700"
                            }`}
                         >
-                           <PlusIcon className="h-5 w-5 mr-2" />
+                           <Plus className="h-5 w-5 mr-2" />
                            {t('services.add_first_service')}
                         </Link>
                      </div>
@@ -278,6 +303,34 @@ export default function Services() {
                               </span>
                            </div>
                            
+                           {/* Assigned Staff Section */}
+                           <div className="mt-3">
+                              <div className="flex items-center mb-1">
+                                 <User className="h-4 w-4 mr-1.5 text-gray-400" />
+                                 <span className={`text-sm font-medium ${darkMode ? "text-gray-300" : "text-gray-700"}`}>
+                                    Assigned Staff
+                                 </span>
+                              </div>
+                              <div className="flex flex-wrap gap-1 mt-1">
+                                 {getAssignedEmployeeNames(service).length > 0 ? (
+                                    getAssignedEmployeeNames(service).map((name, i) => (
+                                       <span 
+                                          key={i} 
+                                          className={`text-xs px-2 py-1 rounded-full ${
+                                             darkMode ? "bg-gray-700 text-gray-200" : "bg-gray-200 text-gray-700"
+                                          }`}
+                                       >
+                                          {name}
+                                       </span>
+                                    ))
+                                 ) : (
+                                    <span className={`text-xs italic ${darkMode ? "text-gray-500" : "text-gray-400"}`}>
+                                       No staff assigned
+                                    </span>
+                                 )}
+                              </div>
+                           </div>
+                           
                            {service.description && (
                               <div className="mt-3">
                                  <span className={`text-sm font-medium ${darkMode ? "text-gray-300" : "text-gray-700"}`}>
@@ -294,20 +347,28 @@ export default function Services() {
                            <button
                               onClick={() => handleToggleStatus(service)}
                               disabled={isUpdatingStatus === service._id}
-                              className={`flex items-center px-3 py-1.5 rounded-lg text-sm font-medium transition ${
-                                 darkMode
-                                    ? "bg-gray-800 text-gray-300 hover:bg-gray-700"
-                                    : "bg-white border border-gray-200 text-gray-700 hover:bg-gray-50"
+                              className={`group relative flex items-center space-x-2 px-4 py-2 rounded-full text-sm font-medium transition-all duration-300 ${
+                                 service.isActive 
+                                    ? (darkMode ? "bg-green-600/20 text-green-400 hover:bg-green-700/30" : "bg-green-100 text-green-600 hover:bg-green-200")
+                                    : (darkMode ? "bg-gray-700/40 text-gray-400 hover:bg-gray-600/50" : "bg-gray-100 text-gray-500 hover:bg-gray-200")
                               } ${isUpdatingStatus === service._id ? "opacity-70 cursor-not-allowed" : ""}`}
                            >
                               {isUpdatingStatus === service._id ? (
-                                 <ArrowPathIcon className="h-4 w-4 mr-1.5 animate-spin" />
-                              ) : service.isActive ? (
-                                 <XCircleIcon className="h-4 w-4 mr-1.5" />
+                                 <RefreshCcw className="h-4 w-4 animate-spin" />
                               ) : (
-                                 <CheckCircleIcon className="h-4 w-4 mr-1.5" />
+                                 <>
+                                    <div className={`relative w-10 h-5 transition-colors duration-300 rounded-full ${
+                                       service.isActive 
+                                          ? (darkMode ? "bg-green-500/60" : "bg-green-500") 
+                                          : (darkMode ? "bg-gray-600" : "bg-gray-400")
+                                    } group-hover:${service.isActive ? "bg-green-600" : "bg-gray-500"}`}>
+                                       <div className={`absolute top-0.5 left-0.5 bg-white w-4 h-4 rounded-full shadow transition-transform duration-300 ${
+                                          service.isActive ? "transform translate-x-5" : ""
+                                       }`}></div>
+                                    </div>
+                                    <span className="ml-1">{service.isActive ? t('services.active') : t('services.inactive')}</span>
+                                 </>
                               )}
-                              {service.isActive ? t('services.deactivate') : t('services.activate')}
                            </button>
                            
                            <div className="flex space-x-1">
@@ -319,7 +380,7 @@ export default function Services() {
                                        : "text-gray-500 hover:text-gray-700 hover:bg-gray-100"
                                  }`}
                               >
-                                 <PencilIcon className="h-5 w-5" />
+                                 <Pencil className="h-5 w-5" />
                               </Link>
                               
                               <button
@@ -330,7 +391,7 @@ export default function Services() {
                                        : "text-gray-500 hover:text-red-700 hover:bg-red-50"
                                  }`}
                               >
-                                 <TrashIcon className="h-5 w-5" />
+                                 <Trash className="h-5 w-5" />
                               </button>
                            </div>
                         </div>

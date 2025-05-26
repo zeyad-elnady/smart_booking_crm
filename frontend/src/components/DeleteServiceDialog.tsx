@@ -1,6 +1,6 @@
 'use client';
 
-import { TrashIcon } from '@heroicons/react/24/outline';
+import { Trash } from 'lucide-react';
 
 interface DeleteServiceDialogProps {
   isOpen: boolean;
@@ -28,7 +28,7 @@ export default function DeleteServiceDialog({
           <div className={`mx-auto flex h-12 w-12 items-center justify-center rounded-full ${
             darkMode ? "bg-red-900/20" : "bg-red-100"
           } mb-4`}>
-            <TrashIcon className={`h-6 w-6 ${
+            <Trash className={`h-6 w-6 ${
               darkMode ? "text-red-400" : "text-red-600"
             }`} aria-hidden="true" />
           </div>

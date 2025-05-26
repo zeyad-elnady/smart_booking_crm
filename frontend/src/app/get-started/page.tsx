@@ -205,7 +205,7 @@ export default function GetStarted() {
                            Manage appointments, patient records, and your personal schedule.
                         </p>
                         <Link
-                           href="/doctor-dashboard"
+                           href="/doctor-selection"
                            className="glass-dark bg-gradient-to-r from-blue-600 to-cyan-500 hover:from-blue-700 hover:to-cyan-600 text-white font-bold py-3 px-8 rounded-full text-lg transition-all duration-300 hover:scale-105 flex items-center justify-center btn-premium w-full"
                         >
                            Access Doctor View

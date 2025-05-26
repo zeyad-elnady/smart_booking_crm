@@ -15,7 +15,7 @@ export interface Service {
       daysAvailable?: number[];
    };
    isActive?: boolean;
-   staffCount?: number; // Number of staff members working on this service
+   assignedEmployeeIds?: string[]; // Array of employee IDs assigned to this service
    createdAt?: string;
    updatedAt?: string;
 }
