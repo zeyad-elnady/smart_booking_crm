@@ -313,10 +313,10 @@ export default function EditEmployee() {
                   />
                 </div>
                 
-                {/* Rate */}
+                {/* Base Salary */}
                 <div>
-                  <label htmlFor="rate" className={`block mb-2 text-sm font-medium ${darkMode ? "text-gray-300" : "text-gray-700"}`}>
-                    {t('rate')}
+                  <label htmlFor="baseSalary" className={`block mb-2 text-sm font-medium ${darkMode ? "text-gray-300" : "text-gray-700"}`}>
+                    {t('base_salary')}
                   </label>
                   <div className="relative">
                     <span className="absolute left-3 top-3 text-sm text-gray-400">
@@ -324,11 +324,11 @@ export default function EditEmployee() {
                     </span>
                     <input
                       type="number"
-                      id="rate"
-                      name="rate"
+                      id="baseSalary"
+                      name="baseSalary"
                       min="0"
                       step="0.01"
-                      value={formData.rate || ""}
+                      value={formData.baseSalary || ""}
                       onChange={handleChange}
                       className={`w-full px-4 py-3 pl-12 rounded-lg ${
                         darkMode
@@ -338,6 +338,9 @@ export default function EditEmployee() {
                       placeholder="0.00"
                     />
                   </div>
+                  <p className={`mt-1 text-xs ${darkMode ? "text-gray-400" : "text-gray-500"}`}>
+                    Monthly base salary amount
+                  </p>
                 </div>
                 
                 {/* Hiring Date */}

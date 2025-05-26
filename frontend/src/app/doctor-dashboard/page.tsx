@@ -331,50 +331,50 @@ export default function DoctorDashboard() {
                   </div>
                 ) : (
                   <>
-                    {/* Week view navigation */}
-                    <div className={`flex justify-between items-center p-4 rounded-t-lg ${darkMode ? 'bg-gray-800' : 'bg-white'} border-b ${darkMode ? 'border-gray-700' : 'border-gray-200'}`}>
-                      <button className="p-2 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700">
-                        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                          <path fillRule="evenodd" d="M12.707 5.293a1 1 0 010 1.414L9.414 10l3.293 3.293a1 1 0 01-1.414 1.414l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 0z" clipRule="evenodd" />
-                        </svg>
-                      </button>
+                {/* Week view navigation */}
+                <div className={`flex justify-between items-center p-4 rounded-t-lg ${darkMode ? 'bg-gray-800' : 'bg-white'} border-b ${darkMode ? 'border-gray-700' : 'border-gray-200'}`}>
+                  <button className="p-2 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700">
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                      <path fillRule="evenodd" d="M12.707 5.293a1 1 0 010 1.414L9.414 10l3.293 3.293a1 1 0 01-1.414 1.414l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 0z" clipRule="evenodd" />
+                    </svg>
+                  </button>
                       <h2 className="font-medium">
                         {weekDates[0].toLocaleDateString('en-US', { month: 'long', day: 'numeric' })} - {weekDates[6].toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}
                       </h2>
-                      <button className="p-2 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700">
-                        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                          <path fillRule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clipRule="evenodd" />
-                        </svg>
-                      </button>
-                    </div>
-                    
-                    {/* Week view calendar */}
-                    <div className={`border ${darkMode ? 'border-gray-700 bg-gray-800' : 'border-gray-200 bg-white'} rounded-b-lg shadow-md overflow-hidden`}>
-                      {/* Days header */}
-                      <div className="grid grid-cols-7 border-b border-gray-200 dark:border-gray-700">
-                        {['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map((day, index) => (
-                          <div key={index} className="py-2 text-center font-medium">
-                            <div>{day}</div>
+                  <button className="p-2 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700">
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                      <path fillRule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clipRule="evenodd" />
+                    </svg>
+                  </button>
+                </div>
+                
+                {/* Week view calendar */}
+                <div className={`border ${darkMode ? 'border-gray-700 bg-gray-800' : 'border-gray-200 bg-white'} rounded-b-lg shadow-md overflow-hidden`}>
+                  {/* Days header */}
+                  <div className="grid grid-cols-7 border-b border-gray-200 dark:border-gray-700">
+                    {['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map((day, index) => (
+                      <div key={index} className="py-2 text-center font-medium">
+                        <div>{day}</div>
                             <div className={`text-lg mt-1 ${new Date().toDateString() === weekDates[index].toDateString() ? 'text-blue-500' : ''}`}>
                               {weekDates[index].getDate()}
-                            </div>
-                          </div>
-                        ))}
+                        </div>
                       </div>
-                      
-                      {/* Appointments grid */}
-                      <div className="grid grid-cols-7 gap-px bg-gray-200 dark:bg-gray-700">
+                    ))}
+                  </div>
+                  
+                  {/* Appointments grid */}
+                  <div className="grid grid-cols-7 gap-px bg-gray-200 dark:bg-gray-700">
                         {weekDates.map((date, dayIndex) => {
                           const dateAppointments = getAppointmentsForDate(date);
                           const isToday = new Date().toDateString() === date.toDateString();
                           
                           return (
-                            <div 
-                              key={dayIndex} 
+                      <div 
+                        key={dayIndex} 
                               className={`h-32 p-1 overflow-y-auto ${darkMode ? 'bg-gray-800' : 'bg-white'} ${
                                 isToday ? 'bg-blue-50 dark:bg-blue-900 dark:bg-opacity-20' : ''
-                              }`}
-                            >
+                        }`}
+                      >
                               {dateAppointments.map(appointment => {
                                 // Get patient name
                                 const patientName = appointment.customer 
@@ -382,34 +382,34 @@ export default function DoctorDashboard() {
                                   : "Patient";
                                 
                                 return (
-                                  <div 
+                          <div 
                                     key={appointment._id}
-                                    className={`text-xs p-1 mb-1 rounded ${
-                                      darkMode ? 'bg-blue-900 bg-opacity-50 text-blue-100' : 'bg-blue-100 text-blue-800'
-                                    }`}
-                                  >
+                            className={`text-xs p-1 mb-1 rounded ${
+                              darkMode ? 'bg-blue-900 bg-opacity-50 text-blue-100' : 'bg-blue-100 text-blue-800'
+                            }`}
+                          >
                                     {formatAppointmentTime(appointment.date)} - {patientName}
                                   </div>
                                 );
                               })}
-                            </div>
+                          </div>
                           );
                         })}
-                      </div>
-                    </div>
-                    
-                    {/* Today's appointments list */}
-                    <div className={`rounded-lg shadow-md overflow-hidden ${darkMode ? 'bg-gray-800' : 'bg-white'}`}>
-                      <div className="p-4 border-b border-gray-200 dark:border-gray-700">
+                  </div>
+                </div>
+                
+                {/* Today's appointments list */}
+                <div className={`rounded-lg shadow-md overflow-hidden ${darkMode ? 'bg-gray-800' : 'bg-white'}`}>
+                  <div className="p-4 border-b border-gray-200 dark:border-gray-700">
                         <h3 className="font-medium">Today's Appointments ({todayAppointments.length})</h3>
                       </div>
                       
                       {todayAppointments.length === 0 ? (
                         <div className="p-8 text-center">
                           <p className={`${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>No appointments scheduled for today.</p>
-                        </div>
+                  </div>
                       ) : (
-                        <div className="divide-y divide-gray-200 dark:divide-gray-700">
+                  <div className="divide-y divide-gray-200 dark:divide-gray-700">
                           {todayAppointments.map(appointment => {
                             // Get patient name
                             const patientName = appointment.customer 
@@ -418,36 +418,36 @@ export default function DoctorDashboard() {
                             
                             return (
                               <div key={appointment._id} className="p-4 flex justify-between items-center">
-                                <div className="flex items-center space-x-4">
-                                  <div className="w-12 text-center">
+                        <div className="flex items-center space-x-4">
+                          <div className="w-12 text-center">
                                     <div className="text-sm font-medium">{formatAppointmentTime(appointment.date)}</div>
                                     <div className="text-xs text-gray-500 dark:text-gray-400">{getAppointmentDuration(appointment)} min</div>
-                                  </div>
-                                  <div>
+                          </div>
+                          <div>
                                     <div className="font-medium">{patientName}</div>
                                     <div className={`text-sm ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>
                                       {appointment.service?.name || appointment.type || "Consultation"}
                                     </div>
-                                  </div>
-                                </div>
-                                <div className="flex space-x-2">
-                                  <button className={`px-3 py-1 rounded-md text-xs ${
-                                    darkMode ? 'bg-green-900 bg-opacity-50 text-green-300' : 'bg-green-100 text-green-700'
-                                  }`}>
-                                    Start Session
-                                  </button>
-                                  <button className={`px-3 py-1 rounded-md text-xs ${
-                                    darkMode ? 'bg-gray-700 text-gray-300' : 'bg-gray-100 text-gray-700'
-                                  }`}>
-                                    View Details
-                                  </button>
-                                </div>
-                              </div>
+                          </div>
+                        </div>
+                        <div className="flex space-x-2">
+                          <button className={`px-3 py-1 rounded-md text-xs ${
+                            darkMode ? 'bg-green-900 bg-opacity-50 text-green-300' : 'bg-green-100 text-green-700'
+                          }`}>
+                            Start Session
+                          </button>
+                          <button className={`px-3 py-1 rounded-md text-xs ${
+                            darkMode ? 'bg-gray-700 text-gray-300' : 'bg-gray-100 text-gray-700'
+                          }`}>
+                            View Details
+                          </button>
+                        </div>
+                      </div>
                             );
                           })}
-                        </div>
+                  </div>
                       )}
-                    </div>
+                </div>
                   </>
                 )}
               </div>
@@ -490,43 +490,43 @@ export default function DoctorDashboard() {
                         <p className={`${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>No patients found. Schedule appointments to see patients here.</p>
                       </div>
                     ) : (
-                      <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
-                        <thead className={`${darkMode ? 'bg-gray-700' : 'bg-gray-50'}`}>
-                          <tr>
-                            <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">Name</th>
-                            <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">Last Visit</th>
-                            <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">Condition</th>
-                            <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">Next Appointment</th>
-                            <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">Actions</th>
-                          </tr>
-                        </thead>
-                        <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
+                  <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+                    <thead className={`${darkMode ? 'bg-gray-700' : 'bg-gray-50'}`}>
+                      <tr>
+                        <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">Name</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">Last Visit</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">Condition</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">Next Appointment</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
                           {patients.map((patient) => (
-                            <tr key={patient.id}>
-                              <td className="px-6 py-4 whitespace-nowrap">
-                                <div className="font-medium">{patient.name}</div>
-                              </td>
-                              <td className="px-6 py-4 whitespace-nowrap">{patient.lastVisit}</td>
-                              <td className="px-6 py-4 whitespace-nowrap">{patient.condition}</td>
-                              <td className="px-6 py-4 whitespace-nowrap">{patient.nextAppointment}</td>
-                              <td className="px-6 py-4 whitespace-nowrap">
-                                <button className={`px-3 py-1 rounded-md text-xs mr-2 ${
-                                  darkMode ? 'bg-blue-900 bg-opacity-50 text-blue-300' : 'bg-blue-100 text-blue-700'
-                                }`}>
-                                  View Records
-                                </button>
-                                <button className={`px-3 py-1 rounded-md text-xs ${
-                                  darkMode ? 'bg-gray-700 text-gray-300' : 'bg-gray-100 text-gray-700'
-                                }`}>
-                                  Schedule
-                                </button>
-                              </td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
+                        <tr key={patient.id}>
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <div className="font-medium">{patient.name}</div>
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap">{patient.lastVisit}</td>
+                          <td className="px-6 py-4 whitespace-nowrap">{patient.condition}</td>
+                          <td className="px-6 py-4 whitespace-nowrap">{patient.nextAppointment}</td>
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <button className={`px-3 py-1 rounded-md text-xs mr-2 ${
+                              darkMode ? 'bg-blue-900 bg-opacity-50 text-blue-300' : 'bg-blue-100 text-blue-700'
+                            }`}>
+                              View Records
+                            </button>
+                            <button className={`px-3 py-1 rounded-md text-xs ${
+                              darkMode ? 'bg-gray-700 text-gray-300' : 'bg-gray-100 text-gray-700'
+                            }`}>
+                              Schedule
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
                     )}
-                  </div>
+                </div>
                 )}
               </div>
             )}

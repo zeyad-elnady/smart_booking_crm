@@ -348,8 +348,8 @@ export default function EditCustomer({ params, searchParams }: Props) {
                                  className="w-full px-4 py-2 bg-white dark:bg-gray-800/50 border border-gray-300 dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 h-10"
                                  placeholder="Enter phone number (digits only)"
                               />
-                           </div>
                         </div>
+                     </div>
 
                         {/* Add Medical Information Section */}
                         <div className="md:col-span-2">

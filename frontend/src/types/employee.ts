@@ -9,6 +9,8 @@ export interface EmployeeData {
   qualifications?: string;
   yearsOfExperience?: number;
   rate?: number; // Hourly or monthly rate
+  baseSalary?: number; // Monthly base salary amount
+  remainingSalary?: number; // Remaining salary after withdrawals/deductions
   currency?: string; // Default to EGP
   hiringDate?: string;
   schedule?: {
@@ -20,6 +22,21 @@ export interface EmployeeData {
     friday?: { start?: string; end?: string; };
     saturday?: { start?: string; end?: string; };
   };
+  attendance?: {
+    present: number; // Count of days present
+    absent: number; // Count of days absent
+    late: number; // Count of days late
+  };
+  deductions?: {
+    amount: number;
+    reason: string;
+    date: string;
+  }[];
+  rewards?: {
+    amount: number;
+    reason: string;
+    date: string;
+  }[];
   notes?: string;
   isActive?: boolean;
 }

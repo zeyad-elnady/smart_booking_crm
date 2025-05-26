@@ -66,7 +66,7 @@ function AppointmentHistoryDialog({
             const customerAppointments = await indexedDBService.getAppointmentsByCustomer(customerId);
             console.log(`Loaded ${customerAppointments.length} appointments for customer ${customerId}`);
             if (customerAppointments.length > 0) {
-               console.log("First appointment data:", customerAppointments[0]);
+            console.log("First appointment data:", customerAppointments[0]);
             }
             setAppointments(customerAppointments);
             setLoading(false);

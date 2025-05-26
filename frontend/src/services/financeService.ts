@@ -568,4 +568,273 @@ const getDailyTotals = (
     income: values.income,
     expense: values.expense
   }));
+};
+
+/**
+ * Record a salary withdrawal for an employee
+ * This is used when an employee withdraws part of their salary
+ */
+export const recordSalaryWithdrawal = async (
+  employeeId: string,
+  amount: number,
+  notes: string = ""
+): Promise<Transaction> => {
+  try {
+    // Initialize database if needed
+    await indexedDBService.initDB();
+    
+    // Create withdrawal transaction
+    const transaction: TransactionInput = {
+      date: new Date().toISOString().split('T')[0],
+      amount: amount,
+      type: "expense",
+      category: "Salary",
+      description: `Salary withdrawal${notes ? ` - ${notes}` : ""}`,
+      paymentMethod: "cash",
+      status: "completed",
+      employeeId
+    };
+    
+    // Create the transaction
+    const result = await createTransaction(transaction);
+    
+    // Update employee's remaining salary
+    await updateEmployeeSalaryBalance(employeeId);
+    
+    return result;
+  } catch (error) {
+    console.error("Error recording salary withdrawal:", error);
+    toast.error("Failed to record salary withdrawal");
+    throw error;
+  }
+};
+
+/**
+ * Add a salary deduction for an employee
+ * Used for absences, late arrivals, or other penalties
+ */
+export const addDeduction = async (
+  employeeId: string,
+  amount: number,
+  reason: string
+): Promise<void> => {
+  try {
+    // Initialize database if needed
+    await indexedDBService.initDB();
+    
+    // Get employee
+    const employee = await indexedDBService.getFromStore("employees", employeeId);
+    if (!employee) {
+      throw new Error(`Employee with ID ${employeeId} not found`);
+    }
+    
+    // Initialize deductions array if it doesn't exist
+    if (!employee.deductions) {
+      employee.deductions = [];
+    }
+    
+    // Add new deduction
+    employee.deductions.push({
+      amount,
+      reason,
+      date: new Date().toISOString().split('T')[0]
+    });
+    
+    // Save updated employee
+    await indexedDBService.saveToStore("employees", employee);
+    
+    // Update employee's remaining salary
+    await updateEmployeeSalaryBalance(employeeId);
+    
+    toast.success("Deduction added successfully");
+  } catch (error) {
+    console.error("Error adding deduction:", error);
+    toast.error("Failed to add deduction");
+    throw error;
+  }
+};
+
+/**
+ * Add a salary reward/bonus for an employee
+ */
+export const addReward = async (
+  employeeId: string,
+  amount: number,
+  reason: string
+): Promise<void> => {
+  try {
+    // Initialize database if needed
+    await indexedDBService.initDB();
+    
+    // Get employee
+    const employee = await indexedDBService.getFromStore("employees", employeeId);
+    if (!employee) {
+      throw new Error(`Employee with ID ${employeeId} not found`);
+    }
+    
+    // Initialize rewards array if it doesn't exist
+    if (!employee.rewards) {
+      employee.rewards = [];
+    }
+    
+    // Add new reward
+    employee.rewards.push({
+      amount,
+      reason,
+      date: new Date().toISOString().split('T')[0]
+    });
+    
+    // Save updated employee
+    await indexedDBService.saveToStore("employees", employee);
+    
+    // Update employee's remaining salary
+    await updateEmployeeSalaryBalance(employeeId);
+    
+    toast.success("Reward added successfully");
+  } catch (error) {
+    console.error("Error adding reward:", error);
+    toast.error("Failed to add reward");
+    throw error;
+  }
+};
+
+/**
+ * Calculate and update an employee's remaining salary
+ */
+export const updateEmployeeSalaryBalance = async (employeeId: string): Promise<number> => {
+  try {
+    // Initialize database if needed
+    await indexedDBService.initDB();
+    
+    // Get employee
+    const employee = await indexedDBService.getFromStore("employees", employeeId);
+    if (!employee) {
+      throw new Error(`Employee with ID ${employeeId} not found`);
+    }
+    
+    // Get current month's start and end dates
+    const today = new Date();
+    const startOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
+    const endOfMonth = new Date(today.getFullYear(), today.getMonth() + 1, 0);
+    
+    // Get salary transactions for this month
+    const transactions = await getAllTransactions({
+      startDate: startOfMonth.toISOString().split('T')[0],
+      endDate: endOfMonth.toISOString().split('T')[0],
+      type: "expense"
+    });
+    
+    // Filter transactions related to this employee's salary
+    const salaryTransactions = transactions.filter(transaction => 
+      transaction.employeeId === employeeId && 
+      (typeof transaction.category === 'string' 
+        ? transaction.category === "Salary" 
+        : transaction.category.name === "Salary")
+    );
+    
+    // Calculate total withdrawals
+    const totalWithdrawals = salaryTransactions.reduce((sum, transaction) => sum + transaction.amount, 0);
+    
+    // Calculate total deductions
+    const totalDeductions = employee.deductions 
+      ? employee.deductions.reduce((sum, deduction) => {
+          // Only count deductions from current month
+          const deductionDate = new Date(deduction.date);
+          if (deductionDate >= startOfMonth && deductionDate <= endOfMonth) {
+            return sum + deduction.amount;
+          }
+          return sum;
+        }, 0)
+      : 0;
+    
+    // Calculate total rewards
+    const totalRewards = employee.rewards
+      ? employee.rewards.reduce((sum, reward) => {
+          // Only count rewards from current month
+          const rewardDate = new Date(reward.date);
+          if (rewardDate >= startOfMonth && rewardDate <= endOfMonth) {
+            return sum + reward.amount;
+          }
+          return sum;
+        }, 0)
+      : 0;
+    
+    // Calculate remaining salary
+    const baseSalary = employee.baseSalary || 0;
+    const remainingSalary = baseSalary - totalWithdrawals - totalDeductions + totalRewards;
+    
+    // Update employee's remaining salary
+    employee.remainingSalary = remainingSalary > 0 ? remainingSalary : 0;
+    
+    // Save updated employee
+    await indexedDBService.saveToStore("employees", employee);
+    
+    return remainingSalary;
+  } catch (error) {
+    console.error("Error calculating remaining salary:", error);
+    throw error;
+  }
+};
+
+/**
+ * Get an employee's salary summary for current month
+ */
+export const getEmployeeSalarySummary = async (employeeId: string) => {
+  try {
+    // Initialize database if needed
+    await indexedDBService.initDB();
+    
+    // Get employee
+    const employee = await indexedDBService.getFromStore("employees", employeeId);
+    if (!employee) {
+      throw new Error(`Employee with ID ${employeeId} not found`);
+    }
+    
+    // Get current month's start and end dates
+    const today = new Date();
+    const startOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
+    const endOfMonth = new Date(today.getFullYear(), today.getMonth() + 1, 0);
+    
+    // Get salary transactions for this month
+    const transactions = await getAllTransactions({
+      startDate: startOfMonth.toISOString().split('T')[0],
+      endDate: endOfMonth.toISOString().split('T')[0],
+      type: "expense"
+    });
+    
+    // Filter transactions related to this employee's salary
+    const salaryTransactions = transactions.filter(transaction => 
+      transaction.employeeId === employeeId && 
+      (typeof transaction.category === 'string' 
+        ? transaction.category === "Salary" 
+        : transaction.category.name === "Salary")
+    );
+    
+    // Get deductions for current month
+    const currentDeductions = employee.deductions 
+      ? employee.deductions.filter(deduction => {
+          const deductionDate = new Date(deduction.date);
+          return deductionDate >= startOfMonth && deductionDate <= endOfMonth;
+        })
+      : [];
+    
+    // Get rewards for current month
+    const currentRewards = employee.rewards
+      ? employee.rewards.filter(reward => {
+          const rewardDate = new Date(reward.date);
+          return rewardDate >= startOfMonth && rewardDate <= endOfMonth;
+        })
+      : [];
+    
+    return {
+      baseSalary: employee.baseSalary || 0,
+      remainingSalary: employee.remainingSalary || 0,
+      withdrawals: salaryTransactions,
+      deductions: currentDeductions,
+      rewards: currentRewards
+    };
+  } catch (error) {
+    console.error("Error getting salary summary:", error);
+    throw error;
+  }
 }; 
